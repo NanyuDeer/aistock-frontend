@@ -106,8 +106,11 @@ router.beforeEach((to, from, next) => {
   // 设置页面标题
   document.title = to.meta.title || '股票资讯AI智能分析 - 智能股票分析平台';
   
-  // 权限检查 - 修改登录页面判断逻辑，避免重定向循环
-  if (!isLoggedIn && to.name !== 'login' && to.name !== 'home') {
+  // 定义需要登录才能访问的页面
+  const requiresAuth = ['Profile']; // 只有个人信息页面需要登录
+  
+  // 权限检查 - 只对需要登录的页面进行保护
+  if (!isLoggedIn && requiresAuth.includes(to.name)) {
     next({ name: 'login' });
   } else if (isLoggedIn && to.name === 'login') {
     // 已登录用户访问登录页面，重定向到首页

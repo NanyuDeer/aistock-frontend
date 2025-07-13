@@ -98,54 +98,105 @@ export default createStore({
         return false;
       }
     },
-    async fetchFavoriteStocks({ commit }) {
+    async fetchFavoriteStocks({ commit, state }) {
       try {
-        const response = await stockApi.getStocks();
-        if (response.code === 0) {
-          commit('setFavoriteStocks', response.data);
+        // 如果已登录，从服务器获取；否则使用本地存储
+        if (state.isAuthenticated) {
+          const response = await stockApi.getStocks();
+          if (response.code === 0) {
+            commit('setFavoriteStocks', response.data);
+            return true;
+          }
+          return false;
+        } else {
+          // 未登录用户使用本地存储的自选股
+          const localStocks = JSON.parse(localStorage.getItem('favoriteStocks')) || [];
+          commit('setFavoriteStocks', localStocks);
           return true;
         }
-        return false;
       } catch (error) {
         console.error('获取自选股失败:', error);
+        // 发生错误时回退到本地存储
+        const localStocks = JSON.parse(localStorage.getItem('favoriteStocks')) || [];
+        commit('setFavoriteStocks', localStocks);
         return false;
       }
     },
     async addFavoriteStocks({ dispatch, commit, state }, stocks) {
       try {
         console.log('[DEBUG] 发起添加自选股请求:', stocks);
-        const response = await stockApi.addStocks(stocks);
-        console.log('[DEBUG] 添加自选股响应:', response);
         
-        if (response.code === 0) {
-          // 直接调用 fetchFavoriteStocks 来获取最新的自选股列表
-          await dispatch('fetchFavoriteStocks');
-          return response.data;
+        if (state.isAuthenticated) {
+          // 已登录用户：同步到服务器
+          const response = await stockApi.addStocks(stocks);
+          console.log('[DEBUG] 添加自选股响应:', response);
+          
+          if (response.code === 0) {
+            // 直接调用 fetchFavoriteStocks 来获取最新的自选股列表
+            await dispatch('fetchFavoriteStocks');
+            return response.data;
+          } else {
+            console.error('添加自选股失败，服务器返回错误:', response);
+            return null;
+          }
         } else {
-          console.error('添加自选股失败，服务器返回错误:', response);
-          return null;
+          // 未登录用户：只保存到本地
+          const currentStocks = [...state.favoriteStocks];
+          stocks.forEach(newStock => {
+            if (!currentStocks.find(stock => stock.code === newStock.code)) {
+              currentStocks.push(newStock);
+            }
+          });
+          commit('setFavoriteStocks', currentStocks);
+          return stocks;
         }
       } catch (error) {
         console.error('添加自选股失败:', error);
+        // 发生错误时也保存到本地
+        if (!state.isAuthenticated) {
+          const currentStocks = [...state.favoriteStocks];
+          stocks.forEach(newStock => {
+            if (!currentStocks.find(stock => stock.code === newStock.code)) {
+              currentStocks.push(newStock);
+            }
+          });
+          commit('setFavoriteStocks', currentStocks);
+          return stocks;
+        }
         return null;
       }
     },
     async removeFavoriteStocks({ dispatch, commit, state }, stockCodes) {
       try {
         console.log('[DEBUG] 发起删除自选股请求:', stockCodes);
-        const response = await stockApi.removeStocks(stockCodes);
-        console.log('[DEBUG] 删除自选股响应:', response);
         
-        if (response.code === 0) {
-          // 直接调用 fetchFavoriteStocks 来获取最新的自选股列表
-          await dispatch('fetchFavoriteStocks');
-          return response.data;
+        if (state.isAuthenticated) {
+          // 已登录用户：从服务器删除
+          const response = await stockApi.removeStocks(stockCodes);
+          console.log('[DEBUG] 删除自选股响应:', response);
+          
+          if (response.code === 0) {
+            // 直接调用 fetchFavoriteStocks 来获取最新的自选股列表
+            await dispatch('fetchFavoriteStocks');
+            return response.data;
+          } else {
+            console.error('删除自选股失败，服务器返回错误:', response);
+            return null;
+          }
         } else {
-          console.error('删除自选股失败，服务器返回错误:', response);
-          return null;
+          // 未登录用户：只从本地删除
+          const currentStocks = state.favoriteStocks.filter(stock => !stockCodes.includes(stock.code));
+          commit('setFavoriteStocks', currentStocks);
+          return stockCodes;
         }
       } catch (error) {
         console.error('删除自选股失败:', error);
+        // 发生错误时也从本地删除
+        if (!state.isAuthenticated) {
+          const currentStocks = state.favoriteStocks.filter(stock => !stockCodes.includes(stock.code));
+          commit('setFavoriteStocks', currentStocks);
+          return stockCodes;
+        }
         return null;
       }
     },

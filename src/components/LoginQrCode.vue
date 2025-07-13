@@ -191,8 +191,7 @@ export default {
               console.log('[QrCode] 通知父组件用户登录成功, 用户信息:', user);
               
               // 将用户信息存储到 Vuex
-              store.commit('setCurrentUser', user);
-              store.commit('setIsLoggedIn', true);
+              store.commit('setUser', user);
               
               emit('login-success', user);
             }, 1000);

@@ -113,8 +113,12 @@ api.interceptors.response.use(
       const currentPath = window.location.pathname;
       const loginRelatedPaths = ['/login', '/scan-login', '/auth/scan'];
       
-      // 只有不在登录相关页面时才重定向
-      if (!loginRelatedPaths.some(path => currentPath.includes(path))) {
+      // 检查是否是需要登录的页面（只有个人信息页面需要强制登录）
+      const requiresAuthPaths = ['/profile'];
+      
+      // 只有在需要登录的页面且不在登录相关页面时才重定向
+      if (requiresAuthPaths.some(path => currentPath.includes(path)) && 
+          !loginRelatedPaths.some(path => currentPath.includes(path))) {
         window.location.href = '/login';
       }
     }

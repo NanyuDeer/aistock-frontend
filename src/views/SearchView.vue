@@ -1,6 +1,20 @@
 <template>
   <div class="search-page">
     <div class="page-container">
+      <!-- 未登录状态提示 -->
+      <el-alert 
+        v-if="!isLoggedIn"
+        title="游客模式"
+        type="info"
+        :closable="false"
+        class="guest-mode-alert">
+        <template #default>
+          您正在使用游客模式，可以搜索股票并添加到本地自选股。
+          <router-link to="/login" class="alert-link">登录后</router-link>
+          可以使用图片识别等高级功能。
+        </template>
+      </el-alert>
+      
       <div class="search-header">
         <h1>AI股票搜索</h1>
         
@@ -266,12 +280,6 @@ export default {
     
     // 添加到自选股
     const addToFavorite = async (stock) => {
-      if (!store.getters.isLoggedIn) {
-        ElMessage.warning('请先登录');
-        router.push('/login');
-        return;
-      }
-      
       try {
         loading.value = true;
         const result = await store.dispatch('addFavoriteStocks', [{
@@ -342,15 +350,14 @@ export default {
     
     // 处理图片识别
     const processImage = async () => {
-      if (!store.getters.isLoggedIn) {
-        ElMessage.warning('请先登录');
-        router.push('/login');
-        return;
-      }
-      
       if (!imageFile.value) {
         ElMessage.warning('请先选择图片');
         return;
+      }
+      
+      // 未登录用户提示，但仍允许尝试
+      if (!store.getters.isLoggedIn) {
+        ElMessage.info('未登录用户使用本地识别功能，数据不会同步到云端');
       }
       
       try {
@@ -443,7 +450,8 @@ export default {
       handleSelectionChange,
       addRecognizedStocks,
       removeImage,
-      processImage
+      processImage,
+      isLoggedIn: computed(() => store.getters.isLoggedIn)
     };
   }
 };
@@ -452,6 +460,20 @@ export default {
 <style lang="scss" scoped>
 .search-page {
   padding-top: 80px;
+  
+  .guest-mode-alert {
+    margin-bottom: 20px;
+    
+    .alert-link {
+      color: #409eff;
+      text-decoration: none;
+      font-weight: 500;
+      
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
   
   .search-header {
     margin-bottom: 30px;
@@ -653,6 +675,25 @@ export default {
           display: flex;
           gap: 10px;
         }
+      }
+    }
+  }
+  
+  .guest-mode-alert {
+    margin-bottom: 20px;
+    text-align: center;
+    
+    .el-alert__content {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      
+      .alert-link {
+        color: var(--primary-color);
+        font-weight: 500;
+        text-decoration: underline;
+        cursor: pointer;
       }
     }
   }
