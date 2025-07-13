@@ -1,0 +1,29 @@
+/* SCSS 变量文件 */
+
+// 颜色变量
+$primary-color: #409EFF;
+$success-color: #67C23A;
+$warning-color: #E6A23C;
+$danger-color: #F56C6C;
+$info-color: #909399;
+
+$text-primary: #303133;
+$text-secondary: #606266;
+$text-tertiary: #909399;
+
+$background-color: #f5f7fa;
+$border-color: #dcdfe6;
+
+// 布局变量
+$container-width: 1200px;
+$border-radius: 4px;
+$box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+
+// 动画变量
+$transition-duration: 0.3s;
+$transition-function: cubic-bezier(0.645, 0.045, 0.355, 1);
+
+// 响应式断点
+$mobile: 768px;
+$tablet: 992px;
+$desktop: 1200px;
