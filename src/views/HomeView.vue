@@ -44,14 +44,22 @@
             </div>
             
             <!-- 自选股资讯 - 修改为单独一行 -->
-            <div v-if="isLoggedIn && myFavoriteStocks.length > 0" class="favorite-news-row">
+            <div v-if="isLoggedIn" class="favorite-news-row">
               <div class="news-card">
-                <NewsSlider 
-                  title="自选股推送资讯"
-                  :news="favoriteStockNews"
-                  @show-detail="showNewsDetail"
-                  @tag-click="navigateToTag"
-                />
+                <div v-if="favoriteStockNews.length > 0">
+                  <NewsSlider 
+                    title="自选股推送资讯"
+                    :news="favoriteStockNews"
+                    @show-detail="showNewsDetail"
+                    @tag-click="navigateToTag"
+                  />
+                </div>
+                <div v-else class="empty-push-news">
+                  <h4 class="news-section-title">自选股推送资讯</h4>
+                  <div class="empty-content">
+                    <p>暂无推送资讯，您可以添加自选股后在"<span class="profile-link" @click="goToProfile">个人信息</span>"中开启推送</p>
+                  </div>
+                </div>
               </div>
             </div>
             
@@ -463,8 +471,15 @@ export default {
       router.push('/favorites');
     };
 
+    const goToProfile = () => {
+      router.push('/profile');
+    };
+
     // ---- onMounted 与 onUnmounted ----
     onMounted(() => {
+      // 重置滚动位置到顶部
+      window.scrollTo(0, 0);
+      
       // 新闻数据拉取
       fetchDomesticNews();
       fetchForeignNews();
@@ -540,6 +555,7 @@ export default {
       // 共用
       viewStockDetail,
       goToFavoritesPage,
+      goToProfile,
     };
   }
 };
@@ -710,6 +726,39 @@ export default {
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
         padding: 15px;
         height: 100%;
+        
+        .empty-push-news {
+          .news-section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 8px;
+          }
+          
+          .empty-content {
+            text-align: center;
+            padding: 20px 0;
+            color: var(--text-secondary);
+            
+            p {
+              margin: 0;
+              line-height: 1.6;
+              
+              .profile-link {
+                color: var(--primary-color);
+                cursor: pointer;
+                text-decoration: underline;
+                font-weight: 500;
+                
+                &:hover {
+                  color: #337ecc;
+                }
+              }
+            }
+          }
+        }
       }
     }
 
