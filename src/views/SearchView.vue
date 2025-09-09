@@ -2,7 +2,12 @@
   <div class="search-page">
     <div class="page-container">
       <div class="search-header">
-        <h1>AI股票搜索</h1>
+        <div class="page-title">
+          <h1>
+            <img src="../assets/ai-search.png" alt="Logo" class="title-logo" />
+            <span class="stock-text">股票搜索</span>
+          </h1>
+        </div>
         <div class="search-banner">
           <p>🎉 现已支持 <span class="highlight" @click="setKeyword('茅台')">股票名称</span>、<span class="highlight" @click="setKeyword('600519')">股票代码</span>、<span class="highlight" @click="setKeyword('gzmt')">拼音首字母</span> 搜索</p>
         </div>
@@ -461,10 +466,39 @@ export default {
   .search-header {
     margin-bottom: 30px;
     
-    h1 {
+    .page-title {
+      display: flex;
+      align-items: center;
+      justify-content: center;
       margin-bottom: 15px;
-      color: var(--text-primary);
-      text-align: center;
+      
+      h1 {
+        margin: 0;
+        display: flex;
+        align-items: baseline;
+        font-size: 2.5rem;
+        font-weight: 700;
+        
+        .title-logo {
+          height: 1em;
+          width: auto;
+          margin-right: 16px;
+          border-radius: 6px;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          transition: transform 0.3s ease;
+          vertical-align: baseline;
+          
+          &:hover {
+            transform: scale(1.05);
+          }
+        }
+        
+        .stock-text {
+          color: var(--text-primary);
+          position: relative;
+          letter-spacing: 2px;
+        }
+      }
     }
     
     .search-banner {
@@ -478,6 +512,7 @@ export default {
       font-weight: 500;
       font-size: 14px;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      line-height: 1.6;
       
       .highlight {
         background-color: #409EFF;
@@ -715,6 +750,57 @@ export default {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+// 响应式设计
+@media (max-width: 768px) {
+  .search-page {
+    .search-header {
+      .page-title {
+        flex-direction: column;
+        
+        .title-logo {
+          margin-right: 0;
+          margin-bottom: 10px;
+          height: 1.2em;
+          width: auto;
+        }
+        
+        h1 {
+          font-size: 2rem;
+          text-align: center;
+          
+          .stock-text {
+            display: block;
+            text-align: center;
+          }
+        }
+      }
+      
+      .search-banner {
+        padding: 6px 12px;
+        font-size: 13px;
+        line-height: 2;
+        
+        .highlight {
+          padding: 1px 4px;
+          margin: 0;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .search-page {
+    .search-header {
+      .page-title {
+        h1 {
+          font-size: 1.8rem;
+        }
+      }
+    }
   }
 }
 </style>
