@@ -148,6 +148,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { ElMessage } from 'element-plus';
+import { useScrollReset } from '@/utils/scrollUtils';
 
 export default {
   name: 'FavoritesView',
@@ -270,6 +271,9 @@ export default {
     };
     
     onMounted(async () => {
+      // 重置滚动位置到顶部
+      useScrollReset();
+      
       if (!store.getters.isLoggedIn) {
         ElMessage.warning('请先登录');
         router.push('/login');

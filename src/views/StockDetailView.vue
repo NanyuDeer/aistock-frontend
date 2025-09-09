@@ -653,6 +653,9 @@ export default {
     });
 
     onMounted(() => {
+      // 重置滚动位置到顶部
+      window.scrollTo(0, 0);
+      
       // 确保在挂载时stockInfo已经初始化
       if (!stockInfo.value || !stockInfo.value.code) {
         stockInfo.value = {

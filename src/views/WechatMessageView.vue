@@ -191,6 +191,9 @@ export default {
     };
 
     onMounted(() => {
+      // 重置滚动位置到顶部
+      window.scrollTo(0, 0);
+      
       document.title = '微信推送消息详情 - AI StockLink';
       if (isValidMsgId.value) fetchMessageData(); else { error.value = '消息ID不存在或无效'; loading.value = false; }
     });

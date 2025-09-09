@@ -36,6 +36,9 @@ export default {
     
     // 检查是否已登录，如果已登录则重定向到首页
     onMounted(() => {
+      // 重置滚动位置到顶部
+      window.scrollTo(0, 0);
+      
       if (localStorage.getItem('token')) {
         router.push('/');
       }

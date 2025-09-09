@@ -424,6 +424,9 @@ export default {
     };
     
     onMounted(async () => {
+      // 重置滚动位置到顶部
+      window.scrollTo(0, 0);
+      
       if (store.getters.isLoggedIn) {
         await store.dispatch('fetchFavoriteStocks');
       }
@@ -441,7 +444,6 @@ export default {
       viewStockDetail,
       addToFavorite,
       isFavorite,
-      
       imageUploading,
       imageResultVisible,
       recognizedStocks,

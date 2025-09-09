@@ -168,6 +168,9 @@ export default {
     
     // 组件挂载时获取数据
     onMounted(() => {
+      // 重置滚动位置到顶部
+      window.scrollTo(0, 0);
+      
       fetchTagStocks();
       
       // 如果用户已登录，预先加载自选股列表

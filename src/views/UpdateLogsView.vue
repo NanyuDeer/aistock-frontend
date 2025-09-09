@@ -200,6 +200,9 @@ export default {
     };
 
     onMounted(() => {
+      // 重置滚动位置到顶部
+      window.scrollTo(0, 0);
+      
       document.title = '更新日志 - AI StockLink';
       fetchUpdateTypes();
       fetchLogs();

@@ -169,6 +169,9 @@ export default {
     };
 
     onMounted(() => {
+      // 重置滚动位置到顶部
+      window.scrollTo(0, 0);
+      
       if (!user) {
         ElMessage.error('请先登录')
       } else {
