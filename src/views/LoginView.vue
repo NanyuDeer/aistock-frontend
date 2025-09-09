@@ -7,7 +7,10 @@
           <h1>股票资讯AI智能分析</h1>
         </div>
         <div class="welcome-text">
-          <p>欢迎使用，请扫码登录</p>
+          <p>
+            <img src="../assets/wechat.svg" alt="微信" class="wechat-inline-logo" />
+            欢迎使用，请扫码登录
+          </p>
         </div>
       </div>
       
@@ -120,6 +123,15 @@ export default {
         p {
           font-size: 16px;
           color: var(--text-secondary);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+        }
+        .wechat-inline-logo {
+          width: 22px;
+          height: 22px;
+          vertical-align: middle;
         }
       }
     }
