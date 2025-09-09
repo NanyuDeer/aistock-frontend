@@ -5,11 +5,11 @@
       <div class="footer-links">
         <router-link to="/update-logs" class="footer-link">更新日志</router-link>
         <span class="divider">|</span>
-        <router-link to="/monitor" class="footer-link">服务器监控</router-link>
-        <span class="divider">|</span>
-        <a href="https://status.fnas64.xin/status/aistock" target="_blank" rel="noopener noreferrer">网站状态监测</a>
+        <a href="https://status.aistocklink.cn" target="_blank" rel="noopener noreferrer">网站状态监测</a>
       </div>
       <div class="beian-info">
+        <span class="team-info">暨大团队研发</span>
+        <span style="margin: 0 8px; color: var(--text-tertiary);">|</span>
         <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">冀ICP备2025113956号</a>
       </div>
     </div>

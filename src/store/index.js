@@ -40,8 +40,15 @@ export default createStore({
     logout(state) {
       state.user = null
       state.isAuthenticated = false
+      state.favoriteStocks = []
+      // 清除所有localStorage数据
       localStorage.removeItem('user'); // 清除用户信息
       localStorage.removeItem('token'); // 清除 token
+      localStorage.removeItem('favoriteStocks'); // 清除自选股
+      // 清除所有sessionStorage
+      sessionStorage.clear();
+      // 清除版本缓存，强制下次重新检查
+      localStorage.removeItem('app_version');
     }
   },
   actions: {
@@ -98,105 +105,54 @@ export default createStore({
         return false;
       }
     },
-    async fetchFavoriteStocks({ commit, state }) {
+    async fetchFavoriteStocks({ commit }) {
       try {
-        // 如果已登录，从服务器获取；否则使用本地存储
-        if (state.isAuthenticated) {
-          const response = await stockApi.getStocks();
-          if (response.code === 0) {
-            commit('setFavoriteStocks', response.data);
-            return true;
-          }
-          return false;
-        } else {
-          // 未登录用户使用本地存储的自选股
-          const localStocks = JSON.parse(localStorage.getItem('favoriteStocks')) || [];
-          commit('setFavoriteStocks', localStocks);
+        const response = await stockApi.getStocks();
+        if (response.code === 0) {
+          commit('setFavoriteStocks', response.data);
           return true;
         }
+        return false;
       } catch (error) {
         console.error('获取自选股失败:', error);
-        // 发生错误时回退到本地存储
-        const localStocks = JSON.parse(localStorage.getItem('favoriteStocks')) || [];
-        commit('setFavoriteStocks', localStocks);
         return false;
       }
     },
     async addFavoriteStocks({ dispatch, commit, state }, stocks) {
       try {
         console.log('[DEBUG] 发起添加自选股请求:', stocks);
+        const response = await stockApi.addStocks(stocks);
+        console.log('[DEBUG] 添加自选股响应:', response);
         
-        if (state.isAuthenticated) {
-          // 已登录用户：同步到服务器
-          const response = await stockApi.addStocks(stocks);
-          console.log('[DEBUG] 添加自选股响应:', response);
-          
-          if (response.code === 0) {
-            // 直接调用 fetchFavoriteStocks 来获取最新的自选股列表
-            await dispatch('fetchFavoriteStocks');
-            return response.data;
-          } else {
-            console.error('添加自选股失败，服务器返回错误:', response);
-            return null;
-          }
+        if (response.code === 0) {
+          // 直接调用 fetchFavoriteStocks 来获取最新的自选股列表
+          await dispatch('fetchFavoriteStocks');
+          return response.data;
         } else {
-          // 未登录用户：只保存到本地
-          const currentStocks = [...state.favoriteStocks];
-          stocks.forEach(newStock => {
-            if (!currentStocks.find(stock => stock.code === newStock.code)) {
-              currentStocks.push(newStock);
-            }
-          });
-          commit('setFavoriteStocks', currentStocks);
-          return stocks;
+          console.error('添加自选股失败，服务器返回错误:', response);
+          return null;
         }
       } catch (error) {
         console.error('添加自选股失败:', error);
-        // 发生错误时也保存到本地
-        if (!state.isAuthenticated) {
-          const currentStocks = [...state.favoriteStocks];
-          stocks.forEach(newStock => {
-            if (!currentStocks.find(stock => stock.code === newStock.code)) {
-              currentStocks.push(newStock);
-            }
-          });
-          commit('setFavoriteStocks', currentStocks);
-          return stocks;
-        }
         return null;
       }
     },
     async removeFavoriteStocks({ dispatch, commit, state }, stockCodes) {
       try {
         console.log('[DEBUG] 发起删除自选股请求:', stockCodes);
+        const response = await stockApi.removeStocks(stockCodes);
+        console.log('[DEBUG] 删除自选股响应:', response);
         
-        if (state.isAuthenticated) {
-          // 已登录用户：从服务器删除
-          const response = await stockApi.removeStocks(stockCodes);
-          console.log('[DEBUG] 删除自选股响应:', response);
-          
-          if (response.code === 0) {
-            // 直接调用 fetchFavoriteStocks 来获取最新的自选股列表
-            await dispatch('fetchFavoriteStocks');
-            return response.data;
-          } else {
-            console.error('删除自选股失败，服务器返回错误:', response);
-            return null;
-          }
+        if (response.code === 0) {
+          // 直接调用 fetchFavoriteStocks 来获取最新的自选股列表
+          await dispatch('fetchFavoriteStocks');
+          return response.data;
         } else {
-          // 未登录用户：只从本地删除
-          const currentStocks = state.favoriteStocks.filter(stock => !stockCodes.includes(stock.code));
-          commit('setFavoriteStocks', currentStocks);
-          return stockCodes;
+          console.error('删除自选股失败，服务器返回错误:', response);
+          return null;
         }
       } catch (error) {
         console.error('删除自选股失败:', error);
-        // 发生错误时也从本地删除
-        if (!state.isAuthenticated) {
-          const currentStocks = state.favoriteStocks.filter(stock => !stockCodes.includes(stock.code));
-          commit('setFavoriteStocks', currentStocks);
-          return stockCodes;
-        }
         return null;
       }
     },
@@ -360,10 +316,18 @@ export default createStore({
         console.log('[DEBUG] 获取标签龙头股票响应:', response);
         
         if (response.code === 0 && response.data) {
-          // 返回标签描述和股票列表
+          // 获取股票列表并按照change_percent从大到小排序
+          const leaders = response.data.leaders || [];
+          const sortedLeaders = leaders.sort((a, b) => {
+            const changeA = parseFloat(a.change_percent) || 0;
+            const changeB = parseFloat(b.change_percent) || 0;
+            return changeB - changeA; // 从大到小排序
+          });
+          
+          // 返回标签描述和排序后的股票列表
           return {
             description: response.data.description || '',
-            stocks: response.data.leaders || []
+            stocks: sortedLeaders
           };
         }
         return { description: '', stocks: [] };
@@ -465,7 +429,7 @@ export default createStore({
     async fetchWechatMessage(_, msgId) {
       if (!msgId || typeof msgId !== 'string' || msgId.trim() === '') {
         console.error('[ERROR] fetchWechatMessage: 无效的消息ID');
-        return null;
+        return {};
       }
       
       try {
@@ -473,30 +437,24 @@ export default createStore({
         const response = await stockApi.getWechatMessage(msgId);
         console.log('[DEBUG] 微信推送消息响应:', response);
         
-        // 检查是否有有效数据
         if (response) {
-          // 检查是否是标准API格式 {code: 0, data: {...}}
+          if (response.stock_id && response.stock_name) {
+            return response;
+          }
           if (response.code === 0 && response.data) {
             return response.data;
           }
-          // 检查是否直接返回了数据对象 (包含预期的字段如top_news, hk_us_news, good_news, bad_news中任意一个)
-          else if (response.top_news || 
-                   response.hk_us_news || 
-                   response.good_news || 
-                   response.bad_news) {
-            console.log('[DEBUG] API直接返回了数据对象，无需解包');
-            return response; // 直接返回响应作为数据
-          } else {
-            console.error('[ERROR] 获取微信推送消息返回的格式不符合预期');
-            return null;
+          if (response.top_news || response.hk_us_news || response.good_news || response.bad_news) {
+            return response;
           }
+          console.warn('[WARN] 未知的微信推送消息格式，返回空数据:', response);
+          return { date: '', top_news: [], hk_us_news: [] };
         } else {
-          console.error('[ERROR] 获取微信推送消息失败: 响应为空');
-          return null;
+          return { date: '', top_news: [], hk_us_news: [] };
         }
       } catch (error) {
         console.error('[ERROR] 获取微信推送消息异常:', error);
-        throw error;
+        return { date: '', top_news: [], hk_us_news: [] };
       }
     },
     async fetchUpdateLogs(_, params = {}) {

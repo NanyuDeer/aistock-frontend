@@ -2,135 +2,72 @@
   <div class="wechat-message-page">
     <div class="page-container">
       <div class="message-container">
-        <!-- 加载状态 -->
         <div v-if="loading" class="loading-container">
           <el-skeleton :rows="10" animated />
         </div>
-
-        <!-- 错误状态 -->
         <div v-else-if="error" class="error-container">
           <i class="el-icon-warning-outline"></i>
-          <h3>加载失败</h3>
-          <p>{{ error }}</p>
-          <el-button type="primary" @click="fetchMessageData">重试</el-button>
-          <el-button @click="goToHome">返回首页</el-button>
+            <h3>加载失败</h3>
+            <p>{{ error }}</p>
+            <el-button type="primary" @click="fetchMessageData">重试</el-button>
+            <el-button @click="goToHome">返回首页</el-button>
         </div>
-
-        <!-- 内容显示 -->
-        <div v-else-if="messageData" class="message-content">
-          <div class="message-header">
-            <h2>行情速览</h2>
-            <div class="message-time">{{ messageData.date }}</div>
-          </div>
-
-          <!-- 头条新闻 -->
-          <div v-if="messageData.top_news && messageData.top_news.length > 0" class="news-section">
-            <h3 class="section-title">头条新闻</h3>
-            <div class="news-list">
-              <div v-for="news in messageData.top_news" :key="news.id" class="news-card">
-                <h4 class="news-title">{{ news.title }}</h4>
-                <div class="news-meta">
-                  <span class="news-time">{{ formatDate(news.published_at) }}</span>
-                  <span
-                    :class="['news-evaluation', getEvaluationClass(news.evaluation)]"
-                  >{{ news.evaluation }}</span>
-                  <span class="news-sector">{{ news.sector }}</span>
-                </div>
-                <div class="news-content" v-html="formatContent(news.content)"></div>
-                <div :class="['news-reason', getReasonClass(news.evaluation)]">
-                  <strong>AI分析：</strong>{{ news.reason }}
-                </div>
-                <div class="news-link">
-                  <a :href="news.link" target="_blank" rel="noopener noreferrer">阅读原文</a>
+        <template v-if="messageData">
+          <div class="message-content">
+            <div class="message-header">
+              <h2>{{ isSingleStock ? '个股推送' : '行情速览' }}</h2>
+              <div class="message-time">{{ messageData.date }}</div>
+            </div>
+            <!-- 统一使用行情速览样式：个股推送被归一为 top_news 的单条记录 -->
+            <div v-if="messageData.top_news && messageData.top_news.length > 0" class="news-section">
+              <h3 class="section-title" v-if="!isSingleStock">头条新闻</h3>
+              <div class="news-list">
+                <div v-for="news in messageData.top_news" :key="news.id" class="news-card">
+                  <h4 class="news-title">{{ news.title }}</h4>
+                  <div class="news-meta">
+                    <span class="news-time">{{ formatDate(news.published_at) }}</span>
+                    <span :class="['news-evaluation', getEvaluationClass(news.evaluation)]">{{ news.evaluation }}</span>
+                    <span v-for="sector in getSectorList(news.sector)" :key="sector" class="news-sector clickable-sector" @click="isSingleStock ? goToStock(news.stock_id) : goToTag(sector)">{{ sector }}</span>
+                  </div>
+                  <div class="news-content" v-html="formatContent(news.content)"></div>
+                  <div v-if="news.reason && news.reason.trim()" :class="['news-reason', getReasonClass(news.evaluation)]">
+                    <strong>AI分析：</strong>{{ news.reason }}
+                  </div>
+                  <div class="news-link" v-if="news.link">
+                    <a :href="news.link" target="_blank" rel="noopener noreferrer">阅读原文</a>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-
-          <!-- 港美股新闻 -->
-          <div v-if="messageData.hk_us_news && messageData.hk_us_news.length > 0" class="news-section">
-            <h3 class="section-title">港美股资讯</h3>
-            <div class="news-list">
-              <div v-for="news in messageData.hk_us_news" :key="news.id" class="news-card">
-                <h4 class="news-title">{{ news.title }}</h4>
-                <div class="news-meta">
-                  <span class="news-time">{{ formatDate(news.published_at) }}</span>
-                  <span
-                    :class="['news-evaluation', getEvaluationClass(news.evaluation)]"
-                  >{{ news.evaluation }}</span>
-                  <span class="news-sector">{{ news.sector }}</span>
-                </div>
-                <div class="news-content" v-html="formatContent(news.content)"></div>
-                <div :class="['news-reason', getReasonClass(news.evaluation)]">
-                  <strong>AI分析：</strong>{{ news.reason }}
-                </div>
-                <div class="news-link">
-                  <a :href="news.link" target="_blank" rel="noopener noreferrer">阅读原文</a>
+            <div v-if="!isSingleStock && messageData.hk_us_news && messageData.hk_us_news.length > 0" class="news-section">
+              <h3 class="section-title">港美股资讯</h3>
+              <div class="news-list">
+                <div v-for="news in messageData.hk_us_news" :key="news.id" class="news-card">
+                  <h4 class="news-title">{{ news.title }}</h4>
+                  <div class="news-meta">
+                    <span class="news-time">{{ formatDate(news.published_at) }}</span>
+                    <span :class="['news-evaluation', getEvaluationClass(news.evaluation)]">{{ news.evaluation }}</span>
+                    <span v-for="sector in getSectorList(news.sector)" :key="sector" class="news-sector clickable-sector" @click="goToTag(sector)">{{ sector }}</span>
+                  </div>
+                  <div class="news-content" v-html="formatContent(news.content)"></div>
+                  <div v-if="news.reason && news.reason.trim()" :class="['news-reason', getReasonClass(news.evaluation)]">
+                    <strong>AI分析：</strong>{{ news.reason }}
+                  </div>
+                  <div class="news-link" v-if="news.link">
+                    <a :href="news.link" target="_blank" rel="noopener noreferrer">阅读原文</a>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-
-          <!-- 利好消息 -->
-          <div v-if="messageData.good_news && messageData.good_news.length > 0" class="news-section">
-            <h3 class="section-title">利好消息</h3>
-            <div class="news-list">
-              <div v-for="news in filteredGoodNews" :key="news.news_id" class="news-card">
-                <h4 class="news-title">{{ news.content }}</h4>
-                <div class="news-meta">
-                  <span class="news-time">{{ news.time }}</span>
-                  <span
-                    :class="['news-evaluation', getEvaluationClass(news.evaluation)]"
-                  >{{ news.evaluation }}</span>
-                  <span class="news-stocks">{{ news.stock }}</span>
-                </div>
-                <div :class="['news-reason', getReasonClass(news.evaluation)]">
-                  <strong>AI分析：</strong>{{ news.reason }}
-                </div>
-                <div class="news-link" v-if="news.link">
-                  <a :href="news.link" target="_blank" rel="noopener noreferrer">阅读原文</a>
-                </div>
-              </div>
+            <div v-if="!isSingleStock && (!messageData.top_news || messageData.top_news.length === 0) && (!messageData.hk_us_news || messageData.hk_us_news.length === 0)" class="empty-state">
+              <p>暂无数据</p>
+            </div>
+            <div class="footer-actions">
+              <el-button type="primary" @click="goToHome">返回首页</el-button>
+              <el-button @click="copyShareLink">复制分享链接</el-button>
             </div>
           </div>
-
-          <!-- 利空消息 -->
-          <div v-if="messageData.bad_news && messageData.bad_news.length > 0 && hasBadNews" class="news-section">
-            <h3 class="section-title">利空消息</h3>
-            <div class="news-list">
-              <div v-for="news in filteredBadNews" :key="news.news_id" class="news-card">
-                <h4 class="news-title">{{ news.content }}</h4>
-                <div class="news-meta">
-                  <span class="news-time">{{ news.time }}</span>
-                  <span
-                    :class="['news-evaluation', getEvaluationClass(news.evaluation)]"
-                  >{{ news.evaluation }}</span>
-                  <span class="news-stocks">{{ news.stock }}</span>
-                </div>
-                <div :class="['news-reason', getReasonClass(news.evaluation)]">
-                  <strong>AI分析：</strong>{{ news.reason }}
-                </div>
-                <div class="news-link" v-if="news.link">
-                  <a :href="news.link" target="_blank" rel="noopener noreferrer">阅读原文</a>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 如果没有数据 -->
-          <div v-if="(!messageData.top_news || messageData.top_news.length === 0) && 
-                      (!messageData.hk_us_news || messageData.hk_us_news.length === 0) &&
-                      (!messageData.good_news || messageData.good_news.length === 0) &&
-                      (!messageData.bad_news || messageData.bad_news.length === 0 || !hasBadNews)" 
-               class="empty-state">
-            <p>暂无数据</p>
-          </div>
-
-          <div class="footer-actions">
-            <el-button type="primary" @click="goToHome">返回首页</el-button>
-            <el-button @click="copyShareLink">复制分享链接</el-button>
-          </div>
-        </div>
+        </template>
       </div>
     </div>
   </div>
@@ -152,78 +89,61 @@ export default {
     const messageData = ref(null);
     const loading = ref(true);
     const error = ref(null);
-
-    // 参数有效性检查
-    const isValidMsgId = computed(() => {
-      return msgId.value && typeof msgId.value === 'string' && msgId.value.trim() !== '';
+    const isSingleStock = computed(() => {
+      return messageData.value && messageData.value.top_news && messageData.value.top_news.length === 1 && messageData.value.top_news[0].stock_id;
     });
 
-    // 检查是否有真实的利空消息（排除 news_id 为 0 的占位消息）
-    const hasBadNews = computed(() => {
-      if (!messageData.value || !messageData.value.bad_news) return false;
-      return messageData.value.bad_news.some(news => news && news.news_id && news.news_id !== '0');
-    });
+    const isValidMsgId = computed(() => msgId.value && typeof msgId.value === 'string' && msgId.value.trim() !== '');
 
-    // 过滤出有效的利好消息
-    const filteredGoodNews = computed(() => {
-      if (!messageData.value || !messageData.value.good_news) return [];
-      return messageData.value.good_news.filter(news => news && news.news_id);
-    });
-
-    // 过滤出有效的利空消息，排除占位消息
-    const filteredBadNews = computed(() => {
-      if (!messageData.value || !messageData.value.bad_news) return [];
-      return messageData.value.bad_news.filter(news => news && news.news_id && news.news_id !== '0');
-    });
-
-    // 获取消息数据
     const fetchMessageData = async () => {
       if (!isValidMsgId.value) {
         error.value = '无效的消息ID';
         loading.value = false;
         return;
       }
-
       loading.value = true;
       error.value = null;
-
       try {
         console.log(`[DEBUG] 开始获取微信消息数据, msgId: ${msgId.value}`);
-        
-        // 使用store action来获取数据
         const data = await store.dispatch('fetchWechatMessage', msgId.value);
         console.log(`[DEBUG] 微信消息数据响应:`, data);
-        
         if (data) {
-          // 确保所有期望的字段都存在，即使为空
-          const normalizedData = {
-            date: data.date || "",
-            top_news: data.top_news || [],
-            hk_us_news: data.hk_us_news || [],
-            good_news: data.good_news || [],
-            bad_news: data.bad_news || []
-          };
-          
-          // 检查是否包含必要的字段 - 支持新旧两种数据格式
-          if (normalizedData.date && (
-              normalizedData.top_news.length > 0 || 
-              normalizedData.hk_us_news.length > 0 || 
-              normalizedData.good_news.length > 0 || 
-              normalizedData.bad_news.length > 0)) {
-            messageData.value = normalizedData;
+          if (typeof data === 'object' && data.stock_id && data.stock_name) {
+            // 个股推送 -> 归一为 top_news 单条
+            messageData.value = {
+              date: data.date || data.published_at || '',
+              top_news: [{
+                id: data.id || data.stock_id || Date.now(),
+                title: data.title || data.stock_name,
+                published_at: data.published_at || data.date,
+                evaluation: data.evaluation || '',
+                sector: data.stock_name, // 用股票名称显示标签样式
+                stock_id: data.stock_id,
+                content: data.content || '',
+                reason: data.reason || '',
+                link: data.link || ''
+              }],
+              hk_us_news: []
+            };
+          } else if (typeof data === 'object' && (data.top_news || data.hk_us_news || data.date)) {
+            messageData.value = {
+              date: data.date || '',
+              top_news: data.top_news || [],
+              hk_us_news: data.hk_us_news || []
+            };
           } else {
-            error.value = '数据格式不正确或不完整';
+            console.warn('[WARN] 未知的微信消息格式，使用空结构');
+            messageData.value = { date: '', top_news: [], hk_us_news: [] };
           }
         } else {
           error.value = '获取数据失败：服务器返回空数据';
         }
       } catch (err) {
         console.error('获取微信消息数据失败:', err);
-        
         if (err.response) {
           const status = err.response.status;
-          const message = err.response.data?.message || '未知错误';
-          error.value = `获取数据失败 (${status}): ${message}`;
+            const message = err.response.data?.message || '未知错误';
+            error.value = `获取数据失败 (${status}): ${message}`;
         } else if (err.request) {
           error.value = '网络请求失败，请检查您的网络连接';
         } else {
@@ -234,26 +154,15 @@ export default {
       }
     };
 
-    // 格式化日期
     const formatDate = (dateStr) => {
       if (!dateStr) return '';
       const date = new Date(dateStr);
-      return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date
-        .getDate()
-        .toString()
-        .padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date
-        .getMinutes()
-        .toString()
-        .padStart(2, '0')}`;
+      if (isNaN(date)) return dateStr; // 如果不是标准日期格式，直接返回原字符串
+      return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
     };
 
-    // 格式化内容，将换行符转换为HTML换行
-    const formatContent = (content) => {
-      if (!content) return '';
-      return content.replace(/\n/g, '<br>');
-    };
+    const formatContent = (content) => content ? content.replace(/\n/g, '<br>') : '';
 
-    // 根据评估结果获取对应的CSS类名
     const getEvaluationClass = (evaluation) => {
       if (!evaluation) return '';
       if (evaluation.includes('利好')) return 'positive';
@@ -261,7 +170,6 @@ export default {
       return 'neutral';
     };
 
-    // 根据评估结果获取AI分析背景的CSS类名
     const getReasonClass = (evaluation) => {
       if (!evaluation) return '';
       if (evaluation.includes('利好')) return 'reason-positive';
@@ -269,32 +177,22 @@ export default {
       return 'reason-neutral';
     };
 
-    // 返回首页
-    const goToHome = () => {
-      router.push('/');
+    const getSectorList = (sector) => {
+      if (!sector || typeof sector !== 'string') return [];
+      return sector.split(/[、，,;]/).filter(s => s.trim() !== '').map(s => s.trim());
     };
 
-    // 复制分享链接
+    const goToTag = (tagName) => { if (tagName && tagName.trim()) router.push(`/tags/${encodeURIComponent(tagName.trim())}`); };
+    const goToStock = (stockId) => { if (stockId) window.open(`https://aistocklink.cn/stock/${stockId}`, '_blank'); };
+    const goToHome = () => router.push('/');
     const copyShareLink = () => {
       const url = window.location.href;
-      navigator.clipboard.writeText(url).then(
-        () => {
-          ElMessage.success('链接已复制到剪贴板');
-        },
-        () => {
-          ElMessage.error('复制失败，请手动复制');
-        }
-      );
+      navigator.clipboard.writeText(url).then(() => ElMessage.success('链接已复制到剪贴板'), () => ElMessage.error('复制失败，请手动复制'));
     };
 
     onMounted(() => {
       document.title = '微信推送消息详情 - AI StockLink';
-      if (isValidMsgId.value) {
-        fetchMessageData();
-      } else {
-        error.value = '消息ID不存在或无效';
-        loading.value = false;
-      }
+      if (isValidMsgId.value) fetchMessageData(); else { error.value = '消息ID不存在或无效'; loading.value = false; }
     });
 
     return {
@@ -302,16 +200,17 @@ export default {
       messageData,
       loading,
       error,
+      isSingleStock,
       fetchMessageData,
       formatDate,
       formatContent,
       getEvaluationClass,
       getReasonClass,
+      getSectorList,
+      goToTag,
+      goToStock,
       goToHome,
-      copyShareLink,
-      hasBadNews,
-      filteredGoodNews,
-      filteredBadNews
+      copyShareLink
     };
   }
 };
@@ -445,6 +344,17 @@ export default {
             color: #409eff;
             padding: 2px 6px;
             border-radius: 3px;
+            
+            &.clickable-sector {
+              cursor: pointer;
+              transition: all 0.2s ease;
+              
+              &:hover {
+                background-color: #409eff;
+                color: white;
+                transform: translateY(-1px);
+              }
+            }
           }
 
           .news-stocks {

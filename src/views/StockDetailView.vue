@@ -25,7 +25,7 @@
               alt="关注" 
               class="button-icon" 
             />
-            {{ isFavorite ? '已关注' : '关注' }}
+            {{ isLoggedIn ? (isFavorite ? '已关注' : '关注') : '登录后关注' }}
           </el-button>
         </div>
         <div class="stock-tags">
@@ -68,7 +68,8 @@
             </el-pagination>
           </el-tab-pane>
           <el-tab-pane label="AI投资建议" name="analysis">
-            <div class="analysis-content">
+            <!-- 已登录用户显示AI投资建议 -->
+            <div v-if="isLoggedIn" class="analysis-content">
               <div class="analysis-header">
                 <div class="analysis-title">
                   <div class="rating-display">
@@ -112,6 +113,30 @@
                     <div class="news-reference-time">{{ formatDate(news.publish_time) }}</div>
                   </li>
                 </ul>
+              </div>
+            </div>
+            
+            <!-- 未登录用户显示登录提示 -->
+            <div v-else class="login-required-content">
+              <div class="login-prompt">
+                <div class="prompt-icon">
+                  🔒
+                </div>
+                <h3>需要登录才能查看AI投资建议</h3>
+                <p>登录后可获得：</p>
+                <ul class="feature-list">
+                  <li>🤖 AI智能投资建议分析</li>
+                  <li>📊 专业股票评级</li>
+                  <li>📈 详细分析依据</li>
+                  <li>📰 相关新闻参考</li>
+                </ul>
+                <el-button 
+                  type="primary" 
+                  size="large" 
+                  @click="goToLogin"
+                  class="login-button">
+                  立即登录
+                </el-button>
               </div>
             </div>
           </el-tab-pane>
@@ -247,8 +272,13 @@ export default {
     const loadingEvaluation = ref(false);
 
     const refreshAIEvaluation = async () => {
+      if (!isLoggedIn.value) {
+        ElMessage.warning('请先登录后查看AI投资建议');
+        return;
+      }
       loadingEvaluation.value = true;
       await loadAIEvaluation(true); // 强制刷新时设置 refresh 为 true
+      loadingEvaluation.value = false;
     };
 
     const formatDate = (date) => {
@@ -364,6 +394,11 @@ export default {
     };
 
     const loadAIEvaluation = async (refresh = false) => {
+      if (!isLoggedIn.value) {
+        console.log('[DEBUG] 用户未登录，跳过AI评估加载');
+        return;
+      }
+      
       try {
         console.log('[DEBUG] 发起获取股票AI评估请求:', stockInfo.value.code, '刷新:', refresh);
         const evaluation = await store.dispatch('fetchStockEvaluation', {
@@ -610,9 +645,10 @@ export default {
     });
 
     watch(activeTab, async (newTab) => {
-      if (newTab === 'analysis') {
+      if (newTab === 'analysis' && isLoggedIn.value) {
         loadingEvaluation.value = true;
         await loadAIEvaluation(false); // 切换到 "AI投资建议" Tab 时自动加载数据
+        loadingEvaluation.value = false;
       }
     });
 
@@ -661,6 +697,11 @@ export default {
       clearAllTimers();
     });
 
+    // 跳转到登录页面
+    const goToLogin = () => {
+      router.push('/login');
+    };
+
     return {
       stockInfo,
       activeTab,
@@ -687,7 +728,9 @@ export default {
       lastPriceUpdate,
       lastNewsUpdate,
       isRetryingNews,
-      newsRetryCount
+      newsRetryCount,
+      isLoggedIn,
+      goToLogin
     };
   },
 };
@@ -1063,6 +1106,82 @@ export default {
     @keyframes spin {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
+    }
+  }
+}
+
+// 登录提示框样式
+.login-required-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  
+  .login-prompt {
+    text-align: center;
+    padding: 40px;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    max-width: 400px;
+    
+    .prompt-icon {
+      font-size: 48px;
+      color: #409EFF;
+      margin-bottom: 20px;
+      
+      i {
+        font-size: 48px;
+      }
+    }
+    
+    h3 {
+      color: #303133;
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+    
+    p {
+      color: #606266;
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+    
+    .feature-list {
+      text-align: left;
+      margin: 20px 0;
+      padding: 0;
+      list-style: none;
+      
+      li {
+        padding: 8px 0;
+        color: #606266;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        
+        &:before {
+          content: '';
+          width: 6px;
+          height: 6px;
+          background-color: #409EFF;
+          border-radius: 50%;
+          margin-right: 12px;
+        }
+      }
+    }
+    
+    .login-button {
+      margin-top: 24px;
+      padding: 12px 32px;
+      font-size: 16px;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+      
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(64, 158, 255, 0.4);
+      }
     }
   }
 }

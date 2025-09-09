@@ -1,20 +1,6 @@
 <template>
   <div class="favorites-page">
     <div class="page-container">
-      <!-- 未登录状态提示 -->
-      <el-alert 
-        v-if="!isLoggedIn"
-        title="游客模式"
-        type="info"
-        :closable="false"
-        class="guest-mode-alert">
-        <template #default>
-          您正在使用游客模式，自选股数据仅保存在本地浏览器中。
-          <router-link to="/login" class="alert-link">登录后</router-link>
-          可以将数据同步到云端，实现多设备共享。
-        </template>
-      </el-alert>
-      
       <div class="favorites-header">
         <h1>自选股</h1>
         <div class="favorites-actions">
@@ -284,7 +270,12 @@ export default {
     };
     
     onMounted(async () => {
-      // 取消登录检查，未登录用户可以使用本地存储的自选股
+      if (!store.getters.isLoggedIn) {
+        ElMessage.warning('请先登录');
+        router.push('/login');
+        return;
+      }
+      
       await fetchFavoriteStocks();
       
       // 设置自动刷新定时器 (每60秒刷新一次)
@@ -310,8 +301,7 @@ export default {
       goToSearch,
       formatPrice,
       formatPercent,
-      formatMarketCap,
-      isLoggedIn: computed(() => store.getters.isLoggedIn)
+      formatMarketCap
     };
   }
 };
@@ -320,22 +310,6 @@ export default {
 <style lang="scss" scoped>
 .favorites-page {
   padding-top: 80px; /* 为顶部导航条预留空间 */
-  background: #f5f5f5;
-  min-height: calc(100vh - 80px);
-  
-  .guest-mode-alert {
-    margin-bottom: 20px;
-    
-    .alert-link {
-      color: #409eff;
-      text-decoration: none;
-      font-weight: 500;
-      
-      &:hover {
-        text-decoration: underline;
-      }
-    }
-  }
   
   .favorites-header {
     display: flex;
@@ -479,9 +453,5 @@ export default {
 .action-buttons {
   display: flex;
   gap: 10px;
-}
-
-.guest-mode-alert {
-  margin-bottom: 20px;
 }
 </style>

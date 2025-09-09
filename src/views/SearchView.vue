@@ -1,22 +1,11 @@
 <template>
   <div class="search-page">
     <div class="page-container">
-      <!-- 未登录状态提示 -->
-      <el-alert 
-        v-if="!isLoggedIn"
-        title="游客模式"
-        type="info"
-        :closable="false"
-        class="guest-mode-alert">
-        <template #default>
-          您正在使用游客模式，可以搜索股票并添加到本地自选股。
-          <router-link to="/login" class="alert-link">登录后</router-link>
-          可以使用图片识别等高级功能。
-        </template>
-      </el-alert>
-      
       <div class="search-header">
         <h1>AI股票搜索</h1>
+        <div class="search-banner">
+          <p>🎉 现已支持 <span class="highlight" @click="setKeyword('茅台')">股票名称</span>、<span class="highlight" @click="setKeyword('600519')">股票代码</span>、<span class="highlight" @click="setKeyword('gzmt')">拼音首字母</span> 搜索</p>
+        </div>
         
         <div class="search-tabs">
           <div class="tab-buttons">
@@ -187,7 +176,7 @@
                   alt="关注" 
                   class="button-icon" 
                 />
-                {{ isFavorite(stock.code) ? '已关注' : '关注' }}
+                {{ isFavorite(stock.code) ? '已关注' : (isLoggedIn ? '关注' : '登录后关注') }}
               </el-button>
             </div>
           </div>
@@ -206,7 +195,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
@@ -216,6 +205,9 @@ export default {
   setup() {
     const store = useStore();
     const router = useRouter();
+    
+    // 登录状态
+    const isLoggedIn = computed(() => store.getters.isLoggedIn);
     
     // 搜索关键字
     const keyword = ref('');
@@ -240,39 +232,36 @@ export default {
     // 执行搜索
     const handleSearch = async () => {
       if (!keyword.value.trim()) {
-        ElMessage.warning('请输入搜索关键字');
+        searchResults.value = [];
+        searchPerformed.value = false;
         return;
       }
-      
       try {
         loading.value = true;
         searchPerformed.value = true;
-        
-        console.log('搜索股票:', keyword.value);
         const results = await store.dispatch('searchStocks', {
           keyword: keyword.value,
           limit: 20
         });
-        
-        setTimeout(() => {
-          searchResults.value = results || [];
-          loading.value = false;
-          
-          if (results && results.length > 0) {
-            ElMessage.success(`找到 ${results.length} 条匹配的股票`);
-          } else {
-            ElMessage.info('没有找到匹配的股票');
-          }
-        }, 500);
-        
+        searchResults.value = results || [];
+        loading.value = false;
       } catch (error) {
-        console.error('搜索股票失败:', error);
-        ElMessage.error('搜索失败，请稍后重试');
         loading.value = false;
         searchResults.value = [];
       }
     };
-    
+
+    // 监听输入实时搜索
+    watch(keyword, () => {
+      handleSearch();
+    });
+
+    // 设置搜索关键词
+    const setKeyword = (value) => {
+      keyword.value = value;
+      activeSearchMode.value = 'text'; // 切换到文字搜索模式
+    };
+
     // 查看股票详情
     const viewStockDetail = (code) => {
       router.push(`/stock/${code}`);
@@ -280,6 +269,12 @@ export default {
     
     // 添加到自选股
     const addToFavorite = async (stock) => {
+      if (!store.getters.isLoggedIn) {
+        ElMessage.warning('请先登录');
+        router.push('/login');
+        return;
+      }
+      
       try {
         loading.value = true;
         const result = await store.dispatch('addFavoriteStocks', [{
@@ -350,14 +345,15 @@ export default {
     
     // 处理图片识别
     const processImage = async () => {
-      if (!imageFile.value) {
-        ElMessage.warning('请先选择图片');
+      if (!store.getters.isLoggedIn) {
+        ElMessage.warning('请先登录');
+        router.push('/login');
         return;
       }
       
-      // 未登录用户提示，但仍允许尝试
-      if (!store.getters.isLoggedIn) {
-        ElMessage.info('未登录用户使用本地识别功能，数据不会同步到云端');
+      if (!imageFile.value) {
+        ElMessage.warning('请先选择图片');
+        return;
       }
       
       try {
@@ -429,12 +425,14 @@ export default {
     });
     
     return {
+      isLoggedIn,
       keyword,
       searchResults,
       loading,
       searchPerformed,
       activeSearchMode,
       handleSearch,
+      setKeyword,
       viewStockDetail,
       addToFavorite,
       isFavorite,
@@ -450,8 +448,7 @@ export default {
       handleSelectionChange,
       addRecognizedStocks,
       removeImage,
-      processImage,
-      isLoggedIn: computed(() => store.getters.isLoggedIn)
+      processImage
     };
   }
 };
@@ -461,27 +458,44 @@ export default {
 .search-page {
   padding-top: 80px;
   
-  .guest-mode-alert {
-    margin-bottom: 20px;
-    
-    .alert-link {
-      color: #409eff;
-      text-decoration: none;
-      font-weight: 500;
-      
-      &:hover {
-        text-decoration: underline;
-      }
-    }
-  }
-  
   .search-header {
     margin-bottom: 30px;
     
     h1 {
-      margin-bottom: 20px;
+      margin-bottom: 15px;
       color: var(--text-primary);
       text-align: center;
+    }
+    
+    .search-banner {
+      max-width: 700px;
+      margin: 0 auto 20px;
+      text-align: center;
+      padding: 8px 15px;
+      background-color: #f0f7ff;
+      border-radius: 4px;
+      color: #409EFF;
+      font-weight: 500;
+      font-size: 14px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      
+      .highlight {
+        background-color: #409EFF;
+        color: #fff;
+        padding: 2px 5px;
+        border-radius: 2px;
+        font-weight: 600;
+        margin: 0 1px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+        display: inline-block;
+        
+        &:hover {
+          background-color: #337ecc;
+          transform: translateY(-1px);
+        }
+      }
     }
     
     .search-tabs {
@@ -675,25 +689,6 @@ export default {
           display: flex;
           gap: 10px;
         }
-      }
-    }
-  }
-  
-  .guest-mode-alert {
-    margin-bottom: 20px;
-    text-align: center;
-    
-    .el-alert__content {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      
-      .alert-link {
-        color: var(--primary-color);
-        font-weight: 500;
-        text-decoration: underline;
-        cursor: pointer;
       }
     }
   }

@@ -3,8 +3,9 @@
     <div class="container navbar-container">
       <div class="logo">
         <router-link to="/">
-          <img src="../assets/logo.svg" alt="股票资讯AI智能分析" />
-          <span class="logo-text">股票<wbr>资讯<wbr>AI<wbr>智能<wbr>分析</span>
+          <img src="../assets/logo.png" alt="股票资讯AI智能分析" />
+          <div class="logo-divider"></div>
+          <span class="logo-text">股票资讯AI智能分析</span>
         </router-link>
       </div>
       <div class="menu-toggle" @click="toggleMobileMenu">
@@ -14,7 +15,7 @@
       <div class="mobile-menu" :class="{ 'open': mobileMenuOpen }">
         <router-link to="/" class="menu-item" @click="closeMobileMenu">首页</router-link>
         <router-link to="/search" class="menu-item" @click="closeMobileMenu">搜索股票</router-link>
-        <router-link to="/favorites" class="menu-item" @click="closeMobileMenu">我的自选股</router-link>
+        <router-link v-if="isLoggedIn" to="/favorites" class="menu-item" @click="closeMobileMenu">我的自选股</router-link>
         <template v-if="isLoggedIn">
           <router-link to="/profile" class="menu-item" @click="closeMobileMenu">个人信息</router-link>
           <div class="menu-item" @click="handleLogout">退出登录</div>
@@ -26,7 +27,7 @@
       <div class="nav-links">
         <router-link to="/" class="nav-item" @click="closeMobileMenu">首页</router-link>
         <router-link to="/search" class="nav-item" @click="closeMobileMenu">搜索股票</router-link>
-        <router-link to="/favorites" class="nav-item" @click="closeMobileMenu">我的自选股</router-link>
+        <router-link v-if="isLoggedIn" to="/favorites" class="nav-item" @click="closeMobileMenu">我的自选股</router-link>
       </div>
       <div class="user-area">
         <template v-if="isLoggedIn">
@@ -60,6 +61,7 @@
 import { computed, ref } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
+import CacheManager from '../utils/cacheManager'
 
 export default {
   name: 'TheNavbar',
@@ -71,8 +73,12 @@ export default {
     const isLoggedIn = computed(() => store.getters.isLoggedIn)
     const currentUser = computed(() => store.getters.currentUser)
     
-    const handleLogout = () => {
-      store.dispatch('logout')
+    const handleLogout = async () => {
+      // 清理所有缓存
+      await CacheManager.clearAllCache()
+      // 提交退出登录的mutation
+      store.commit('logout')
+      // 跳转到登录页
       router.push('/login')
     }
 
@@ -129,29 +135,24 @@ export default {
       text-decoration: none;
       color: var(--primary-color);
       font-weight: bold;
-      font-size: 1.4rem;
+      font-size: 1.35rem;
       
       img {
         height: 36px;
-        margin-right: 10px;
+        // margin-right: 10px;
+      }
+      
+      .logo-divider {
+        width: 1.5px;
+        height: 22px;
+        background: var(--primary-color);
+        margin: 0 5px;
+        position: relative;
       }
       
       .logo-text {
-        @media (max-width: 480px) {
-          display: inline-block;
-          word-wrap: break-word;
-          word-break: break-word;
-          
-          &::after {
-            content: '';
-            display: inline;
-          }
-        }
+        white-space: nowrap;
       }
-    }
-    
-    @media (max-width: 480px) {
-      max-width: 180px;
     }
   }
 

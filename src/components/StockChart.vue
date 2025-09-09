@@ -31,7 +31,29 @@
 <script>
 import { ref, onMounted, watch, onBeforeUnmount } from 'vue';
 import { useStore } from 'vuex';
-import * as echarts from 'echarts';
+// 按需引入 ECharts
+import * as echarts from 'echarts/core';
+import { LineChart, BarChart } from 'echarts/charts';
+import { 
+  TitleComponent, 
+  TooltipComponent, 
+  LegendComponent, 
+  GridComponent,
+  DataZoomComponent 
+} from 'echarts/components';
+import { CanvasRenderer } from 'echarts/renderers';
+
+// 注册必需的组件
+echarts.use([
+  LineChart,
+  BarChart,
+  TitleComponent,
+  TooltipComponent,
+  LegendComponent,
+  GridComponent,
+  DataZoomComponent,
+  CanvasRenderer
+]);
 
 export default {
   name: 'StockChart',

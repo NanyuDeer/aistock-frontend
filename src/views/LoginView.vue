@@ -3,7 +3,7 @@
     <div class="login-card">
       <div class="card-header">
         <div class="logo">
-          <img src="../assets/logo.svg" alt="股票资讯AI智能分析" />
+          <img src="../assets/logo.png" alt="股票资讯AI智能分析" />
           <h1>股票资讯AI智能分析</h1>
         </div>
         <div class="welcome-text">
@@ -54,8 +54,11 @@ export default {
         
         // 简单延迟以确保状态已更新
         setTimeout(() => {
-          console.log('[LoginView] 登录完成，即将跳转到首页');
-          router.push('/');
+          console.log('[LoginView] 登录完成，即将跳转');
+          // 检查是否有重定向地址
+          const redirect = router.currentRoute.value.query.redirect;
+          const targetPath = redirect || '/';
+          router.push(targetPath);
         }, 500);
       } catch (error) {
         console.error('[LoginView] 处理登录失败:', error);

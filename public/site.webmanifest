@@ -1,6 +1,12 @@
 {
-    "name": "",
-    "short_name": "",
+    "name": "股票资讯AI智能分析",
+    "short_name": "AI股票分析",
+    "description": "智能股票分析平台，提供AI投资建议、股票数据分析和自选股管理",
+    "start_url": "/",
+    "scope": "/",
+    "lang": "zh-CN",
+    "dir": "ltr",
+    "categories": ["finance", "business", "productivity"],
     "icons": [
         {
             "src": "/android-chrome-192x192.png",

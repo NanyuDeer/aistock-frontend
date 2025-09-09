@@ -1,130 +1,94 @@
 const AutoImport = require('unplugin-auto-import/webpack')
 const Components = require('unplugin-vue-components/webpack')
 const { ElementPlusResolver } = require('unplugin-vue-components/resolvers')
+const CompressionPlugin = require('compression-webpack-plugin')
 
 module.exports = {
   lintOnSave: false,
   // 添加publicPath确保资源正确加载
   publicPath: '/',
-  // 生产环境下禁用 source map
-  productionSourceMap: process.env.NODE_ENV !== 'production',
   // 添加 transpileDependencies 以转译潜在的问题依赖
   transpileDependencies: true,
-  
-  // CSS 优化
-  css: {
-    extract: process.env.NODE_ENV === 'production',
-    sourceMap: false,
-    loaderOptions: {
-      sass: {
-        additionalData: `@use "@/assets/styles/variables.scss" as *;`
-      }
-    }
-  },
-  
+  // 启用文件名哈希以防止缓存问题
+  filenameHashing: true,
   // 禁用HMR/热重载
   chainWebpack: config => {
     config.plugins.delete('hmr');
     
-    // 生产环境优化
+    // 为所有资源添加版本控制
+    config.output.filename('[name].[contenthash:8].js')
+    config.output.chunkFilename('[name].[contenthash:8].js')
+    
+    // CSS文件名也添加hash（仅在生产环境）
     if (process.env.NODE_ENV === 'production') {
-      // 移除 console 和 debugger
-      config.optimization.minimizer('terser').tap(args => {
-        args[0].terserOptions.compress.drop_console = true
-        args[0].terserOptions.compress.drop_debugger = true
+      config.plugin('extract-css').tap(args => {
+        args[0].filename = 'css/[name].[contenthash:8].css'
+        args[0].chunkFilename = 'css/[name].[contenthash:8].css'
         return args
       })
+    }
+    
+    // 生产环境优化
+    if (process.env.NODE_ENV === 'production') {
+      // 代码分割优化
+      config.optimization.splitChunks({
+        chunks: 'all',
+        cacheGroups: {
+          vendor: {
+            test: /[\\/]node_modules[\\/]/,
+            name: 'vendors',
+            priority: 10,
+            chunks: 'initial'
+          },
+          elementUI: {
+            name: 'chunk-elementPlus',
+            priority: 20,
+            test: /[\\/]node_modules[\\/]_?element-plus(.*)/
+          },
+          echarts: {
+            name: 'chunk-echarts',
+            priority: 20,
+            test: /[\\/]node_modules[\\/]_?echarts(.*)/
+          }
+        }
+      })
       
-      // Gzip 压缩 - 只在生产环境添加
-      try {
-        const CompressionWebpackPlugin = require('compression-webpack-plugin')
-        config.plugin('compressionPlugin').use(
-          new CompressionWebpackPlugin({
-            algorithm: 'gzip',
-            test: /\.(js|css|html|svg)$/,
-            threshold: 10240,
-            minRatio: 0.8
-          })
-        )
-      } catch (e) {
-        console.warn('compression-webpack-plugin not found, skipping gzip compression')
-      }
-    }
-    
-    // 配置代码分割
-    config.optimization.splitChunks({
-      chunks: 'all',
-      minSize: 20000,
-      maxSize: 250000,
-      cacheGroups: {
-        vendor: {
-          test: /[\\/]node_modules[\\/]/,
-          name: 'vendors',
-          chunks: 'all',
-          priority: 10
-        },
-        elementPlus: {
-          test: /[\\/]node_modules[\\/]element-plus[\\/]/,
-          name: 'element-plus',
-          chunks: 'all',
-          priority: 20
-        },
-        echarts: {
-          test: /[\\/]node_modules[\\/]echarts[\\/]/,
-          name: 'echarts',
-          chunks: 'all',
-          priority: 20
-        },
-        common: {
-          name: 'common',
-          minChunks: 2,
-          chunks: 'all',
-          priority: 5
+      // 添加Gzip压缩
+      config.plugin('CompressionPlugin').use(CompressionPlugin, [
+        {
+          test: /\.(js|css|html|svg)$/,
+          threshold: 10240,
+          minRatio: 0.8
         }
-      }
-    });
-    
-    // 预加载优化 - 检查插件是否存在再配置
-    if (config.plugins.has('preload')) {
-      config.plugin('preload').tap(options => {
-        options[0] = {
-          rel: 'preload',
-          include: 'initial',
-          fileBlacklist: [/\.map$/, /hot-update\.js$/]
-        }
-        return options
-      })
-    }
-    
-    if (config.plugins.has('prefetch')) {
-      config.plugin('prefetch').tap(options => {
-        options[0].fileBlacklist = options[0].fileBlacklist || []
-        options[0].fileBlacklist.push(/runtime\..*\.js$/)
-        return options
-      })
+      ])
     }
   },
-  
   configureWebpack: {
     resolve: {
       alias: {
         '@': require('path').resolve(__dirname, 'src')
       }
     },
-    optimization: {
-      usedExports: true,
-      sideEffects: false
-    },
     plugins: [
       AutoImport({
         resolvers: [ElementPlusResolver()],
-        dts: true
       }),
       Components({
         resolvers: [ElementPlusResolver()],
-        dts: true
-      })
-    ]
+      }),
+    ],
+    // 生产环境性能优化
+    ...(process.env.NODE_ENV === 'production' && {
+      performance: {
+        hints: 'warning',
+        maxAssetSize: 512000,
+        maxEntrypointSize: 512000,
+      },
+      optimization: {
+        usedExports: true,
+        sideEffects: false,
+      }
+    })
   },
   devServer: {
     allowedHosts: 'all',

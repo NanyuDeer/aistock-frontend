@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-
 // 使用懒加载导入组件
 const HomeView = () => import('../views/HomeView.vue')
 const LoginView = () => import('../views/LoginView.vue')
@@ -9,7 +8,6 @@ const StockDetailView = () => import('@/views/StockDetailView.vue')
 const FavoritesView = () => import('@/views/FavoritesView.vue')
 const WechatMessageView = () => import('@/views/WechatMessageView.vue')
 const UpdateLogsView = () => import('@/views/UpdateLogsView.vue')
-const MonitorDashboardView = () => import('@/views/MonitorDashboardView.vue')
 
 const routes = [
   {
@@ -33,7 +31,8 @@ const routes = [
     name: 'Profile',
     component: ProfileView,
     meta: {
-      title: '股票资讯AI智能分析 - 个人信息'
+      title: '股票资讯AI智能分析 - 个人信息',
+      requiresAuth: true  // 需要登录才能访问
     }
   },
   {
@@ -58,7 +57,8 @@ const routes = [
     name: 'favorites',
     component: FavoritesView,
     meta: {
-      title: '股票资讯AI智能分析 - 自选股'
+      title: '股票资讯AI智能分析 - 自选股',
+      requiresAuth: true  // 需要登录才能访问
     }
   },
   {
@@ -79,16 +79,6 @@ const routes = [
     }
   },
   {
-    path: '/monitor',
-    name: 'monitor',
-    component: MonitorDashboardView,
-    meta: {
-      title: '股票资讯AI智能分析 - 服务器监控',
-      requiresAdmin: true  // 可选：仅管理员可访问
-    }
-  },
-  // 添加标签页面路由
-  {
     path: '/tags/:tagName',
     name: 'TagView',
     component: () => import('../views/TagView.vue')
@@ -106,12 +96,10 @@ router.beforeEach((to, from, next) => {
   // 设置页面标题
   document.title = to.meta.title || '股票资讯AI智能分析 - 智能股票分析平台';
   
-  // 定义需要登录才能访问的页面
-  const requiresAuth = ['Profile']; // 只有个人信息页面需要登录
-  
-  // 权限检查 - 只对需要登录的页面进行保护
-  if (!isLoggedIn && requiresAuth.includes(to.name)) {
-    next({ name: 'login' });
+  // 权限检查 - 只对需要登录的页面进行检查
+  if (to.meta.requiresAuth && !isLoggedIn) {
+    // 需要登录但未登录，重定向到登录页
+    next({ name: 'login', query: { redirect: to.fullPath } });
   } else if (isLoggedIn && to.name === 'login') {
     // 已登录用户访问登录页面，重定向到首页
     next({ name: 'home' });

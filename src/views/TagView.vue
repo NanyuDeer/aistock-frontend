@@ -122,6 +122,12 @@ export default {
     
     // 添加/删除收藏
     const toggleFavorite = async (stock, loadingState) => {
+      if (!store.getters.isLoggedIn) {
+        ElMessage.warning('请先登录后才能添加自选股');
+        router.push('/login');
+        return;
+      }
+      
       try {
         if (isFavorite(stock.code)) {
           // 取消关注
@@ -164,8 +170,10 @@ export default {
     onMounted(() => {
       fetchTagStocks();
       
-      // 预先加载自选股列表（无论是否登录）
-      store.dispatch('fetchFavoriteStocks');
+      // 如果用户已登录，预先加载自选股列表
+      if (store.getters.isLoggedIn) {
+        store.dispatch('fetchFavoriteStocks');
+      }
     });
     
     return {

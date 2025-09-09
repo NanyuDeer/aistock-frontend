@@ -1,126 +1,42 @@
 import axios from 'axios';
-import { cache } from '@/utils/performance';
 
 // 开发模式下使用相对路径，生产模式下使用完整URL
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
   ? 'https://api.aistocklink.cn' 
   : '';
 
-// API 缓存配置
-const CACHE_CONFIG = {
-  // 股票数据缓存 5 分钟
-  stocks: 5 * 60 * 1000,
-  // 新闻数据缓存 10 分钟
-  news: 10 * 60 * 1000,
-  // 用户信息缓存 30 分钟
-  user: 30 * 60 * 1000,
-  // 市场概览缓存 2 分钟
-  market: 2 * 60 * 1000
-};
-
-// 创建缓存键
-function createCacheKey(url, params = {}) {
-  const sortedParams = Object.keys(params)
-    .sort()
-    .map(key => `${key}=${params[key]}`)
-    .join('&');
-  return `${url}${sortedParams ? '?' + sortedParams : ''}`;
-}
-
-// 检查缓存是否有效
-function isCacheValid(cacheItem, ttl) {
-  return cacheItem && (Date.now() - cacheItem.timestamp) < ttl;
-}
-
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000, // 减少超时时间到 30 秒
+  timeout: 180000, // 增加超时时间为 180 秒
   headers: {
     'Content-Type': 'application/json'
   },
   withCredentials: true // 确保跨域请求时携带 cookie
 });
 
-// 请求拦截器 - 添加token和缓存检查
+// 请求拦截器 - 添加token
 api.interceptors.request.use(
   config => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
-
-    // 为 GET 请求添加缓存检查
-    if (config.method === 'get') {
-      const cacheKey = createCacheKey(config.url, config.params);
-      const cached = cache.get(cacheKey);
-      
-      // 根据请求类型确定缓存时间
-      let ttl = 0;
-      if (config.url.includes('stock')) ttl = CACHE_CONFIG.stocks;
-      else if (config.url.includes('news')) ttl = CACHE_CONFIG.news;
-      else if (config.url.includes('user')) ttl = CACHE_CONFIG.user;
-      else if (config.url.includes('market')) ttl = CACHE_CONFIG.market;
-
-      if (ttl > 0 && isCacheValid(cached, ttl)) {
-        // 返回缓存的响应
-        config._fromCache = true;
-        config._cachedResponse = cached.data;
-      }
-    }
-
-    // 添加请求开始时间
-    config._startTime = Date.now();
-    
     return config;
   },
   error => Promise.reject(error)
 );
 
-// 响应拦截器 - 处理错误和缓存
+// 响应拦截器 - 处理错误
 api.interceptors.response.use(
-  response => {
-    const config = response.config;
-    
-    // 如果是从缓存返回的响应
-    if (config._fromCache) {
-      return config._cachedResponse;
-    }
-
-    // 记录请求时间
-    const duration = Date.now() - config._startTime;
-    if (duration > 5000) {
-      console.warn(`慢请求警告: ${config.url} 耗时 ${duration}ms`);
-    }
-
-    // 为 GET 请求添加缓存
-    if (config.method === 'get' && response.status === 200) {
-      const cacheKey = createCacheKey(config.url, config.params);
-      cache.set(cacheKey, {
-        data: response.data,
-        timestamp: Date.now()
-      });
-    }
-
-    return response.data;
-  },
+  response => response.data,
   error => {
     if (error.response && error.response.status === 401) {
-      // 未授权，清除token和缓存
+      // 未授权，清除token和用户信息
       localStorage.removeItem('token');
-      cache.clear();
+      localStorage.removeItem('user');
       
-      // 检查当前路径是否已经在登录相关页面，避免重定向循环
-      const currentPath = window.location.pathname;
-      const loginRelatedPaths = ['/login', '/scan-login', '/auth/scan'];
-      
-      // 检查是否是需要登录的页面（只有个人信息页面需要强制登录）
-      const requiresAuthPaths = ['/profile'];
-      
-      // 只有在需要登录的页面且不在登录相关页面时才重定向
-      if (requiresAuthPaths.some(path => currentPath.includes(path)) && 
-          !loginRelatedPaths.some(path => currentPath.includes(path))) {
-        window.location.href = '/login';
-      }
+      // 不强制重定向，让路由守卫和组件自己处理
+      // 这样可以确保未登录用户仍能访问不需要登录的页面
     }
     return Promise.reject(error);
   }
