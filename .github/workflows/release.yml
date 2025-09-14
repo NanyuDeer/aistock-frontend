@@ -33,7 +33,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           name: "Release ${{ github.ref_name }}"
-          tag_name: "${{ github.ref_name }}"   # 使用触发 workflow 的 tag
+          tag_name: "${{ github.ref_name }}"
           files: frontend-dist.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

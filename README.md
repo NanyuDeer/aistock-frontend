@@ -70,6 +70,12 @@ npm run serve
 npm run build
 ```
 
+### 发布版本
+
+```bash
+git tag v1.x.x && git push origin v1.x.x
+```
+
 ## 开发指南
 
 ### 环境变量配置
@@ -77,6 +83,7 @@ npm run build
 在根目录创建`.env`、`.env.development`和`.env.production`文件来配置不同环境的变量。
 
 示例：
+
 ```
 VUE_APP_API_URL=https://api.aistocklink.cn
 VUE_APP_TITLE=AI股票分析
@@ -104,13 +111,13 @@ getStockDetail: (code) => api.get(`/api/stocks/detail?code=${code}`),
 server {
     listen 80;
     server_name aistocklink.cn;
-    
+  
     location / {
         root /usr/share/nginx/html;
         index index.html;
         try_files $uri $uri/ /index.html;
     }
-    
+  
     location /api/ {
         proxy_pass http://backend:8080;
         proxy_set_header Host $host;
@@ -127,4 +134,3 @@ server {
 - 股票搜索: `/search`
 - 自选股: `/favorites`
 - 个人中心: `/profile`
-
