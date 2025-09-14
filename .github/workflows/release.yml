@@ -53,6 +53,6 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: aistock-deploy
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: "dist/*"
-          target: "/opt/aistock"
+          source: "dist/"
+          target: "/opt/aistock/"
 
