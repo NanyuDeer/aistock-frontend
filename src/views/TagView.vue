@@ -7,9 +7,12 @@
         <div class="container">
           <div class="tag-header">
             <h1 class="tag-title">
-              <span class="tag-name">#{{ tagName }}</span> 
+            <span class="tag-name">#{{ tagName }}</span> 
             </h1>
-            <p class="tag-description">{{ `DeepSeek AI 推荐的 ${tagName} 相关板块龙头个股` }}</p>
+            <p class="tag-description" style="display: flex; align-items: center; gap: 8px;">
+              <img src="@/assets/deepseek-color.svg" alt="DeepSeek Logo" style="height: 1.6rem; vertical-align: middle;" />
+              <span>{{ `DeepSeek AI 推荐的 ${tagName} 相关板块龙头个股` }}</span>
+            </p>
           </div>
 
           <!-- 使用StockCardList组件显示股票 -->

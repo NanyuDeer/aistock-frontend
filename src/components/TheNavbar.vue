@@ -272,14 +272,39 @@ export default {
     
     a.login-btn {
       text-decoration: none;
+      display: inline-block;
     }
     
     .login-btn {
       text-decoration: none;
-      padding: 8px 16px;
+      padding: 0;
       border-radius: 4px;
       color: #fff;
+      background-color: transparent;
+    }
+    .login-btn .el-button {
       background-color: var(--primary-color);
+      color: #fff;
+      border-radius: 20px;
+      border: none;
+      box-shadow: none;
+      padding: 4px 18px;
+      font-size: 0.92rem;
+      font-weight: 500;
+      letter-spacing: 1px;
+      transition: background 0.2s;
+      min-width: 60px;
+      height: 32px;
+      line-height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .login-btn .el-button.router-link-active,
+    a.login-btn.router-link-active .el-button {
+      background-color: var(--primary-color);
+      color: #fff;
+      box-shadow: 0 0 0 2px var(--primary-color) inset;
     }
 
     @media (max-width: 768px) {
