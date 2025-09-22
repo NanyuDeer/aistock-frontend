@@ -48,20 +48,18 @@ export default {
     });
     
     const handleLoginSuccess = async (user) => {
-      // 避免重复处理登录请求
       if (isProcessingLogin.value) return;
-      
       try {
         isProcessingLogin.value = true;
         console.log('[LoginView] 处理登录成功事件，用户信息:', user);
         
-        // 确保存储用户信息和状态
+        // 登录并存储用户信息
         await store.dispatch('login', user);
-        
-        // 简单延迟以确保状态已更新
-        setTimeout(() => {
+        // 登录后立即从后端拉取最新用户信息，确保昵称/avatar等是最新的
+        await store.dispatch('fetchUserInfo');
+
+        setTimeout(async () => {
           console.log('[LoginView] 登录完成，即将跳转');
-          // 检查是否有重定向地址
           const redirect = router.currentRoute.value.query.redirect;
           const targetPath = redirect || '/';
           router.push(targetPath);
