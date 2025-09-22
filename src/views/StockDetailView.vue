@@ -209,7 +209,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { ElMessage } from 'element-plus';
 import MarkdownIt from 'markdown-it';
-import StockChart from '@/components/StockChart.vue'; // 导入新的StockChart组件
+import StockChart from '@/components/StockChart.vue';
+import 'element-plus/es/components/message/style/css';
 
 export default {
   name: 'StockDetailView',

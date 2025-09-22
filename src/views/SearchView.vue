@@ -204,6 +204,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
+import 'element-plus/es/components/message/style/css';
 
 export default {
   name: 'SearchView',

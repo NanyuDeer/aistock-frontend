@@ -26,6 +26,7 @@ import { ref, onMounted } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
 import LoginQrCode from '@/components/LoginQrCode.vue'
+import 'element-plus/es/components/message/style/css';
 
 export default {
   name: 'LoginView',
@@ -52,7 +53,7 @@ export default {
       try {
         isProcessingLogin.value = true;
         console.log('[LoginView] 处理登录成功事件，用户信息:', user);
-        
+
         // 登录并存储用户信息
         await store.dispatch('login', user);
         // 登录后立即从后端拉取最新用户信息，确保昵称/avatar等是最新的

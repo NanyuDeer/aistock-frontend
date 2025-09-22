@@ -51,6 +51,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import TheNavbar from '@/components/TheNavbar.vue';
 import StockCardList from '@/components/StockCardList.vue';
+import 'element-plus/es/components/message/style/css'
 
 export default {
   name: 'TagView',

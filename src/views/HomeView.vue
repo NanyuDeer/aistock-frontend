@@ -194,6 +194,7 @@ import TheNavbar from '@/components/TheNavbar.vue';
 import MarketOverview from '@/components/MarketOverview.vue';
 import NewsSlider from '@/components/NewsSlider.vue';
 import StockCardList from '@/components/StockCardList.vue';
+import 'element-plus/es/components/message/style/css';
 
 export default {
   name: 'HomeView',

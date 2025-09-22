@@ -85,7 +85,6 @@
 <script>
 import { ref, onMounted, computed } from 'vue';
 import { useStore } from 'vuex';
-import { ElMessage } from 'element-plus';
 
 export default {
   name: 'UpdateLogsView',

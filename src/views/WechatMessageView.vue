@@ -78,6 +78,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { ElMessage } from 'element-plus';
+import 'element-plus/es/components/message/style/css';
 
 export default {
   name: 'WechatMessageView',
