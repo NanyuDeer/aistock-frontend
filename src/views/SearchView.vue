@@ -158,11 +158,12 @@
             :class="{'fade-in': !loading}"
           >
             <div class="stock-info">
-              <div class="stock-name-code">
-                <h3>{{ stock.name }}</h3>
-                <span class="stock-code">{{ stock.code }}</span>
-              </div>
-              <p v-if="stock.industry">行业：{{ stock.industry }}</p>
+                <div class="stock-name-code">
+                  <h3>{{ stock.name }}</h3>
+                  <span v-if="stock.market" class="market-code">{{ stock.market.toUpperCase() }}</span>
+                  <span class="stock-code">{{ stock.code }}</span>
+                </div>
+                <p v-if="stock.industry">行业：{{ stock.industry }}</p>
             </div>
             <div class="stock-actions">
               <el-button type="primary" size="small" @click="viewStockDetail(stock.code)">
@@ -743,6 +744,18 @@ export default {
   height: 14px;
   margin-right: 4px;
   vertical-align: middle;
+}
+
+.market-code {
+  font-size: 0.75rem;
+  font-weight: bold;
+  color: #1677ff;
+  margin-right: 4px;
+  padding: 1px 4px;
+  border: 1px solid #d6e4ff;
+  background-color: #f0f5ff;
+  border-radius: 3px;
+  display: inline-block;
 }
 
 @keyframes fadeIn {
