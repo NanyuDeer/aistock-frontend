@@ -3,13 +3,13 @@
     <div class="container navbar-container">
       <div class="logo">
         <router-link to="/">
-          <img src="../assets/logo.png" alt="股票资讯AI智能分析" />
+          <img src="@/assets/logo.png" alt="股票资讯AI智能分析" />
           <div class="logo-divider"></div>
           <span class="logo-text">股票资讯AI智能分析</span>
         </router-link>
       </div>
       <div class="menu-toggle" @click="toggleMobileMenu">
-        <img v-if="!mobileMenuOpen" src="../assets/menu.svg" alt="菜单" />
+        <img v-if="!mobileMenuOpen" src="@/assets/menu.svg" alt="菜单" />
         <i v-else class="el-icon-close"></i>
       </div>
       <div class="mobile-menu" :class="{ 'open': mobileMenuOpen }">
@@ -68,7 +68,7 @@ export default {
   setup() {
     const store = useStore()
     const router = useRouter()
-    const defaultAvatar = require('../assets/default-avatar.svg')
+    const defaultAvatar = require('@/assets/default-avatar.svg')
     
     const isLoggedIn = computed(() => store.getters.isLoggedIn)
     const currentUser = computed(() => store.getters.currentUser)

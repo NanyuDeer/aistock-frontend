@@ -4,7 +4,7 @@
       <div class="search-header">
         <div class="page-title">
           <h1>
-            <img src="../assets/ai-search.png" alt="Logo" class="title-logo" />
+            <img src="@/assets/ai-search.png" alt="Logo" class="title-logo" />
             <span class="stock-text">股票搜索</span>
           </h1>
         </div>
@@ -19,7 +19,7 @@
               :class="{ active: activeSearchMode === 'text' }"
               @click="activeSearchMode = 'text'"
             >
-              <img src="../assets/search.svg" alt="搜索" class="tab-icon" />
+              <img src="@/assets/search.svg" alt="搜索" class="tab-icon" />
               <span>文字搜索</span>
             </div>
             <div 
@@ -27,7 +27,7 @@
               :class="{ active: activeSearchMode === 'image' }"
               @click="activeSearchMode = 'image'"
             >
-              <img src="../assets/upload.svg" alt="图片" class="tab-icon" />
+              <img src="@/assets/upload.svg" alt="图片" class="tab-icon" />
               <span>图片识别</span>
             </div>
           </div>
@@ -43,7 +43,7 @@
                 @keyup.enter="handleSearch"
               >
                 <template #prefix>
-                  <img src="../assets/search.svg" alt="搜索" class="input-icon" />
+                  <img src="@/assets/search.svg" alt="搜索" class="input-icon" />
                 </template>
                 <template #append>
                   <el-button :loading="loading" @click="handleSearch">搜索</el-button>
@@ -79,7 +79,7 @@
                     </div>
                   </template>
                   <div v-else class="upload-placeholder">
-                    <img src="../assets/upload.svg" class="upload-icon" />
+                    <img src="@/assets/upload.svg" class="upload-icon" />
                     <p>点击或拖拽图片到此区域</p>
                     <p class="upload-hint">支持识别图片中的股票代码，如截图、照片等</p>
                   </div>
@@ -167,7 +167,7 @@
             </div>
             <div class="stock-actions">
               <el-button type="primary" size="small" @click="viewStockDetail(stock.code)">
-                <img src="../assets/search.svg" alt="详情" class="button-icon" />
+                <img src="@/assets/search.svg" alt="详情" class="button-icon" />
                 查看详情
               </el-button>
               <el-button 
@@ -178,7 +178,7 @@
               >
                 <img 
                   v-if="!isFavorite(stock.code)" 
-                  src="../assets/follow.svg" 
+                  src="@/assets/follow.svg" 
                   alt="关注" 
                   class="button-icon" 
                 />

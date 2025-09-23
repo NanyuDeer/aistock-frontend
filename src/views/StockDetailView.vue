@@ -86,7 +86,7 @@
                     @click="refreshAIEvaluation" 
                     :loading="loadingEvaluation"
                     class="refresh-btn">
-                    <img v-if="!loadingEvaluation" src="../assets/refresh.svg" alt="刷新" class="button-icon" />
+                    <img v-if="!loadingEvaluation" src="@/assets/refresh.svg" alt="刷新" class="button-icon" />
                     刷新评测
                   </el-button>
                 </div>

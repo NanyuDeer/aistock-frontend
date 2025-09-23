@@ -9,14 +9,14 @@
             @click="refreshStockData" 
             :loading="refreshing"
             class="refresh-button">
-            <img v-if="!refreshing" src="../assets/refresh.svg" alt="刷新" class="button-icon" />
+            <img v-if="!refreshing" src="@/assets/refresh.svg" alt="刷新" class="button-icon" />
             刷新数据
           </el-button>
           <el-button 
             type="success" 
             @click="goToSearch" 
             class="add-button">
-            <img src="../assets/add.svg" alt="添加" class="button-icon" />
+            <img src="@/assets/add.svg" alt="添加" class="button-icon" />
             添加股票
           </el-button>
         </div>
@@ -57,7 +57,7 @@
                   type="primary" 
                   size="small" 
                   @click="viewStockDetail(scope.row)">
-                  <img src="../assets/search.svg" alt="详情" class="button-icon" />
+                  <img src="@/assets/search.svg" alt="详情" class="button-icon" />
                   详情
                 </el-button>
                 <el-popconfirm
@@ -68,7 +68,7 @@
                     <el-button 
                       type="danger" 
                       size="small">
-                      <img src="../assets/unfollow.svg" alt="取消关注" class="button-icon" />
+                      <img src="@/assets/unfollow.svg" alt="取消关注" class="button-icon" />
                       取消关注
                     </el-button>
                   </template>
@@ -111,7 +111,7 @@
                 type="primary" 
                 size="small" 
                 @click="viewStockDetail(stock)">
-                <img src="../assets/view.svg" alt="详情" class="button-icon" />
+                <img src="@/assets/view.svg" alt="详情" class="button-icon" />
                 详情
               </el-button>
               <el-popconfirm
@@ -122,7 +122,7 @@
                   <el-button 
                     type="danger" 
                     size="small">
-                    <img src="../assets/unfollow.svg" alt="取消关注" class="button-icon" />
+                    <img src="@/assets/unfollow.svg" alt="取消关注" class="button-icon" />
                     取消关注
                   </el-button>
                 </template>

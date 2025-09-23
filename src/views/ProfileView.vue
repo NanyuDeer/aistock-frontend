@@ -68,7 +68,7 @@ export default {
     const user = store.state.user
     const favoriteStocks = ref([]) // 自选股列表
     const nickname = ref(user?.name || '')
-    const defaultAvatar = require('../assets/default-avatar.svg')
+    const defaultAvatar = require('@/assets/default-avatar.svg')
     const settingsLoading = ref(false)
     const pushSettings = ref({
       stock_push: false,

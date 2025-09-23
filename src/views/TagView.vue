@@ -13,6 +13,10 @@
               <img src="@/assets/deepseek-color.svg" alt="DeepSeek Logo" style="height: 1.6rem; vertical-align: middle;" />
               <span>{{ `DeepSeek AI 推荐的 ${tagName} 相关板块龙头个股` }}</span>
             </p>
+            <div class="powered-by">
+              <img src="@/assets/siliconflow-logo.svg" alt="SiliconFlow Logo" class="powered-by-logo" />
+              <span class="powered-by-text">Powered by SiliconFlow</span>
+            </div>
           </div>
 
           <!-- 使用StockCardList组件显示股票 -->
@@ -204,6 +208,7 @@ export default {
 <style lang="scss" scoped>
 .tag-page {
   .tag-header {
+    position: relative;
     margin-bottom: 30px;
     padding: 20px;
     background: #fff;
@@ -226,6 +231,27 @@ export default {
     .tag-description {
       color: var(--text-tertiary);
       font-size: 1rem;
+    }
+    
+    .powered-by {
+      position: absolute;
+      bottom: 8px;
+      right: 20px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      opacity: 0.4;
+      
+      .powered-by-logo {
+        height: 12px;
+        width: auto;
+      }
+      
+      .powered-by-text {
+        font-size: 0.8rem;
+        color: #999;
+        font-weight: 500;
+      }
     }
   }
   

@@ -3,12 +3,12 @@
     <div class="login-card">
       <div class="card-header">
         <div class="logo">
-          <img src="../assets/logo.png" alt="股票资讯AI智能分析" />
+          <img src="@/assets/logo.png" alt="股票资讯AI智能分析" />
           <h1>股票资讯AI智能分析</h1>
         </div>
         <div class="welcome-text">
           <p>
-            <img src="../assets/wechat.svg" alt="微信" class="wechat-inline-logo" />
+            <img src="@/assets/wechat.svg" alt="微信" class="wechat-inline-logo" />
             欢迎使用，请扫码登录
           </p>
         </div>
