@@ -11,8 +11,8 @@ onMounted(() => {
     try {
         const script = document.createElement('script')
         script.defer = true
-        script.src = 'https://ana.102465.xyz/script.js'
-        script.setAttribute('data-website-id', '06398185-fc0b-477d-9b93-773fff463796')
+        script.src = 'https://ana.102465.xyz/hello'
+        script.setAttribute('data-website-id', '61825d9e-9921-44de-adc7-8152ca5c24d5')
         document.head.appendChild(script)
         console.log('Analytics script loaded')
     } catch (error) {

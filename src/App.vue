@@ -4,6 +4,7 @@
       <TheNavbar v-if="showHeader" />
       <router-view/>
       <TheFooter />
+      <ChatBot />
     </div>
   </Analytics>
 </template>
@@ -14,13 +15,15 @@ import { useRoute } from 'vue-router'
 import TheNavbar from '@/components/TheNavbar.vue'
 import TheFooter from '@/components/TheFooter.vue'
 import Analytics from '@/components/Analytics.vue'
+import ChatBot from '@/components/ChatBot.vue'
 
 export default {
   name: 'App',
   components: {
     TheNavbar,
     TheFooter,
-    Analytics
+    Analytics,
+    ChatBot
   },
   setup() {
     const route = useRoute()

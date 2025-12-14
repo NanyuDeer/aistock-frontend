@@ -3,7 +3,7 @@ import axios from 'axios';
 // 开发模式下使用相对路径，生产模式下使用完整URL
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
   ? 'https://api.aistocklink.cn' 
-  : '';
+  : 'http://localhost:8000';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -191,6 +191,11 @@ async function fetchMonitorData(startTime, endTime) {
     return null;
   }
 }
+
+// 聊天机器人 API
+export const chatApi = {
+  sendMessage: (message) => api.post('/api/chat/query', { query: message })
+};
 
 export { fetchMonitorData };
 export default api;
