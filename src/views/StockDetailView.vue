@@ -140,6 +140,44 @@
               </div>
             </div>
           </el-tab-pane>
+          <el-tab-pane label="业绩预测" name="forecast">
+            <div class="forecast-content" v-loading="loadingForecast">
+              <div v-if="forecastList.length > 0" class="forecast-list">
+                <div v-for="item in forecastList" :key="item.id" class="forecast-item">
+                  <div class="forecast-header">
+                    <span class="report-period">{{ item.report_period }}</span>
+                    <span class="forecast-type" :class="getForecastColor(item.forecast_type)">{{ item.forecast_type }}</span>
+                  </div>
+                  <div class="forecast-summary">{{ item.forecast_summary }}</div>
+                  <div class="forecast-details">
+                    <div class="detail-item">
+                      <span class="label">上年同期净利润:</span>
+                      <span class="value">{{ (item.last_year_profit / 10000).toFixed(2) }}万元</span>
+                    </div>
+                    <div class="detail-item" v-if="item.profit_forecast_median">
+                      <span class="label">预计净利润(中值):</span>
+                      <span class="value">{{ (item.profit_forecast_median / 10000).toFixed(2) }}万元</span>
+                    </div>
+                    <div class="detail-item" v-if="item.profit_growth_median">
+                      <span class="label">预计增长(中值):</span>
+                      <span class="value" :class="item.profit_growth_median > 0 ? 'stock-up' : 'stock-down'">
+                        {{ item.profit_growth_median }}%
+                      </span>
+                    </div>
+                  </div>
+                  <div class="announcement-date">公告日期: {{ item.announcement_date }}</div>
+                </div>
+              </div>
+              <el-empty v-else description="暂无业绩预测数据"></el-empty>
+              
+              <div class="forecast-footer">
+                <a href="https://stcn.com/dc/sdcb.html?type=yjyg" target="_blank" class="source-link">
+                  <img src="https://static-web.stcn.com/static/images/zqsb.png" alt="STCN Logo" class="source-logo">
+                  <span>STCN证券时报网</span>
+                </a>
+              </div>
+            </div>
+          </el-tab-pane>
         </el-tabs>
       </div>
       
@@ -260,6 +298,8 @@ export default {
 
     const currentNewsDetail = ref(null);
     const newsDetailDialogVisible = ref(false);
+    const forecastList = ref([]);
+    const loadingForecast = ref(false);
     const currentPage = ref(1);
     const pageSize = ref(5);
     const totalNews = ref(0);
@@ -304,6 +344,26 @@ export default {
     const newsRetryTimer = ref(null);
     const isRetryingNews = ref(false);
     
+    const loadForecast = async () => {
+      loadingForecast.value = true;
+      try {
+        const data = await store.dispatch('fetchStockForecast', stockInfo.value.code);
+        forecastList.value = data || [];
+      } catch (error) {
+        console.error('获取业绩预测失败:', error);
+      } finally {
+        loadingForecast.value = false;
+      }
+    };
+
+    const getForecastColor = (type) => {
+      if (!type) return '';
+      if (type.includes('增')) return 'rating-strong-buy'; // 重大利好
+      if (type.includes('减')) return 'rating-strong-sell'; // 重大利空
+      if (type.includes('平')) return 'rating-hold'; // 中性
+      return '';
+    };
+
     const loadNewsAndAnalysis = async () => {
       try {
         const newsData = await store.dispatch('fetchStockNews', {
@@ -650,6 +710,8 @@ export default {
         loadingEvaluation.value = true;
         await loadAIEvaluation(false); // 切换到 "AI投资建议" Tab 时自动加载数据
         loadingEvaluation.value = false;
+      } else if (newTab === 'forecast') {
+        loadForecast();
       }
     });
 
@@ -734,7 +796,11 @@ export default {
       isRetryingNews,
       newsRetryCount,
       isLoggedIn,
-      goToLogin
+      goToLogin,
+      forecastList,
+      loadingForecast,
+      loadForecast,
+      getForecastColor
     };
   },
 };
@@ -1185,6 +1251,125 @@ export default {
       &:hover {
         transform: translateY(-2px);
         box-shadow: 0 6px 16px rgba(64, 158, 255, 0.4);
+      }
+    }
+  }
+}
+
+.forecast-content {
+  .forecast-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .forecast-item {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
+    background-color: #fff;
+    transition: all 0.3s;
+
+    &:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .forecast-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+
+      .report-period {
+        font-weight: 600;
+        font-size: 16px;
+        color: var(--text-primary);
+      }
+
+      .forecast-type {
+        font-size: 14px;
+        padding: 2px 8px;
+        border-radius: 4px;
+        background-color: #f0f2f5;
+        color: var(--text-secondary);
+
+        &.rating-strong-buy {
+          background-color: rgba(245, 108, 108, 0.1);
+          color: #f56c6c;
+        }
+
+        &.rating-strong-sell {
+          background-color: rgba(103, 194, 58, 0.1);
+          color: #67c23a;
+        }
+
+        &.rating-hold {
+          background-color: rgba(230, 162, 60, 0.1);
+          color: #e6a23c;
+        }
+      }
+    }
+
+    .forecast-summary {
+      font-size: 15px;
+      color: var(--text-regular);
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+
+    .forecast-details {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-bottom: 10px;
+      padding: 10px;
+      background-color: #f9fafc;
+      border-radius: 4px;
+
+      .detail-item {
+        display: flex;
+        align-items: center;
+        font-size: 13px;
+
+        .label {
+          color: var(--text-secondary);
+          margin-right: 8px;
+        }
+
+        .value {
+          font-weight: 500;
+          color: var(--text-primary);
+        }
+      }
+    }
+
+    .announcement-date {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      text-align: right;
+    }
+  }
+
+  .forecast-footer {
+    margin-top: 20px;
+    display: flex;
+    justify-content: flex-end;
+    
+    .source-link {
+      display: flex;
+      align-items: center;
+      text-decoration: none;
+      color: #909399;
+      font-size: 12px;
+      transition: opacity 0.2s;
+      
+      &:hover {
+        opacity: 0.8;
+      }
+      
+      .source-logo {
+        height: 16px;
+        margin-right: 6px;
       }
     }
   }

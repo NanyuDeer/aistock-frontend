@@ -89,6 +89,9 @@ export const stockApi = {
   // 获取股票详细信息
   getStockDetail: (code) => api.get(`/api/stocks/detail?code=${code}`),
 
+  // 获取股票业绩预测
+  getForecast: (code) => api.get(`/api/stocks/forecast?code=${code}`),
+
   // 获取股票相关新闻列表
   getStockNews: (code, page = 1, limit = 5) => {
     return api.get(`/api/news/get?code=${encodeURIComponent(code)}&page=${page}&limit=${limit}`);

@@ -337,6 +337,19 @@ export default createStore({
       }
     },
     
+    async fetchStockForecast(_, stockCode) {
+      try {
+        const response = await stockApi.getForecast(stockCode);
+        if (response.code === 200) {
+          return response.data;
+        }
+        return [];
+      } catch (error) {
+        console.error('获取股票业绩预测失败:', error);
+        return [];
+      }
+    },
+
     async fetchStockEvaluation(_, { stockCode, refresh = false }) {
       try {
         // 检查用户是否登录
