@@ -8,6 +8,7 @@ const StockDetailView = () => import('@/views/StockDetailView.vue')
 const FavoritesView = () => import('@/views/FavoritesView.vue')
 const WechatMessageView = () => import('@/views/WechatMessageView.vue')
 const UpdateLogsView = () => import('@/views/UpdateLogsView.vue')
+const PerformanceForecastView = () => import('@/views/PerformanceForecastView.vue')
 
 const routes = [
   {
@@ -59,6 +60,14 @@ const routes = [
     meta: {
       title: '股票资讯AI智能分析 - 自选股',
       requiresAuth: true  // 需要登录才能访问
+    }
+  },
+  {
+    path: '/forecast',
+    name: 'performanceForecast',
+    component: PerformanceForecastView,
+    meta: {
+      title: '股票资讯AI智能分析 - 业绩预测'
     }
   },
   {

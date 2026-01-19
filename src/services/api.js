@@ -92,6 +92,18 @@ export const stockApi = {
   // 获取股票业绩预测
   getForecast: (code) => api.get(`/api/stocks/forecast?code=${code}`),
 
+  // 获取业绩预测筛选选项
+  getForecastOptions: () => api.get('/api/stocks/forecast/options'),
+
+  // 获取业绩预测列表
+  getForecastList: (params) => {
+    const { page = 1, limit = 20, report_period = '', forecast_type = '' } = params;
+    let url = `/api/stocks/forecast/list?page=${page}&limit=${limit}`;
+    if (report_period) url += `&report_period=${encodeURIComponent(report_period)}`;
+    if (forecast_type) url += `&forecast_type=${encodeURIComponent(forecast_type)}`;
+    return api.get(url);
+  },
+
   // 获取股票相关新闻列表
   getStockNews: (code, page = 1, limit = 5) => {
     return api.get(`/api/news/get?code=${encodeURIComponent(code)}&page=${page}&limit=${limit}`);

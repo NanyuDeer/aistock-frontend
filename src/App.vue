@@ -1,17 +1,21 @@
 <template>
-  <Analytics>
-    <div id="app">
-      <TheNavbar v-if="showHeader" />
-      <router-view/>
-      <TheFooter />
-      <ChatBot />
-    </div>
-  </Analytics>
+  <el-config-provider :locale="zhCn">
+    <Analytics>
+      <div id="app">
+        <TheNavbar v-if="showHeader" />
+        <router-view/>
+        <TheFooter />
+        <ChatBot />
+      </div>
+    </Analytics>
+  </el-config-provider>
 </template>
 
 <script>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { ElConfigProvider } from 'element-plus'
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import TheNavbar from '@/components/TheNavbar.vue'
 import TheFooter from '@/components/TheFooter.vue'
 import Analytics from '@/components/Analytics.vue'
@@ -20,6 +24,7 @@ import ChatBot from '@/components/ChatBot.vue'
 export default {
   name: 'App',
   components: {
+    ElConfigProvider,
     TheNavbar,
     TheFooter,
     Analytics,
@@ -32,7 +37,8 @@ export default {
     const showHeader = computed(() => route.name !== 'login')
     
     return {
-      showHeader
+      showHeader,
+      zhCn
     }
   }
 }
