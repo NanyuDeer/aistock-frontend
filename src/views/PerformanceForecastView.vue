@@ -145,14 +145,18 @@ export default {
     const getTagType = (type) => {
       if (!type) return 'info'
       if (type.includes('增') || type.includes('盈')) return 'success'
-      if (type.includes('减') || type.includes('亏')) return 'danger'
-      return 'warning'
+      if (type.includes('降') || type.includes('亏') || type.includes('减')) return 'danger'
+      if (type.includes('平')) return 'primary'
+      if (type.includes('警')) return 'warning'
+      return 'info'
     }
 
     const getToneClass = (type) => {
       if (!type) return ''
       if (type.includes('增') || type.includes('盈')) return 'tone-increase'
-      if (type.includes('减') || type.includes('亏')) return 'tone-decrease'
+      if (type.includes('降') || type.includes('亏') || type.includes('减')) return 'tone-decrease'
+      if (type.includes('平')) return 'tone-flat'
+      if (type.includes('警')) return 'tone-warning'
       return ''
     }
 
@@ -323,6 +327,10 @@ export default {
     color: var(--el-color-warning, #e6a23c);
   }
 
+  :deep(.highlight-number.primary) {
+    color: var(--el-color-primary, #409eff);
+  }
+
   :deep(.highlight-number.info) {
     color: var(--el-color-info, #909399);
   }
@@ -348,6 +356,18 @@ export default {
     color: #67c23a !important;
     border-color: #67c23a !important;
     background-color: #f0fff4 !important;
+  }
+
+  :deep(.tone-flat) {
+    color: #409eff !important;
+    border-color: #409eff !important;
+    background-color: #ecf5ff !important;
+  }
+
+  :deep(.tone-warning) {
+    color: #e6a23c !important;
+    border-color: #e6a23c !important;
+    background-color: #fdf6ec !important;
   }
 }
 </style>
