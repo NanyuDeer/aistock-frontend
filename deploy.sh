@@ -7,7 +7,7 @@ YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
 
 # 定义路径
-SOURCE_DIR="/Users/fwm/projects/aistock-frontend"
+SOURCE_DIR="/Users/fwm/projects/tmp/aistock-frontend"
 DIST_DIR="$SOURCE_DIR/dist"
 REMOTE_HOST="ali_hk"
 REMOTE_DIR="/opt/aistock"

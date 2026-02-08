@@ -92,6 +92,9 @@ export const stockApi = {
   // 根据关键词搜索股票
   searchStocks: (keyword, limit = 10) => api.get(`/api/stocks/search?keyword=${keyword}&limit=${limit}`),
 
+  // 获取热门股票
+  getHotStocks: (symbol) => api.get(`/api/stocks/hot?symbol=${symbol || '国内人气榜'}`),
+
   // 获取股票业绩预测 - 增加失败重试
   getForecast: (code) => {
     // 默认超时8秒，使用全局 axios 实例的重试机制
