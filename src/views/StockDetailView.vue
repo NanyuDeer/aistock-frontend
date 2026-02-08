@@ -142,38 +142,65 @@
           </el-tab-pane>
           <el-tab-pane label="业绩预测" name="forecast">
             <div class="forecast-content" v-loading="loadingForecast">
-              <div v-if="forecastList.length > 0" class="forecast-list">
-                <div v-for="item in forecastList" :key="item.id" class="forecast-item">
-                  <div class="forecast-header">
-                    <span class="report-period">{{ item.report_period }}</span>
-                    <span class="forecast-type" :class="getForecastColor(item.forecast_type)">{{ item.forecast_type }}</span>
-                  </div>
-                  <div class="forecast-summary">{{ item.forecast_summary }}</div>
-                  <div class="forecast-details">
-                    <div class="detail-item">
-                      <span class="label">上年同期净利润:</span>
-                      <span class="value">{{ (item.last_year_profit / 10000).toFixed(2) }}万元</span>
-                    </div>
-                    <div class="detail-item" v-if="item.profit_forecast_median">
-                      <span class="label">预计净利润(中值):</span>
-                      <span class="value">{{ (item.profit_forecast_median / 10000).toFixed(2) }}万元</span>
-                    </div>
-                    <div class="detail-item" v-if="item.profit_growth_median">
-                      <span class="label">预计增长(中值):</span>
-                      <span class="value" :class="item.profit_growth_median > 0 ? 'stock-up' : 'stock-down'">
-                        {{ item.profit_growth_median }}%
-                      </span>
-                    </div>
-                  </div>
-                  <div class="announcement-date">公告日期: {{ item.announcement_date }}</div>
+              <div v-if="forecastData && (forecastData.symbol || forecastData['股票代码'])">
+                
+                <!-- 总结部分 -->
+                <div class="forecast-summary-card">
+                  <div class="summary-text">{{ forecastSummary }}</div>
                 </div>
+
+                <!-- 详细指标图表 -->
+                <div v-show="forecastData['业绩预测详表_详细指标预测']" class="forecast-charts-container">
+                   <div ref="forecastChartRef" class="forecast-chart"></div>
+                </div>
+
+                <!-- 机构预测详细列表 -->
+                <!-- <div v-if="forecastData.业绩预测详表_机构 && forecastData.业绩预测详表_机构.length > 0">
+                  <div class="forecast-list" :class="{ 'is-collapsed': !isForecastExpanded && forecastData.业绩预测详表_机构.length > 1 }">
+                    <div v-for="(item, index) in forecastData.业绩预测详表_机构" :key="index" class="forecast-item">
+                      <div class="forecast-header">
+                        <div class="institution-info">
+                          <span class="institution-name">{{ item.机构名称 }}</span>
+                          <span class="researcher">{{ item.研究员 }}</span>
+                        </div>
+                        <span class="report-date">{{ item.报告日期 }}</span>
+                      </div>
+                      
+                      <div class="forecast-details-grid">
+                        <div class="forecast-col">
+                          <div class="col-title">每股收益预测 (元)</div>
+                          <div class="col-row" v-for="(val, key) in item['预测年报每股收益（元）']" :key="key">
+                            <span class="year-label">{{ key.replace('预测', '') }}</span>
+                            <span class="val-num">{{ val }}</span>
+                          </div>
+                        </div>
+                        <div class="forecast-col">
+                          <div class="col-title">净利润预测 (元)</div>
+                          <div class="col-row" v-for="(val, key) in item['预测年报净利润（元）']" :key="key">
+                            <span class="year-label">{{ key.replace('预测', '') }}</span>
+                            <span class="val-num">{{ val }}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div v-if="!isForecastExpanded && forecastData.业绩预测详表_机构.length > 1" class="expand-mask" @click="isForecastExpanded = true">
+                       <span>展开全部 {{ forecastData.业绩预测详表_机构.length }} 家机构预测 <i class="el-icon-arrow-down"></i></span>
+                    </div>
+                  </div>
+                  
+                  <div v-if="isForecastExpanded" class="collapse-action" @click="isForecastExpanded = false">
+                    <span>收起 <i class="el-icon-arrow-up"></i></span>
+                  </div>
+                </div>
+                <el-empty v-else description="暂无机构预测详情"></el-empty> -->
+
               </div>
-              <el-empty v-else description="暂无业绩预测数据"></el-empty>
+              <el-empty v-else-if="!loadingForecast" description="暂无业绩预测数据"></el-empty>
               
               <div class="forecast-footer">
-                <a href="https://stcn.com/dc/sdcb.html?type=yjyg" target="_blank" class="source-link">
-                  <img src="https://static-web.stcn.com/static/images/zqsb.png" alt="STCN Logo" class="source-logo">
-                  <span>STCN证券时报网</span>
+                <a href="http://www.10jqka.com.cn/" target="_blank" class="source-link">
+                  <img src="https://s.thsi.cn/cd/news-p-fe-app-news-flow-home/home/_next/static/media/logo.1c8fc73f.png" alt="同花顺 Logo" class="source-logo">
                 </a>
               </div>
             </div>
@@ -250,6 +277,28 @@ import MarkdownIt from 'markdown-it';
 import StockChart from '@/components/StockChart.vue';
 import 'element-plus/es/components/message/style/css';
 
+// 引入 ECharts
+import * as echarts from 'echarts/core';
+import { LineChart, BarChart } from 'echarts/charts';
+import { 
+  TitleComponent, 
+  TooltipComponent, 
+  LegendComponent, 
+  GridComponent 
+} from 'echarts/components';
+import { CanvasRenderer } from 'echarts/renderers';
+
+// 注册 ECharts 组件
+echarts.use([
+  LineChart,
+  BarChart,
+  TitleComponent,
+  TooltipComponent,
+  LegendComponent,
+  GridComponent,
+  CanvasRenderer
+]);
+
 export default {
   name: 'StockDetailView',
   components: {
@@ -298,7 +347,8 @@ export default {
 
     const currentNewsDetail = ref(null);
     const newsDetailDialogVisible = ref(false);
-    const forecastList = ref([]);
+    const forecastData = ref({});
+    const forecastSummary = ref('');
     const loadingForecast = ref(false);
     const currentPage = ref(1);
     const pageSize = ref(5);
@@ -343,26 +393,269 @@ export default {
     const newsRetryCount = ref(0);
     const newsRetryTimer = ref(null);
     const isRetryingNews = ref(false);
-    
+    const isForecastExpanded = ref(false);
+    const forecastChartRef = ref(null);
+    let forecastChartInstance = null;
+
+    const generateForecastSummary = () => {
+      if (forecastData.value && forecastData.value.摘要) {
+        forecastSummary.value = forecastData.value.摘要;
+        return;
+      }
+
+      if (!forecastData.value || !forecastData.value['预测年报每股收益']) return;
+      
+      const epsList = forecastData.value['预测年报每股收益'];
+      const profitList = forecastData.value['预测年报净利润'];
+      const detailIndicators = forecastData.value['业绩预测详表_详细指标预测'];
+      
+      if (!epsList || epsList.length === 0) return;
+      
+      const firstYearEPS = epsList[0];
+      const year = firstYearEPS['年度'];
+      const orgCount = firstYearEPS['预测机构数'];
+      const meanEPS = parseFloat(firstYearEPS['均值']);
+      
+      let profitMean = '--';
+      let profitGrowth = '';
+      let epsGrowth = '';
+
+      // 获取净利润均值
+      if (profitList && profitList.length > 0) {
+        const pItem = profitList.find(p => p['年度'] === year);
+        if (pItem) {
+          profitMean = parseFloat(pItem['均值']);
+        }
+      }
+
+      // 从详细指标预测中获取增长率
+      if (detailIndicators && Array.isArray(detailIndicators)) {
+         // 获取净利润增长率
+         const profitGrowthItem = detailIndicators.find(item => item['预测指标'] === '净利润增长率');
+         if (profitGrowthItem) {
+             const key = `预测${year}-平均`;
+             if (profitGrowthItem[key]) {
+                 profitGrowth = parseFloat(profitGrowthItem[key].replace('%', ''));
+             }
+         }
+      }
+      
+      const today = new Date().toISOString().split('T')[0];
+      
+      let summary = `截至${today}，6个月以内共有 ${orgCount} 家机构对${stockInfo.value.name}的${year}年度业绩作出预测；预测${year}年每股收益 ${meanEPS} 元`;
+      
+      if (epsGrowth) {
+        const epsGrowthNum = parseFloat(epsGrowth);
+        const direction = epsGrowthNum >= 0 ? '增长' : '减少';
+        summary += `，较去年同比${direction} ${Math.abs(epsGrowthNum)}%`;
+      }
+      
+      summary += `，预测${year}年净利润 ${profitMean} 亿元`;
+      
+      if (profitGrowth !== '') {
+         const profitGrowthNum = parseFloat(profitGrowth);
+         const direction = profitGrowthNum >= 0 ? '增长' : '减少';
+         summary += `，较去年同比${direction} ${Math.abs(profitGrowthNum)}%`;
+      }
+
+      forecastSummary.value = summary;
+    };
+
+    const renderForecastChart = () => {
+      if (!forecastData.value || !forecastData.value['业绩预测详表_详细指标预测'] || !forecastChartRef.value) return;
+      
+      if (forecastChartInstance) {
+        forecastChartInstance.dispose();
+      }
+      forecastChartInstance = echarts.init(forecastChartRef.value);
+      
+      const details = forecastData.value['业绩预测详表_详细指标预测'];
+      if (!details || details.length === 0) return;
+      
+      // 解析年份
+      const firstRow = details[0];
+      const yearKeys = Object.keys(firstRow).filter(k => k.includes('实际值') || k.includes('平均')).sort();
+      const years = yearKeys.map(k => {
+        const match = k.match(/(\d{4})/);
+        return match ? match[1] : k;
+      });
+
+      // 提取数据的辅助函数
+      const getSeriesData = (indicatorName) => {
+        const row = details.find(item => item['预测指标'].includes(indicatorName));
+        if (!row) return new Array(years.length).fill(0);
+        return yearKeys.map(key => {
+          let val = row[key];
+          if (!val || val === '--') return 0;
+          return parseFloat(val.replace('亿', '').replace('%', '').replace(',', ''));
+        });
+      };
+
+      const revenueData = getSeriesData('营业收入(元)');
+      const netProfitData = getSeriesData('净利润(元)');
+      const netProfitGrowthData = getSeriesData('净利润增长率');
+      const revenueGrowthData = getSeriesData('营业收入增长率');
+      const roeData = getSeriesData('净资产收益率');
+      const peData = getSeriesData('市盈率(动态)');
+
+      // 计算堆叠图的"剩余"部分 (营业收入 - 净利润)
+      const revenueRemainderData = revenueData.map((rev, i) => {
+        const profit = netProfitData[i] || 0;
+        return Math.max(0, rev - profit);
+      });
+
+      const option = {
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: { type: 'shadow' },
+          formatter: function (params) {
+            let res = params[0].name + '<br/>';
+            params.forEach(param => {
+              if (param.seriesName === '营业收入(剩余)') return; // 不显示辅助的剩余部分
+              let val = param.value;
+              if (param.seriesName.includes('增长率') || param.seriesName.includes('收益率')) {
+                val = val + '%';
+              } else if (param.seriesName.includes('利润') || param.seriesName.includes('收入')) {
+                val = val + '亿';
+              }
+              // 如果是堆叠的净利润，显示出来
+              // 如果是总营业收入，我们可以手动计算或者只显示净利润和"营业收入"（这里堆叠了所以需要特殊处理tooltip）
+              // 为了简单，我们只显示净利润和营业收入（总额）
+              
+              if (param.seriesName === '净利润') {
+                 res += `${param.marker} ${param.seriesName}: ${val}<br/>`;
+                 // 找到对应的营业收入总额
+                 const totalRev = revenueData[params[0].dataIndex];
+                 res += `${param.marker} 营业收入: ${totalRev}亿<br/>`;
+              } else {
+                 res += `${param.marker} ${param.seriesName}: ${val}<br/>`;
+              }
+            });
+            return res;
+          }
+        },
+        legend: {
+          data: ['净利润', '净利润增长率', '营业收入增长率', '净资产收益率', '市盈率'],
+          bottom: 0
+        },
+        grid: [
+          { left: '3%', right: '55%', top: '15%', bottom: '10%', containLabel: true },
+          { left: '55%', right: '3%', top: '15%', bottom: '10%', containLabel: true }
+        ],
+        xAxis: [
+          { type: 'category', data: years, gridIndex: 0 },
+          { type: 'category', data: years, gridIndex: 1 }
+        ],
+        yAxis: [
+          // 左图 Y轴
+          { 
+            type: 'value', 
+            name: '金额(亿)', 
+            gridIndex: 0,
+            splitLine: { show: false }
+          },
+          { 
+            type: 'value', 
+            name: '增长率(%)', 
+            gridIndex: 0,
+            splitLine: { show: false }
+          },
+          // 右图 Y轴
+          { 
+            type: 'value', 
+            gridIndex: 1,
+            splitLine: { show: true, lineStyle: { type: 'dashed' } }
+          }
+        ],
+        series: [
+          // 左图
+          {
+            name: '净利润',
+            type: 'bar',
+            stack: 'revenue',
+            data: netProfitData,
+            xAxisIndex: 0,
+            yAxisIndex: 0,
+            itemStyle: { color: '#409EFF' }
+          },
+          {
+            name: '营业收入(剩余)',
+            type: 'bar',
+            stack: 'revenue',
+            data: revenueRemainderData,
+            xAxisIndex: 0,
+            yAxisIndex: 0,
+            itemStyle: { color: '#a0cfff' },
+            tooltip: { show: false } // 隐藏这个辅助系列的tooltip
+          },
+          {
+            name: '净利润增长率',
+            type: 'line',
+            data: netProfitGrowthData,
+            xAxisIndex: 0,
+            yAxisIndex: 1,
+            itemStyle: { color: '#E6A23C' }
+          },
+          // 右图
+          {
+            name: '营业收入增长率',
+            type: 'line',
+            data: revenueGrowthData,
+            xAxisIndex: 1,
+            yAxisIndex: 2,
+            itemStyle: { color: '#67C23A' }
+          },
+          {
+            name: '净资产收益率',
+            type: 'line',
+            data: roeData,
+            xAxisIndex: 1,
+            yAxisIndex: 2,
+            itemStyle: { color: '#F56C6C' }
+          },
+          {
+            name: '市盈率',
+            type: 'line',
+            data: peData,
+            xAxisIndex: 1,
+            yAxisIndex: 2,
+            itemStyle: { color: '#909399' }
+          }
+        ]
+      };
+      
+      forecastChartInstance.setOption(option);
+      
+      // 监听窗口大小变化
+      window.addEventListener('resize', () => {
+        forecastChartInstance && forecastChartInstance.resize();
+      });
+    };
+
     const loadForecast = async () => {
       loadingForecast.value = true;
       try {
-        const data = await store.dispatch('fetchStockForecast', stockInfo.value.code);
-        forecastList.value = data || [];
+        const responseList = await store.dispatch('fetchStockForecast', stockInfo.value.code);
+        
+        if (responseList && (responseList.symbol || responseList['股票代码'])) { 
+           forecastData.value = responseList;
+           generateForecastSummary();
+           // 等待DOM更新后渲染图表
+           setTimeout(() => {
+             renderForecastChart();
+           }, 0);
+        } else {
+           forecastData.value = {};
+           forecastSummary.value = '';
+        }
       } catch (error) {
         console.error('获取业绩预测失败:', error);
+        forecastData.value = {};
       } finally {
         loadingForecast.value = false;
       }
     };
 
-    const getForecastColor = (type) => {
-      if (!type) return '';
-      if (type.includes('增')) return 'rating-strong-buy'; // 重大利好
-      if (type.includes('减')) return 'rating-strong-sell'; // 重大利空
-      if (type.includes('平')) return 'rating-hold'; // 中性
-      return '';
-    };
 
     const loadNewsAndAnalysis = async () => {
       try {
@@ -582,6 +875,13 @@ export default {
           }
         }
         // 刷新自选股列表
+      
+      if (forecastChartInstance) {
+        forecastChartInstance.dispose();
+      }
+      window.removeEventListener('resize', () => {
+         forecastChartInstance && forecastChartInstance.resize();
+      });
         await store.dispatch('fetchFavoriteStocks');
       } catch (error) {
         console.error('操作自选股失败:', error);
@@ -795,12 +1095,14 @@ export default {
       lastNewsUpdate,
       isRetryingNews,
       newsRetryCount,
+      forecastChartRef,
       isLoggedIn,
       goToLogin,
-      forecastList,
+      forecastData,
+      forecastSummary,
       loadingForecast,
       loadForecast,
-      getForecastColor
+      isForecastExpanded
     };
   },
 };
@@ -1257,121 +1559,226 @@ export default {
 }
 
 .forecast-content {
+  .forecast-summary-card {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e6f7ff 100%);
+    border: 1px solid #bae7ff;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+    
+    .summary-text {
+      font-size: 15px;
+      line-height: 1.7;
+      color: #003a8c;
+      font-weight: 500;
+      text-align: justify;
+    }
+  }
+
+  .forecast-charts-container {
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 24px;
+    
+    .forecast-chart {
+      width: 100%;
+      height: 350px;
+    }
+  }
+
   .forecast-list {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 16px;
+    position: relative;
+    
+    &.is-collapsed {
+      max-height: 280px; /* 调整此高度以展示第一个卡片及第二个卡片的一小部分 */
+      overflow: hidden;
+      
+      .expand-mask {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        // height: 120px;
+        background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0.95) 70%, #fff);
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding-bottom: 10px;
+        cursor: pointer;
+        z-index: 10;
+        
+        span {
+          color: #409EFF;
+          font-size: 14px;
+          background: #ecf5ff;
+          padding: 8px 20px;
+          border-radius: 20px;
+          box-shadow: 0 4px 12px rgba(64,158,255,0.2);
+          transition: all 0.3s;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-weight: 500;
+          
+          &:hover {
+            background: #409EFF;
+            color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(64,158,255,0.3);
+          }
+        }
+      }
+    }
+  }
+
+  .collapse-action {
+    text-align: center;
+    margin-top: 16px;
+    cursor: pointer;
+    
+    span {
+      color: #909399;
+      font-size: 14px;
+      padding: 6px 16px;
+      border-radius: 16px;
+      background-color: #f4f4f5;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.3s;
+      
+      &:hover {
+        color: #409EFF;
+        background-color: #ecf5ff;
+      }
+    }
   }
 
   .forecast-item {
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    padding: 15px;
+    padding: 16px;
     background-color: #fff;
     transition: all 0.3s;
 
     &:hover {
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      border-color: #d9ecff;
     }
 
     .forecast-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 10px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px dashed #ebeef5;
 
-      .report-period {
-        font-weight: 600;
-        font-size: 16px;
-        color: var(--text-primary);
-      }
-
-      .forecast-type {
-        font-size: 14px;
-        padding: 2px 8px;
-        border-radius: 4px;
-        background-color: #f0f2f5;
-        color: var(--text-secondary);
-
-        &.rating-strong-buy {
-          background-color: rgba(245, 108, 108, 0.1);
-          color: #f56c6c;
-        }
-
-        &.rating-strong-sell {
-          background-color: rgba(103, 194, 58, 0.1);
-          color: #67c23a;
-        }
-
-        &.rating-hold {
-          background-color: rgba(230, 162, 60, 0.1);
-          color: #e6a23c;
-        }
-      }
-    }
-
-    .forecast-summary {
-      font-size: 15px;
-      color: var(--text-regular);
-      margin-bottom: 12px;
-      line-height: 1.5;
-    }
-
-    .forecast-details {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
-      margin-bottom: 10px;
-      padding: 10px;
-      background-color: #f9fafc;
-      border-radius: 4px;
-
-      .detail-item {
+      .institution-info {
         display: flex;
         align-items: center;
-        font-size: 13px;
-
-        .label {
-          color: var(--text-secondary);
-          margin-right: 8px;
+        gap: 12px;
+        
+        .institution-name {
+          font-weight: 600;
+          font-size: 16px;
+          color: #303133;
         }
-
-        .value {
-          font-weight: 500;
-          color: var(--text-primary);
+        
+        .researcher {
+          font-size: 13px;
+          color: #409EFF;
+          background-color: #ecf5ff;
+          padding: 2px 8px;
+          border-radius: 4px;
         }
       }
-    }
 
-    .announcement-date {
-      font-size: 12px;
-      color: var(--text-tertiary);
-      text-align: right;
+      .report-date {
+        color: #909399;
+        font-size: 13px;
+        background-color: #f4f4f5;
+        padding: 2px 6px;
+        border-radius: 2px;
+      }
+    }
+    
+    .forecast-details-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      
+      .forecast-col {
+        .col-title {
+           font-size: 13px;
+           color: #909399;
+           margin-bottom: 10px;
+           font-weight: 500;
+        }
+        
+        .col-row {
+          display: flex;
+          justify-content: space-between;
+          padding: 6px 0;
+          font-size: 14px;
+          border-bottom: 1px solid #f5f7fa;
+          
+          &:last-child {
+            border-bottom: none;
+          }
+          
+          .year-label {
+            color: #606266;
+          }
+          
+          .val-num {
+            font-weight: 500;
+            color: #303133;
+            font-family: 'Roboto', sans-serif;
+          }
+        }
+      }
+      @media (max-width: 600px) {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
     }
   }
 
   .forecast-footer {
-    margin-top: 20px;
-    display: flex;
-    justify-content: flex-end;
-    
-    .source-link {
-      display: flex;
-      align-items: center;
-      text-decoration: none;
-      color: #909399;
-      font-size: 12px;
-      transition: opacity 0.2s;
-      
-      &:hover {
-        opacity: 0.8;
-      }
-      
-      .source-logo {
-        height: 16px;
-        margin-right: 6px;
-      }
-    }
+     margin-top: 24px;
+     display: flex;
+     justify-content: flex-end;
+     
+     .source-link {
+       display: flex;
+       align-items: center;
+       justify-content: center;
+       color: #909399;
+       font-size: 12px;
+       text-decoration: none;
+       background-color: #f4f4f5;
+       padding: 4px 10px;
+       border-radius: 12px;
+       transition: all 0.2s;
+       
+       &:hover {
+         color: var(--primary-color);
+         background-color: #ecf5ff;
+       }
+       
+       .source-logo {
+         height: 14px;
+         margin-right: 0;
+         display: block;
+       }
+     }
   }
 }
 </style>

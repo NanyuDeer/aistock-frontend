@@ -1,4 +1,16 @@
 import axios from 'axios';
+import axiosRetry from 'axios-retry';
+
+// 配置 axios-retry
+axiosRetry(axios, { 
+  retries: 3, 
+  retryDelay: (retryCount) => {
+    return retryCount * 1000;
+  },
+  retryCondition: (error) => {
+    return axiosRetry.isNetworkOrIdempotentRequestError(error) || error.code === 'ECONNABORTED';
+  }
+});
 
 // 开发模式下使用相对路径，生产模式下使用完整URL
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
@@ -80,17 +92,13 @@ export const stockApi = {
   // 根据关键词搜索股票
   searchStocks: (keyword, limit = 10) => api.get(`/api/stocks/search?keyword=${keyword}&limit=${limit}`),
 
-  // 获取最热门股票
-  getHotStocks: (symbol = '最热门') => api.get(`/api/stocks/hot?symbol=${symbol}`),
-
-  // 获取股票历史价格数据
-  getStockHistory: (code, years = 3) => api.get(`/api/stocks/history?code=${code}&years=${years}`),
-  
-  // 获取股票详细信息
-  getStockDetail: (code) => api.get(`/api/stocks/detail?code=${code}`),
-
-  // 获取股票业绩预测
-  getForecast: (code) => api.get(`/api/stocks/forecast?code=${code}`),
+  // 获取股票业绩预测 - 增加失败重试
+  getForecast: (code) => {
+    // 默认超时8秒，使用全局 axios 实例的重试机制
+    return axios.get(`http://extapi.aistocklink.cn/api/cn/stock/profit-forecast/${code}`, {
+      timeout: 8000
+    }).then(res => res.data);
+  },
 
   // 获取业绩预测筛选选项
   getForecastOptions: () => api.get('/api/stocks/forecast/options'),
