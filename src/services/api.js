@@ -95,10 +95,16 @@ export const stockApi = {
   // 获取热门股票
   getHotStocks: (symbol) => api.get(`/api/stocks/hot?symbol=${symbol || '国内人气榜'}`),
 
+  // 获取股票详细信息
+  getStockDetail: (code) => api.get(`/api/stocks/detail?code=${code}`),
+
+  // 获取股票历史数据
+  getStockHistory: (code, years) => api.get(`/api/stocks/history?code=${code}&years=${years}`),
+
   // 获取股票业绩预测 - 增加失败重试
   getForecast: (code) => {
     // 默认超时8秒，使用全局 axios 实例的重试机制
-    return axios.get(`http://extapi.aistocklink.cn/api/cn/stock/profit-forecast/${code}`, {
+    return axios.get(`https://extapi.aistocklink.cn/api/cn/stock/profit-forecast/${code}`, {
       timeout: 8000
     }).then(res => res.data);
   },
