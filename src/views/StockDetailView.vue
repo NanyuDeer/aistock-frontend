@@ -150,7 +150,7 @@
                 </div>
 
                 <!-- 详细指标图表 -->
-                <div v-show="forecastData['业绩预测详表_详细指标预测']" class="forecast-charts-container">
+                <div v-if="hasForecastChartData" class="forecast-charts-container">
                    <div ref="forecastChartRef" class="forecast-chart"></div>
                 </div>
 
@@ -396,6 +396,11 @@ export default {
     const isForecastExpanded = ref(false);
     const forecastChartRef = ref(null);
     let forecastChartInstance = null;
+
+    const hasForecastChartData = computed(() => {
+      const details = forecastData.value?.['业绩预测详表_详细指标预测'];
+      return Array.isArray(details) && details.length > 0;
+    });
 
     const generateForecastSummary = () => {
       if (forecastData.value && forecastData.value.摘要) {
@@ -1102,7 +1107,8 @@ export default {
       forecastSummary,
       loadingForecast,
       loadForecast,
-      isForecastExpanded
+      isForecastExpanded,
+      hasForecastChartData
     };
   },
 };
