@@ -492,7 +492,16 @@ export default {
         return yearKeys.map(key => {
           let val = row[key];
           if (!val || val === '--') return 0;
-          return parseFloat(val.replace('亿', '').replace('%', '').replace(',', ''));
+          
+          // 移除逗号，处理数值
+          let num = parseFloat(val.replace(/,/g, ''));
+          
+          // 统一转换为"亿"为单位
+          if (val.includes('万')) {
+            return num / 10000;
+          }
+          
+          return num;
         });
       };
 
