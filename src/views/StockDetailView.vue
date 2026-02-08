@@ -199,7 +199,7 @@
               <el-empty v-else-if="!loadingForecast" description="暂无业绩预测数据"></el-empty>
               
               <div class="forecast-footer">
-                <a href="http://www.10jqka.com.cn/" target="_blank" class="source-link">
+                <a :href="`https://stockpage.10jqka.com.cn/${stockInfo.code}/worth/#forecast`" target="_blank" class="source-link">
                   <img src="https://s.thsi.cn/cd/news-p-fe-app-news-flow-home/home/_next/static/media/logo.1c8fc73f.png" alt="同花顺 Logo" class="source-logo">
                 </a>
               </div>
