@@ -10,10 +10,12 @@
             {{ getIndexDisplayName(index) }}
           </a>
         </div>
-        <div class="index-value">{{ formatValue(data.value) }}</div>
-        <div :class="data.change >= 0 ? 'change-up' : 'change-down'">
-          {{ formatChange(data.change) }}
+        <div class="index-value" :class="data.change >= 0 ? 'change-up' : 'change-down'">{{ formatValue(data.value) }}</div>
+        <div class="change-row" :class="data.change >= 0 ? 'change-up' : 'change-down'">
+          <span>{{ formatChangeAmount(data.changeAmount) }}</span>
+          <span>{{ formatChange(data.change) }}</span>
         </div>
+        <span class="index-code">{{ data.indexCode }}</span>
       </div>
     </div>
   </div>
@@ -46,29 +48,17 @@ export default {
     };
 
     const getIndexDisplayName = (code) => {
-      const nameMap = {
-        'shangzheng': '上证指数',
-        'shenzheng': '深证成指',
-        'chuangye': '创业板指',
-        'shangzheng50': '上证50',
-        'nasdaqChina': '纳斯达克中国金龙指数',
-        'ftseChina': '富时中国A50指数',
-        'hktech': '恒生科技指数'
-      };
-      return nameMap[code] || code;
+      return marketData.value[code]?.name || code;
     };
 
     const getIndexUrl = (code) => {
-      const urlMap = {
-        'shangzheng': 'https://quote.eastmoney.com/zs000001.html',
-        'shenzheng': 'https://quote.eastmoney.com/zs399001.html',
-        'chuangye': 'https://quote.eastmoney.com/zs399006.html',
-        'shangzheng50': '#',
-        'nasdaqChina': 'https://quote.eastmoney.com/gb/zsHXC.html',
-        'ftseChina': 'https://quote.eastmoney.com/gb/zsXIN9.html',
-        'hktech': 'https://quote.eastmoney.com/gb/zsHSTECH.html'
-      };
-      return urlMap[code] || '#';
+      const indexCode = marketData.value[code]?.indexCode;
+      if (!indexCode) return '#';
+      // 国内指数为纯数字代码，全球指数为字母代码
+      if (/^\d+$/.test(indexCode)) {
+        return `https://quote.eastmoney.com/zs${indexCode}.html`;
+      }
+      return `https://quote.eastmoney.com/gb/zs${indexCode}.html`;
     };
 
     const formatValue = (value) => {
@@ -78,6 +68,13 @@ export default {
     const formatChange = (change) => {
       const sign = change >= 0 ? '+' : '';
       return `${sign}${Number(change).toFixed(2)}%`;
+    };
+
+    const formatChangeAmount = (amount) => {
+      const num = Number(amount);
+      if (isNaN(num)) return '--';
+      const sign = num >= 0 ? '+' : '';
+      return `${sign}${num.toFixed(2)}`;
     };
 
     onMounted(() => {
@@ -102,7 +99,8 @@ export default {
       getIndexDisplayName,
       getIndexUrl,
       formatValue,
-      formatChange
+      formatChange,
+      formatChangeAmount
     };
   }
 };
@@ -124,15 +122,27 @@ export default {
       background: #fff;
       border-radius: 8px;
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-      padding: 10px; // 减少卡片内边距
-      flex: 0 0 calc(33.333% - 10px); // 改为每行3个
-      min-width: 60px; // 调整最小宽度
+      padding: 10px;
+      flex: 0 0 calc(33.333% - 10px);
+      min-width: 60px;
       text-align: center;
-      
+      position: relative;
+
+      .index-code {
+        position: absolute;
+        right: 4px;
+        bottom: 4px;
+        font-size: 0.7rem;
+        color: var(--text-tertiary, #bbb);
+        opacity: 0.6;
+        font-weight: 400;
+        letter-spacing: 0.5px;
+      }
+
       .index-name {
-        font-size: 0.9rem; // 缩小字体
+        font-size: 0.9rem;
         color: var(--text-secondary);
-        margin-bottom: 5px; // 减少间距
+        margin-bottom: 5px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -154,16 +164,20 @@ export default {
         margin-bottom: 5px; // 减少间距
       }
       
+      .change-row {
+        display: flex;
+        justify-content: center;
+        gap: 6px;
+        font-size: 0.9rem;
+        font-weight: 500;
+      }
+
       .change-up {
         color: var(--danger-color);
-        font-weight: 500;
-        font-size: 0.9rem; // 缩小字体
       }
       
       .change-down {
         color: var(--success-color);
-        font-weight: 500;
-        font-size: 0.9rem; // 缩小字体
       }
     }
   }

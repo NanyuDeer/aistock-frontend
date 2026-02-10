@@ -378,65 +378,37 @@ export default createStore({
     },
     async fetchMarketOverview({ commit }) {
       try {
-        const response = await stockApi.getMarketOverview();
-        if (response.code === 0) {
-          // 处理API返回的数据格式，将其转换为组件期望的格式
-          const marketData = {};
-          response.data.forEach(item => {
-            // 根据索引名称映射到相应的键
-            let key;
-            switch(item.index) {
-              case '上证指数':
-                key = 'shangzheng';
-                break;
-              case '深证成指':
-                key = 'shenzheng';
-                break;
-              case '创业板指':
-                key = 'chuangye';
-                break;
-              case '纳斯达克中国金龙指数':
-                key = 'nasdaqChina';
-                break;
-              case '富时中国A50':
-                key = 'ftseChina';
-                break;
-              case '恒生科技指数':
-                key = 'hktech';
-                break;
-              default:
-                // 如有其他指数可在此添加
-                key = item.index.replace(/\s+/g, '').toLowerCase();
-            }
-            marketData[key] = {
-              value: item.value,
-              change: item.change_pct
-            };
-          });
-          
-          commit('setMarketOverview', marketData);
-          return marketData;
-        }
-        
-        // 如果API请求失败，使用备用数据
-        const fallbackData = {
-          shangzheng: { value: 3341.99, change: -0.30 },
-          shenzheng: { value: 10126.83, change: -0.70 },
-          chuangye: { value: 2011.77, change: -0.87 }
+        // 并行请求国内和全球指数行情
+        const [cnResponse, gbResponse] = await Promise.allSettled([
+          stockApi.getCnIndexQuotes('000001,399001,399006'),
+          stockApi.getGbIndexQuotes('HXC,XIN9,HSTECH')
+        ]);
+
+        const marketData = {};
+
+        const processQuotes = (response) => {
+          if (response.status === 'fulfilled' && response.value?.code === 200) {
+            const quotes = response.value.data?.行情 || [];
+            quotes.forEach(item => {
+              marketData[item.指数代码] = {
+                value: item.最新价,
+                change: item.涨跌幅,
+                changeAmount: item.涨跌额,
+                name: item.指数简称,
+                indexCode: item.指数代码
+              };
+            });
+          }
         };
-        commit('setMarketOverview', fallbackData);
-        return fallbackData;
+
+        processQuotes(cnResponse);
+        processQuotes(gbResponse);
+
+        commit('setMarketOverview', marketData);
+        return marketData;
       } catch (error) {
         console.error('获取市场概览数据失败:', error);
-        
-        // 使用备用数据
-        const fallbackData = {
-          shangzheng: { value: 3341.99, change: -0.30 },
-          shenzheng: { value: 10126.83, change: -0.70 },
-          chuangye: { value: 2011.77, change: -0.87 }
-        };
-        commit('setMarketOverview', fallbackData);
-        return fallbackData;
+        return null;
       }
     },
     async fetchWechatMessage(_, msgId) {

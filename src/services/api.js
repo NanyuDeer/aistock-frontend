@@ -114,10 +114,11 @@ export const stockApi = {
 
   // 获取业绩预测列表
   getForecastList: (params) => {
-    const { page = 1, limit = 20, report_period = '', forecast_type = '' } = params;
+    const { page = 1, limit = 20, report_period = '', forecast_type = '', keyword = '' } = params;
     let url = `/api/stocks/forecast/list?page=${page}&limit=${limit}`;
     if (report_period) url += `&report_period=${encodeURIComponent(report_period)}`;
     if (forecast_type) url += `&forecast_type=${encodeURIComponent(forecast_type)}`;
+    if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
     return api.get(url);
   },
 
@@ -152,6 +153,20 @@ export const stockApi = {
 
   // 获取市场概览数据
   getMarketOverview: () => api.get('/api/market/overview'),
+
+  // 获取国内指数行情（新API）
+  getCnIndexQuotes: (symbols = '000001,399001,399006') => {
+    return axios.get(`https://extapi.aistocklink.cn/api/cn/index/quotes?symbols=${symbols}`, {
+      timeout: 8000
+    }).then(res => res.data);
+  },
+
+  // 获取全球指数行情（新API）
+  getGbIndexQuotes: (symbols = 'HXC,XIN9,HSTECH') => {
+    return axios.get(`https://extapi.aistocklink.cn/api/gb/index/quotes?symbols=${symbols}`, {
+      timeout: 8000
+    }).then(res => res.data);
+  },
 
   // 获取用户推送设置
   getUserPushSettings: (userId) => {

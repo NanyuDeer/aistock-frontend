@@ -16,6 +16,15 @@
                   />
                 </el-select>
               </el-form-item>
+              <el-form-item label="代码搜索">
+                <el-input 
+                  v-model="filters.keyword" 
+                  placeholder="股票代码/名称" 
+                  clearable 
+                  style="width: 180px"
+                  @keyup.enter="fetchData"
+                />
+              </el-form-item>
               <el-form-item label="预告类型">
                 <el-select v-model="filters.forecastType" placeholder="全部" clearable style="width: 180px">
                   <el-option
@@ -43,41 +52,32 @@
             stripe
             style="width: 100%"
             empty-text="暂无业绩预告数据"
+            @sort-change="handleSortChange"
           >
-            <el-table-column prop="code" label="股票代码" min-width="120" sortable>
+            <el-table-column prop="code" label="股票代码" :min-width="colWidths.code" sortable>
               <template #default="{ row }">
                 <RouterLink :to="`/stock/${row.code}`" class="stock-link">{{ row.code }}</RouterLink>
               </template>
             </el-table-column>
-            <el-table-column prop="name" label="股票名称" min-width="140" sortable>
+            <el-table-column prop="name" label="股票名称" :min-width="colWidths.name" sortable>
               <template #default="{ row }">
                 <RouterLink :to="`/stock/${row.code}`" class="stock-link">{{ row.name }}</RouterLink>
               </template>
             </el-table-column>
-            <el-table-column
-              prop="report_period"
-              label="报告期"
-              min-width="110"
-              sortable
-            />
-            <el-table-column
-              prop="announcement_date"
-              label="公告日期"
-              min-width="120"
-              sortable
-            />
-            <el-table-column prop="forecast_type" label="预告类型" min-width="110" sortable>
-              <template #default="{ row }">
-                <el-tag
-                  :type="getTagType(row.forecast_type)"
-                  effect="light"
-                  :class="getToneClass(row.forecast_type)"
-                >
-                  {{ row.forecast_type || '未披露' }}
-                </el-tag>
-              </template>
+            <el-table-column 
+              prop="growth_sort_val" 
+              label="业绩预值" 
+              :min-width="colWidths.growth_display_val" 
+              align="right"
+              sortable="custom"
+            >
+               <template #default="{ row }">
+                 <span class="growth-val" :class="row.growth_highlight">
+                   {{ row.growth_display_val }}
+                 </span>
+               </template>
             </el-table-column>
-            <el-table-column prop="forecast_summary" label="业绩预告摘要" min-width="320">
+            <el-table-column prop="forecast_summary" label="业绩预告摘要" min-width="200">
               <template #default="{ row }">
                 <div
                   class="summary-text"
@@ -93,7 +93,7 @@
               @size-change="handleSizeChange"
               @current-change="handleCurrentChange"
               :current-page="currentPage"
-              :page-sizes="[10, 20, 50, 100]"
+              :page-sizes="[10, 20, 50, 100, 10000]"
               :page-size="pageSize"
               layout="total, sizes, prev, pager, next, jumper"
               :total="total"
@@ -138,9 +138,17 @@ export default {
     const currentPage = ref(1)
     const pageSize = ref(20)
 
-    const filters = ref({ reportPeriod: '', forecastType: '' })
+    const filters = ref({ reportPeriod: '2025年年报', forecastType: '', keyword: '' })
     const reportPeriodOptions = ref([])
     const forecastTypeOptions = ref([])
+    const sortState = ref({ prop: '', order: '' })
+    
+    // 自适应列宽存储对象
+    const colWidths = ref({
+      code: 90,
+      name: 100,
+      growth_display_val: 100
+    })
 
     const getTagType = (type) => {
       if (!type) return 'info'
@@ -159,6 +167,125 @@ export default {
       if (type.includes('警')) return 'tone-warning'
       return ''
     }
+
+    // 字符宽度计算辅助函数
+    const getTextWidth = (str) => {
+      let len = 0;
+      for (let i = 0; i < str.length; i++) {
+        // 中文算1个单位，非中文算0.6个单位（更紧凑的估算）
+        if (str.charCodeAt(i) > 127 || str.charCodeAt(i) === 94) {
+          len += 1;
+        } else {
+          len += 0.6;
+        }
+      }
+      return len;
+    }
+
+    const calcGrowthInfo = (row) => {
+      const text = row.forecast_summary || '';
+      const type = row.forecast_type || '';
+      
+      const matches = text.match(/(\d+(?:\.\d+)?)(?=%)/g);
+      // 用于排序的默认极小值
+      if (!matches || matches.length === 0) {
+        return { num: -9999999, display: '--', highlight: '' };
+      }
+      
+      const nums = matches.map(parseFloat);
+      let num = 0;
+      let display = '';
+      let highlight = '';
+
+      const isPositive = type.includes('增') || type.includes('盈');
+      const isNegative = type.includes('降') || type.includes('亏') || type.includes('减');
+      
+      if (isPositive) {
+        // 预增取最大值
+        const val = Math.max(...nums);
+        num = val;
+        display = `+${val}%`;
+        highlight = 'tone-increase';
+      } else if (isNegative) {
+        // 预减取最小值（幅度最小？通常业绩预告说下降20%-50%，那应该是-50%比较糟糕，或者-20%比较好？）
+        // 排序通常希望：涨幅高的在上面，跌幅大的在下面。
+        // 下降 20% -> -20。 下降 50% -> -50。
+        // 如果 text 是 "下降20%至50%"，nums是 [20, 50]。
+        // 这里的逻辑之前对应的是： displayVal = `-${val}%` where val = Math.min(...nums)
+        // 也就是 "下降20%至50%" 显示 "-20%"。这是一个保守估计或者说乐观估计？
+        // 如果这里逻辑不变：
+        const val = Math.min(...nums);
+        num = -val;
+        display = `-${val}%`;
+        highlight = 'tone-decrease';
+      } else {
+        const val = Math.max(...nums); 
+        num = val;
+        display = `${val}%`;
+        
+        if (type.includes('平')) highlight = 'tone-flat';
+        else if (type.includes('警')) highlight = 'tone-warning';
+      }
+      
+      return { num, display, highlight };
+    }
+
+    const performSort = () => {
+      const { prop, order } = sortState.value
+      if (prop === 'growth_sort_val' && order) {
+        tableData.value.sort((a, b) => {
+          const valA = a.growth_sort_val;
+          const valB = b.growth_sort_val;
+          
+          const isNullA = valA === -9999999;
+          const isNullB = valB === -9999999;
+  
+          if (isNullA && isNullB) return 0;
+          if (isNullA) return 1; // 空值排在最后
+          if (isNullB) return -1; // 空值排在最后
+            
+          if (order === 'ascending') {
+            return valA - valB;
+          } else {
+            return valB - valA;
+          }
+        });
+      }
+    }
+
+    const handleSortChange = ({ prop, order }) => {
+      sortState.value = { prop, order }
+      performSort()
+    }
+
+    // 计算自适应列宽
+    const calcColumnWidths = () => {
+      const columns = [
+        { prop: 'code', label: '股票代码', min: 80 },
+        { prop: 'name', label: '股票名称', min: 90 },
+        { prop: 'growth_display_val', label: '业绩预值', min: 90 }
+      ]
+
+      const newWidths = {}
+      
+      columns.forEach(col => {
+        let maxLen = getTextWidth(col.label)
+        
+        tableData.value.forEach(row => {
+          const val = row[col.prop]
+          if (val) {
+            const len = getTextWidth(String(val))
+            if (len > maxLen) maxLen = len
+          }
+        })
+        
+        // 14px * 长度 + padding 20px
+        newWidths[col.prop] = Math.max(col.min, Math.ceil(maxLen * 14 + 20))
+      })
+      
+      colWidths.value = { ...colWidths.value, ...newWidths }
+    }
+
 
     const formatSummary = (text = '', forecastType) => {
       if (!text) return ''
@@ -194,12 +321,26 @@ export default {
           page: currentPage.value,
           limit: pageSize.value,
           report_period: filters.value.reportPeriod,
-          forecast_type: filters.value.forecastType
+          forecast_type: filters.value.forecastType,
+          keyword: filters.value.keyword
         }
         const res = await stockApi.getForecastList(params)
         if (res && res.code === 0) {
-          tableData.value = res.data.list || []
+          // 预处理数据，计算业绩预值用于排序
+          tableData.value = (res.data.list || []).map(row => {
+            const info = calcGrowthInfo(row);
+            return {
+              ...row,
+              growth_sort_val: info.num,
+              growth_display_val: info.display,
+              growth_highlight: info.highlight
+            };
+          });
+          
           total.value = res.data.total || 0
+          calcColumnWidths()
+          // 应用当前排序
+          performSort()
         } else {
           tableData.value = []
           total.value = 0
@@ -239,13 +380,16 @@ export default {
       currentPage,
       pageSize,
       filters,
+      colWidths,
       reportPeriodOptions,
       forecastTypeOptions,
       handleSizeChange,
       handleCurrentChange,
       formatSummary,
       getTagType,
-      getToneClass
+      getToneClass,
+      // getGrowthData // 移除旧函数导出
+      handleSortChange
     }
   }
 }
@@ -343,6 +487,10 @@ export default {
 
   .stock-link:hover {
     text-decoration: underline;
+  }
+  
+  .growth-val {
+    font-weight: 600;
   }
 
   /* Custom tones for tags: increase = red, decrease = green */
