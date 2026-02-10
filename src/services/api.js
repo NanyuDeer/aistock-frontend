@@ -89,8 +89,12 @@ export const stockApi = {
   // 确认添加从图片中识别的股票
   confirmStocksFromImage: () => api.post('/api/stocks/confirm_from_image'),
 
-  // 根据关键词搜索股票
-  searchStocks: (keyword, limit = 10) => api.get(`/api/stocks/search?keyword=${keyword}&limit=${limit}`),
+  // 根据关键词搜索股票（新版extapi）
+  searchStocks: (keyword, pageSize = 20) => {
+    return axios.get(`https://extapi.aistocklink.cn/api/cn/stocks?keyword=${encodeURIComponent(keyword)}&pageSize=${pageSize}`, {
+      timeout: 8000
+    }).then(res => res.data);
+  },
 
   // 获取热门股票（旧版）
   getHotStocks: (symbol) => api.get(`/api/stocks/hot?symbol=${symbol || '国内人气榜'}`),

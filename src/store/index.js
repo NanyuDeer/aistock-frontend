@@ -158,9 +158,13 @@ export default createStore({
     },
     async searchStocks(_, { keyword, limit }) {
       try {
-        const response = await stockApi.searchStocks(keyword, limit);
-        if (response.code === 0) {
-          return response.data.stocks;
+        const response = await stockApi.searchStocks(keyword, limit || 20);
+        if (response.code === 200 && response.data?.股票列表) {
+          return response.data.股票列表.map(item => ({
+            code: item.股票代码,
+            name: item.股票简称,
+            market: item.市场代码
+          }));
         }
         return [];
       } catch (error) {

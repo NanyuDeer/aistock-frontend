@@ -163,7 +163,6 @@
                   <span v-if="stock.market" class="market-code">{{ stock.market.toUpperCase() }}</span>
                   <span class="stock-code">{{ stock.code }}</span>
                 </div>
-                <p v-if="stock.industry">行业：{{ stock.industry }}</p>
             </div>
             <div class="stock-actions">
               <el-button type="primary" size="small" @click="viewStockDetail(stock.code)">
