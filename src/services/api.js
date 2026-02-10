@@ -122,7 +122,7 @@ export const stockApi = {
     return api.get(url);
   },
 
-  // 获取股票相关新闻列表
+  // 获取股票相关新闻列表（用于股票详情页）
   getStockNews: (code, page = 1, limit = 5) => {
     return api.get(`/api/news/get?code=${encodeURIComponent(code)}&page=${page}&limit=${limit}`);
   },
@@ -132,12 +132,47 @@ export const stockApi = {
     return api.get(`/api/news/pushnews?page=${page}&limit=${limit}`);
   },
   
-  // 获取新闻详情
+  // 获取新闻详情（用于股票详情页旧接口）
   getNewsDetail: (newsId) => {
-    // 为新闻详情API设置更长的超时时间
     return api.get(`/api/news/detail?id=${encodeURIComponent(newsId)}`, {
-      timeout: 300000 // 5分钟超时
+      timeout: 300000
     });
+  },
+
+  // --- 新版资讯 API（主页用） ---
+  // 头条新闻
+  getHeadlineNews: () => {
+    return axios.get('https://extapi.aistocklink.cn/api/news/headlines', {
+      timeout: 8000
+    }).then(res => res.data);
+  },
+
+  // 国内资讯
+  getCnNews: () => {
+    return axios.get('https://extapi.aistocklink.cn/api/news/cn', {
+      timeout: 8000
+    }).then(res => res.data);
+  },
+
+  // 港股资讯
+  getHkNews: () => {
+    return axios.get('https://extapi.aistocklink.cn/api/news/hk', {
+      timeout: 8000
+    }).then(res => res.data);
+  },
+
+  // 美股资讯
+  getGbNews: () => {
+    return axios.get('https://extapi.aistocklink.cn/api/news/gb', {
+      timeout: 8000
+    }).then(res => res.data);
+  },
+
+  // 新版新闻全文
+  getNewsFullText: (newsId) => {
+    return axios.get(`https://extapi.aistocklink.cn/api/news/${newsId}`, {
+      timeout: 15000
+    }).then(res => res.data);
   },
   
   // 获取标签相关的龙头股票

@@ -102,7 +102,7 @@
                 <!-- 正文内容 -->
                 <div class="news-detail-content-body">
                   <h4>正文内容</h4>
-                  <div class="news-content">{{ newsDetail.content }}</div>
+                  <div class="news-content" v-html="newsDetail.content"></div>
                 </div>
                 
                 <!-- 底部信息 -->
@@ -234,39 +234,32 @@ export default {
     // 国内资讯
     const fetchDomesticNews = async () => {
       try {
-        const response = await store.dispatch('fetchNews', { code: 'cn', page: 1, limit: 5 });
-        if (response) {
-          domesticNews.value = response.news;
-        }
+        const news = await store.dispatch('fetchCnNews');
+        domesticNews.value = news;
       } catch (error) {
         console.error('获取国内资讯失败:', error);
-        ElMessage.error('获取国内资讯失败');
       }
     };
 
     // 外围资讯
     const fetchForeignNews = async () => {
       try {
-        const response = await store.dispatch('fetchNews', { code: 'hk_us', page: 1, limit: 5 });
-        if (response) {
-          foreignNews.value = response.news;
-        }
+        const news = await store.dispatch('fetchForeignNews');
+        foreignNews.value = news;
       } catch (error) {
         console.error('获取外围资讯失败:', error);
-        ElMessage.error('获取外围资讯失败');
       }
     };
 
     // 头条新闻
     const fetchHeadlineNews = async () => {
       try {
-        const response = await store.dispatch('fetchNews', { code: 'top', page: 1, limit: 5 });
-        if (response && response.news.length > 0) {
-          headlineNews.value = response.news;
+        const news = await store.dispatch('fetchHeadlineNews');
+        if (news.length > 0) {
+          headlineNews.value = news;
         }
       } catch (error) {
         console.error('获取头条新闻失败:', error);
-        ElMessage.error('获取头条新闻失败');
       }
     };
 
@@ -851,7 +844,6 @@ export default {
             color: var(--text-secondary);
             line-height: 1.8;
             font-size: 1rem;
-            white-space: pre-line;
             max-height: 38vh;
             overflow-y: auto;
             padding: 8px 4px 8px 0;
@@ -859,6 +851,12 @@ export default {
             border-radius: 6px;
             scrollbar-width: thin;
             scrollbar-color: var(--primary-color) #f8f9fa;
+
+            :deep(img) {
+              max-width: 100%;
+              height: auto;
+              border-radius: 4px;
+            }
           }
           .news-content::-webkit-scrollbar {
             width: 6px;
@@ -919,6 +917,8 @@ export default {
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
+      overflow: hidden !important;
+      top: auto !important;
       
       .el-dialog.news-detail_dialog {
         margin: 0 !important;

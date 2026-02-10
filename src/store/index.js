@@ -251,53 +251,101 @@ export default createStore({
     },
     async fetchNewsDetail(_, newsId) {
       try {
-        console.log(`[DEBUG] Store action - 获取新闻详情: ${newsId}`);
-        
-        // 添加超时提示
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('请求超时，可能是网络较慢或服务器繁忙')), 280000);
-        });
-        
-        const response = await Promise.race([
-          stockApi.getNewsDetail(newsId),
-          timeoutPromise
-        ]);
-        
-        console.log(`[DEBUG] 新闻详情响应:`, response);
-        
-        if (response.code === 0) {
-          return response.data;
-        } else {
-          console.error('获取新闻详情失败，服务器返回错误:', response);
-          return null;
+        const response = await stockApi.getNewsFullText(newsId);
+        if (response.code === 200 && response.data) {
+          const item = response.data;
+          return {
+            title: item.标题 || '',
+            summary: item.摘要 || '',
+            content: item.正文 || item.摘要 || '',
+            publish_time: item.时间 || '',
+            url: item.链接 || '',
+            tag: { positive: [], negative: [] }
+          };
         }
+        return null;
       } catch (error) {
         console.error('获取新闻详情失败:', error);
-        
-        // 重新抛出错误以便组件可以捕获并显示适当的错误信息
         throw error;
       }
     },
-    async fetchNews(_, { code, page = 1, limit = 10 }) {
+    // 获取头条新闻（新版 API）
+    async fetchHeadlineNews() {
       try {
-        const response = await stockApi.getStockNews(code, page, limit);
-        if (response.code === 0) {
-          return response.data;
+        const response = await stockApi.getHeadlineNews();
+        if (response.code === 200 && response.data) {
+          return (response.data.头条新闻 || []).map(item => ({
+            id: item.ID,
+            title: item.标题,
+            content: item.摘要,
+            publish_time: item.时间,
+            url: item.链接,
+            author: item.作者,
+            tag: { positive: [], negative: [] }
+          }));
         }
-        return null;
+        return [];
       } catch (error) {
-        console.error('获取新闻失败:', error);
-        return null;
+        console.error('获取头条新闻失败:', error);
+        return [];
       }
     },
-    
-    // 添加获取推送新闻的 action
+    // 获取国内资讯（新版 API）
+    async fetchCnNews() {
+      try {
+        const response = await stockApi.getCnNews();
+        if (response.code === 200 && response.data) {
+          return (response.data.头条新闻 || []).map(item => ({
+            id: item.ID,
+            title: item.标题,
+            content: item.摘要,
+            publish_time: item.时间,
+            url: item.链接,
+            author: item.作者,
+            tag: { positive: [], negative: [] }
+          }));
+        }
+        return [];
+      } catch (error) {
+        console.error('获取国内资讯失败:', error);
+        return [];
+      }
+    },
+    // 获取外围资讯（混合港股+美股，取最新5条）
+    async fetchForeignNews() {
+      try {
+        const [hkRes, gbRes] = await Promise.allSettled([
+          stockApi.getHkNews(),
+          stockApi.getGbNews()
+        ]);
+        let allNews = [];
+        const mapItem = item => ({
+          id: item.ID,
+          title: item.标题,
+          content: item.摘要,
+          publish_time: item.时间,
+          url: item.链接,
+          author: item.作者,
+          tag: { positive: [], negative: [] }
+        });
+        if (hkRes.status === 'fulfilled' && hkRes.value?.code === 200) {
+          allNews.push(...(hkRes.value.data?.头条新闻 || []).map(mapItem));
+        }
+        if (gbRes.status === 'fulfilled' && gbRes.value?.code === 200) {
+          allNews.push(...(gbRes.value.data?.头条新闻 || []).map(mapItem));
+        }
+        // 按时间倒序排列，取前5条
+        allNews.sort((a, b) => new Date(b.publish_time) - new Date(a.publish_time));
+        return allNews.slice(0, 5);
+      } catch (error) {
+        console.error('获取外围资讯失败:', error);
+        return [];
+      }
+    },
+    // 获取自选股推送新闻
     async fetchPushNews(_, { page = 1, limit = 5 } = {}) {
       try {
-        console.log('[DEBUG] 发起获取自选股推送新闻请求:', { page, limit });
         const response = await stockApi.getPushNews(page, limit);
-        console.log('[DEBUG] 获取自选股推送新闻响应:', response);
-        
         if (response.code === 0) {
           return response.data;
         }

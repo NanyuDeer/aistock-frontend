@@ -255,7 +255,7 @@
       width="50%">
       <div v-if="currentNewsDetail">
         <h3>{{ currentNewsDetail.title }}</h3>
-        <p>{{ currentNewsDetail.content }}</p>
+        <div v-html="currentNewsDetail.content"></div>
         <div class="news-footer">
           <span class="news-source">{{ currentNewsDetail.source }}</span>
           <span class="news-time">{{ currentNewsDetail.publish_time }}</span>
