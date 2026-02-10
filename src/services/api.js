@@ -92,8 +92,30 @@ export const stockApi = {
   // 根据关键词搜索股票
   searchStocks: (keyword, limit = 10) => api.get(`/api/stocks/search?keyword=${keyword}&limit=${limit}`),
 
-  // 获取热门股票
+  // 获取热门股票（旧版）
   getHotStocks: (symbol) => api.get(`/api/stocks/hot?symbol=${symbol || '国内人气榜'}`),
+
+  // --- 新版热门股票API ---
+  // 获取股票人气榜
+  getStockRank: () => {
+    return axios.get('https://extapi.aistocklink.cn/api/cn/market/stockrank/', {
+      timeout: 8000
+    }).then(res => res.data);
+  },
+
+  // 批量获取股票基本信息
+  getStockInfos: (symbols) => {
+    return axios.get(`https://extapi.aistocklink.cn/api/cn/stock/infos?symbols=${symbols}`, {
+      timeout: 8000
+    }).then(res => res.data);
+  },
+
+  // 批量获取股票实时行情
+  getStockQuotes: (symbols) => {
+    return axios.get(`https://extapi.aistocklink.cn/api/cn/stock/quotes/core?symbols=${symbols}`, {
+      timeout: 8000
+    }).then(res => res.data);
+  },
 
   // 获取股票详细信息
   getStockDetail: (code) => api.get(`/api/stocks/detail?code=${code}`),

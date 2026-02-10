@@ -168,22 +168,74 @@ export default createStore({
         return [];
       }
     },
-    async fetchHotStocks(_, symbol = '国内人气榜') {
+    async fetchHotStocks() {
       try {
-        // 热门股票API已经包含market、industry、latest_price和change_percent字段
-        const response = await stockApi.getHotStocks(symbol);
-        if (response.code === 0) {
-          return response.data.map(stock => ({
-            code: stock.code,
-            name: stock.name,
-            change_percent: stock.change_percent,
-            latest_price: stock.latest_price,
-            market: stock.market,
-            industry: stock.industry,
-            rank: stock.rank
-          }));
+        // 1. 获取人气榜股票代码
+        const rankResponse = await stockApi.getStockRank();
+        if (rankResponse.code !== 200 || !rankResponse.data?.人气榜) {
+          return [];
         }
-        return [];
+
+        const rankList = rankResponse.data.人气榜.slice(0, 8); // 只取前8个
+        const codes = rankList.map(item => item.股票代码);
+        
+        if (codes.length === 0) return [];
+
+        // 2. 分成4组并发请求（每组2个）
+        const groups = [
+          codes.slice(0, 2).join(','),
+          codes.slice(2, 4).join(','),
+          codes.slice(4, 6).join(','),
+          codes.slice(6, 8).join(',')
+        ].filter(group => group); // 过滤空组
+
+        const requests = [];
+        groups.forEach(group => {
+          requests.push(stockApi.getStockInfos(group));
+          requests.push(stockApi.getStockQuotes(group));
+        });
+
+        const results = await Promise.allSettled(requests);
+
+        // 3. 合并信息数据
+        const allInfos = [];
+        const allQuotes = [];
+        
+        results.forEach((result, index) => {
+          if (result.status === 'fulfilled' && result.value?.code === 200) {
+            if (index % 2 === 0) {
+              // 偶数索引是info请求
+              allInfos.push(...(result.value.data?.股票信息 || []));
+            } else {
+              // 奇数索引是quote请求
+              allQuotes.push(...(result.value.data?.行情 || []));
+            }
+          }
+        });
+
+        // 4. 组装最终数据
+        const stockMap = {};
+        allInfos.forEach(info => {
+          stockMap[info.股票代码] = {
+            code: info.股票代码,
+            name: info.股票简称,
+            market: info.市场代码,
+            industry: info.所属行业
+          };
+        });
+
+        allQuotes.forEach(quote => {
+          if (stockMap[quote.股票代码]) {
+            stockMap[quote.股票代码].latest_price = quote.最新价;
+            stockMap[quote.股票代码].change_percent = quote.涨跌幅;
+          }
+        });
+
+        // 5. 按排名顺序返回
+        return rankList.map(rank => {
+          const stock = stockMap[rank.股票代码];
+          return stock ? { ...stock, rank: rank.当前排名 } : null;
+        }).filter(Boolean);
       } catch (error) {
         console.error('获取热门股票失败:', error);
         return [];
