@@ -637,14 +637,8 @@ export default createStore({
       }
     },
 
-    async fetchStockEvaluation({ state }, { stockCode, refresh = false }) {
+    async fetchStockEvaluation(_, { stockCode, refresh = false }) {
       try {
-        // 检查用户是否登录
-        if (!state.isAuthenticated) {
-          console.error('[DEBUG] 获取股票AI评估失败: 用户未登录');
-          return null;
-        }
-        
         console.log('[DEBUG] 发起获取股票AI评估请求:', stockCode, '刷新:', refresh);
         const response = await stockApi.getStockEvaluation(stockCode, refresh);
         console.log('[DEBUG] 获取股票AI评估响应:', response);
