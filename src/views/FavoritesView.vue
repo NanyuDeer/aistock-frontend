@@ -29,24 +29,25 @@
           :data="favoriteStocks" 
           border 
           stripe 
-          class="stock-table">
-          <el-table-column prop="code" label="代码" width="100" />
+          class="stock-table"
+          style="table-layout: auto;">
+          <el-table-column prop="code" label="代码" width="100">
+            <template #default="scope">
+              <span class="market-code">{{ scope.row.market }}</span>
+              <span>{{ scope.row.code }}</span>
+            </template>
+          </el-table-column>
           <el-table-column prop="name" label="名称" width="160" />
-          <el-table-column label="最新价" width="100" align="right">
+          <el-table-column label="最新价" align="right">
             <template #default="scope">
               <span>{{ formatPrice(scope.row.price) }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="涨跌幅" width="100" align="right">
+          <el-table-column label="涨跌幅" align="right">
             <template #default="scope">
               <span :class="scope.row.change >= 0 ? 'stock-up' : 'stock-down'">
                 {{ scope.row.change >= 0 ? '+' : '' }}{{ formatPercent(scope.row.change) }}%
               </span>
-            </template>
-          </el-table-column>
-          <el-table-column label="市值" width="120" align="right">
-            <template #default="scope">
-              <span>{{ formatMarketCap(scope.row.marketCap) }}</span>
             </template>
           </el-table-column>
           <el-table-column prop="industry" label="所属行业" width="140" />
@@ -450,5 +451,17 @@ export default {
 .action-buttons {
   display: flex;
   gap: 10px;
+}
+
+.market-code {
+  display: inline-block;
+  padding: 2px 6px;
+  margin-right: 4px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  color: #1677ff;
+  background-color: #f0f5ff;
+  border: 1px solid #d6e4ff;
+  border-radius: 12px;
 }
 </style>
