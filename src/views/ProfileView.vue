@@ -6,24 +6,18 @@
           <h2>个人信息</h2>
         </div>
         <div class="card-body">
-          <div class="avatar-section">
-            <img :src="user?.avatar || defaultAvatar" alt="头像" class="avatar" />
-            <el-upload
-              class="avatar-uploader"
-              action="/api/user/upload-avatar"
-              :show-file-list="false"
-              :on-success="handleAvatarUploadSuccess"
-              :headers="uploadHeaders"
-            >
-              <el-button size="small" type="primary">上传头像</el-button>
-            </el-upload>
-          </div>
-          <div class="nickname-section">
-            <el-input v-model="nickname" placeholder="请输入昵称" />
-            <el-button type="primary" @click="updateUserProfile">保存信息</el-button>
+          <div class="user-info-section">
+            <div class="avatar-display">
+              <img :src="user?.avatar || defaultAvatar" alt="头像" class="avatar-circle" />
+            </div>
+            <div class="username-display">
+              <span class="username">{{ user?.name || '未设置用户名' }}</span>
+            </div>
           </div>
 
-          <!-- 添加推送设置区域 -->
+          <el-divider />
+
+          <!-- 推送设置区域 -->
           <div class="push-settings-section">
             <h3>推送设置</h3>
             <div class="settings-container">
@@ -41,13 +35,20 @@
               />
             </div>
           </div>
+
+          <el-divider />
         </div>
         <div class="card-footer">
           <h3>我的自选股</h3>
           <el-table :data="favoriteStocks" border>
-            <el-table-column prop="code" label="股票代码" />
-            <el-table-column prop="name" label="股票名称" />
-            <el-table-column prop="added_at" label="添加时间" />
+            <el-table-column label="股票代码" align="center">
+              <template #default="scope">
+                <span class="market-code">{{ getMarketCode(scope.row.code) }}</span>
+                <span>{{ scope.row.code }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="name" label="股票名称" align="center" />
+            <el-table-column prop="added_at" label="添加时间" align="center" />
           </el-table>
         </div>
       </div>
@@ -67,43 +68,12 @@ export default {
     const store = useStore()
     const user = store.state.user
     const favoriteStocks = ref([]) // 自选股列表
-    const nickname = ref(user?.name || '')
     const defaultAvatar = require('@/assets/default-avatar.svg')
     const settingsLoading = ref(false)
     const pushSettings = ref({
       stock_push: false,
       morning_report: false
     })
-
-    // Cookie 会通过 withCredentials 自动携带，无需手动设置
-    const uploadHeaders = {}
-
-    const handleAvatarUploadSuccess = (response) => {
-      if (response.code === 0) {
-        ElMessage.success('头像上传成功')
-        store.commit('setUser', { ...user, avatar: response.data.avatar_url })
-      } else {
-        ElMessage.error('头像上传失败')
-      }
-    }
-
-    const updateUserProfile = async () => {
-      try {
-        const response = await store.dispatch('updateUserProfile', {
-          nickname: nickname.value,
-          avatar_url: user.avatar
-        })
-        if (response) {
-          ElMessage.success('用户信息更新成功')
-          store.commit('setUser', { ...user, name: nickname.value }) // 更新缓存
-        } else {
-          ElMessage.error('用户信息更新失败')
-        }
-      } catch (error) {
-        console.error('更新用户信息失败:', error)
-        ElMessage.error('用户信息更新失败')
-      }
-    }
 
     const fetchFavoriteStocks = () => {
       try {
@@ -131,36 +101,12 @@ export default {
       }
     };
 
-    const updatePushSettings = async (type) => {
-      if (!user?.id) return;
-      
-      settingsLoading.value = true;
-      try {
-        const settings = {
-          stock_push: pushSettings.value.stock_push,
-          morning_report: pushSettings.value.morning_report
-        };
-        
-        const success = await store.dispatch('updatePushSettings', {
-          userId: user.id,
-          settings: settings
-        });
-        
-        if (success) {
-          ElMessage.success('推送设置已更新');
-        } else {
-          ElMessage.error('更新推送设置失败');
-          // 回滚UI状态
-          await fetchPushSettings();
-        }
-      } catch (error) {
-        console.error('更新推送设置失败:', error);
-        ElMessage.error('更新推送设置失败');
-        // 回滚UI状态
-        await fetchPushSettings();
-      } finally {
-        settingsLoading.value = false;
-      }
+    const getMarketCode = (code) => {
+      // 简单的市场代码判断逻辑，可以根据需要扩展
+      if (!code) return '';
+      if (code.startsWith('0') || code.startsWith('3')) return 'SZ';
+      if (code.startsWith('6') || code.startsWith('9')) return 'SH';
+      return '';
     };
 
     onMounted(() => {
@@ -178,14 +124,11 @@ export default {
     return {
       user,
       favoriteStocks,
-      nickname,
       defaultAvatar,
-      uploadHeaders,
-      handleAvatarUploadSuccess,
-      updateUserProfile,
       pushSettings,
       settingsLoading,
-      updatePushSettings
+      updatePushSettings,
+      getMarketCode
     }
   }
 }
@@ -221,32 +164,34 @@ export default {
     }
 
     .card-body {
-      .avatar-section {
+      .user-info-section {
         display: flex;
         align-items: center;
+        justify-content: center;
         margin-bottom: 20px;
 
-        .avatar {
-          width: 80px;
-          height: 80px;
-          border-radius: 50%;
+        .avatar-display {
           margin-right: 20px;
+
+          .avatar-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 3px solid #e0e0e0;
+          }
         }
-      }
 
-      .nickname-section {
-        display: flex;
-        align-items: center;
-
-        .el-input {
-          margin-right: 10px;
+        .username-display {
+          .username {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #666;
+          }
         }
       }
 
       .push-settings-section {
         margin-top: 20px;
-        padding-top: 15px;
-        border-top: 1px solid #eee;
 
         h3 {
           font-size: 1.1rem;
@@ -271,5 +216,17 @@ export default {
       }
     }
   }
+}
+
+.market-code {
+  display: inline-block;
+  padding: 2px 6px;
+  margin-right: 4px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  color: #1677ff;
+  background-color: #f0f5ff;
+  border: 1px solid #d6e4ff;
+  border-radius: 12px;
 }
 </style>

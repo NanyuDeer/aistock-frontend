@@ -121,20 +121,6 @@ export default createStore({
       }
     },
 
-    async updateUserProfile({ commit, state }, { nickname, avatar_url }) {
-      try {
-        const response = await authApi.updateUserProfile(nickname, avatar_url);
-        if (response.code === 0) {
-          const updatedUser = { ...state.user, name: nickname, avatar: avatar_url };
-          commit('setUser', updatedUser); // 更新 Vuex 和缓存
-          return true;
-        }
-        return false;
-      } catch (error) {
-        console.error('更新用户信息失败:', error);
-        return false;
-      }
-    },
     async addFavoriteStocks({ commit, state }, stocks) {
       try {
         // 转换为股票代码数组

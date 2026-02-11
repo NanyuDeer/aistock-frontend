@@ -65,13 +65,7 @@ export const authApi = {
   getAuthMe: () => api.get('/api/users/me'),
 
   // 退出登录（清除后端 HttpOnly Cookie）
-  logout: () => api.post('/api/auth/logout'),
-
-  // 更新用户信息（昵称和头像）
-  updateUserProfile: (nickname, avatar_url) => api.post('/api/user/profile', { 
-    nickname, 
-    avatar_url 
-  })
+  logout: () => api.post('/api/auth/logout')
 };
 
 // 微信网页授权登录地址（用于微信浏览器内跳转）
