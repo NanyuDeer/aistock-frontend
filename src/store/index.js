@@ -106,7 +106,8 @@ export default createStore({
             const stocks = userData['自选股'].map(s => ({
               code: s['股票代码'],
               name: s['股票简称'],
-              market: s['市场代码']
+              market: s['市场代码'],
+              added_at: s['添加时间']
             }));
             commit('setFavoriteStocks', stocks);
           }
