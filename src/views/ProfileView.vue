@@ -59,6 +59,7 @@
 <script>
 import { ref, onMounted } from 'vue'
 import { useStore } from 'vuex'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import 'element-plus/es/components/message/style/css';
 
@@ -66,6 +67,7 @@ export default {
   name: 'ProfileView',
   setup() {
     const store = useStore()
+    const router = useRouter()
     const user = store.state.user
     const favoriteStocks = ref([]) // 自选股列表
     const defaultAvatar = require('@/assets/default-avatar.svg')
@@ -75,13 +77,21 @@ export default {
       morning_report: false
     })
 
-    const fetchFavoriteStocks = () => {
+    const fetchUserData = async () => {
       try {
-        favoriteStocks.value = store.getters.favoriteStocks
+        const response = await store.dispatch('checkCookieAuth');
+        if (response) {
+          // 数据已通过 checkCookieAuth 更新到 store 中
+          favoriteStocks.value = store.getters.favoriteStocks;
+        } else {
+          ElMessage.error('获取用户信息失败，请重新登录');
+          router.push('/login');
+        }
       } catch (error) {
-        console.error('获取自选股失败:', error)
+        console.error('获取用户数据失败:', error);
+        ElMessage.error('获取用户信息失败');
       }
-    }
+    };
 
     const fetchPushSettings = async () => {
       if (!user?.id) return;
@@ -92,10 +102,49 @@ export default {
         if (response && response.settings) {
           pushSettings.value.stock_push = response.settings.stock_push || false;
           pushSettings.value.morning_report = response.settings.morning_report || false;
+        } else {
+          // 如果没有设置，使用默认值
+          pushSettings.value.stock_push = false;
+          pushSettings.value.morning_report = false;
         }
       } catch (error) {
         console.error('获取推送设置失败:', error);
         ElMessage.error('获取推送设置失败');
+        // 出错时也使用默认值
+        pushSettings.value.stock_push = false;
+        pushSettings.value.morning_report = false;
+      } finally {
+        settingsLoading.value = false;
+      }
+    };
+
+    const updatePushSettings = async (type) => {
+      if (!user?.id) return;
+      
+      settingsLoading.value = true;
+      try {
+        const settings = {
+          stock_push: pushSettings.value.stock_push,
+          morning_report: pushSettings.value.morning_report
+        };
+        
+        const success = await store.dispatch('updatePushSettings', {
+          userId: user.id,
+          settings: settings
+        });
+        
+        if (success) {
+          ElMessage.success('推送设置已更新');
+        } else {
+          ElMessage.error('更新推送设置失败');
+          // 回滚UI状态
+          await fetchPushSettings();
+        }
+      } catch (error) {
+        console.error('更新推送设置失败:', error);
+        ElMessage.error('更新推送设置失败');
+        // 回滚UI状态
+        await fetchPushSettings();
       } finally {
         settingsLoading.value = false;
       }
@@ -113,12 +162,8 @@ export default {
       // 重置滚动位置到顶部
       window.scrollTo(0, 0);
       
-      if (!user) {
-        ElMessage.error('请先登录')
-      } else {
-        fetchFavoriteStocks()
-        fetchPushSettings()
-      }
+      fetchUserData();
+      fetchPushSettings();
     })
 
     return {
