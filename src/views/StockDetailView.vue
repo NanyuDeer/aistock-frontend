@@ -1286,7 +1286,21 @@ export default {
       }
 
       @media (max-width: 576px) {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+
+        .meta-item {
+          padding: 8px 10px;
+          gap: 4px;
+        }
+
+        .meta-label {
+          font-size: 0.8rem;
+        }
+
+        .meta-value {
+          font-size: 0.92rem;
+        }
       }
 
       .meta-item {
