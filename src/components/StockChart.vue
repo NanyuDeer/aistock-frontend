@@ -139,12 +139,6 @@ export default {
       return str;
     };
 
-    const formatVolumeAxis = (value) => {
-      if (value >= 100000000) return `${(value / 100000000).toFixed(1)}亿`;
-      if (value >= 10000) return `${(value / 10000).toFixed(1)}万`;
-      return `${Math.round(value)}`;
-    };
-
     const renderEmpty = (message) => {
       if (!chartInstance.value) return;
       chartInstance.value.setOption(
@@ -177,12 +171,6 @@ export default {
 
       const categories = klineItems.value.map(item => item.time);
       const candles = klineItems.value.map(item => [item.open, item.close, item.low, item.high]);
-      const volumes = klineItems.value.map(item => ({
-        value: item.volume,
-        itemStyle: {
-          color: item.close >= item.open ? UP_COLOR : DOWN_COLOR
-        }
-      }));
       const initialWindowSize = 60;
       const startPercent = categories.length > initialWindowSize
         ? Math.round((1 - initialWindowSize / categories.length) * 100)
@@ -220,83 +208,47 @@ export default {
               ].join('');
             }
           },
-          axisPointer: {
-            link: [{ xAxisIndex: [0, 1] }]
+          grid: {
+            left: '6%',
+            right: '4%',
+            top: 10,
+            bottom: 36
           },
-          grid: [
-            {
-              left: '6%',
-              right: '4%',
-              top: 10,
-              height: '64%'
-            },
-            {
-              left: '6%',
-              right: '4%',
-              top: '78%',
-              height: '14%'
+          xAxis: {
+            type: 'category',
+            data: categories,
+            boundaryGap: true,
+            axisLine: { lineStyle: { color: '#d0d7e2' } },
+            axisTick: { show: false },
+            axisLabel: {
+              color: '#6b7280',
+              formatter: value => formatAxisLabel(value)
             }
-          ],
-          xAxis: [
-            {
-              type: 'category',
-              data: categories,
-              boundaryGap: true,
-              axisLine: { lineStyle: { color: '#d0d7e2' } },
-              axisTick: { show: false },
-              axisLabel: {
-                color: '#6b7280',
-                formatter: value => formatAxisLabel(value)
-              }
+          },
+          yAxis: {
+            scale: true,
+            splitNumber: 5,
+            axisLine: { show: false },
+            axisTick: { show: false },
+            axisLabel: {
+              color: '#6b7280',
+              formatter: value => formatPrice(toNumber(value))
             },
-            {
-              type: 'category',
-              gridIndex: 1,
-              data: categories,
-              boundaryGap: true,
-              axisLine: { show: false },
-              axisTick: { show: false },
-              axisLabel: { show: false }
+            splitLine: {
+              lineStyle: { color: '#eef1f5' }
             }
-          ],
-          yAxis: [
-            {
-              scale: true,
-              splitNumber: 5,
-              axisLine: { show: false },
-              axisTick: { show: false },
-              axisLabel: {
-                color: '#6b7280',
-                formatter: value => formatPrice(toNumber(value))
-              },
-              splitLine: {
-                lineStyle: { color: '#eef1f5' }
-              }
-            },
-            {
-              gridIndex: 1,
-              scale: true,
-              splitNumber: 2,
-              axisLine: { show: false },
-              axisTick: { show: false },
-              axisLabel: {
-                color: '#9ca3af',
-                formatter: value => formatVolumeAxis(toNumber(value))
-              },
-              splitLine: { show: false }
-            }
-          ],
+          },
           dataZoom: [
             {
               type: 'inside',
-              xAxisIndex: [0, 1],
+              xAxisIndex: [0],
               filterMode: 'filter',
               start: startPercent,
               end: 100
             },
             {
               type: 'slider',
-              xAxisIndex: [0, 1],
+              xAxisIndex: [0],
               filterMode: 'filter',
               bottom: 0,
               height: 18,
@@ -316,14 +268,6 @@ export default {
                 borderColor: UP_COLOR,
                 borderColor0: DOWN_COLOR
               }
-            },
-            {
-              name: '成交量',
-              type: 'bar',
-              xAxisIndex: 1,
-              yAxisIndex: 1,
-              data: volumes,
-              barMaxWidth: 10
             }
           ]
         },
