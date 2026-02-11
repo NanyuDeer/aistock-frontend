@@ -183,8 +183,9 @@ export default {
           color: item.close >= item.open ? UP_COLOR : DOWN_COLOR
         }
       }));
-      const startPercent = categories.length > 120
-        ? Math.round((1 - 120 / categories.length) * 100)
+      const initialWindowSize = 60;
+      const startPercent = categories.length > initialWindowSize
+        ? Math.round((1 - initialWindowSize / categories.length) * 100)
         : 0;
 
       chartInstance.value.setOption(
@@ -246,9 +247,7 @@ export default {
               axisLabel: {
                 color: '#6b7280',
                 formatter: value => formatAxisLabel(value)
-              },
-              min: 'dataMin',
-              max: 'dataMax'
+              }
             },
             {
               type: 'category',
@@ -257,9 +256,7 @@ export default {
               boundaryGap: true,
               axisLine: { show: false },
               axisTick: { show: false },
-              axisLabel: { show: false },
-              min: 'dataMin',
-              max: 'dataMax'
+              axisLabel: { show: false }
             }
           ],
           yAxis: [
@@ -293,12 +290,14 @@ export default {
             {
               type: 'inside',
               xAxisIndex: [0, 1],
+              filterMode: 'filter',
               start: startPercent,
               end: 100
             },
             {
               type: 'slider',
               xAxisIndex: [0, 1],
+              filterMode: 'filter',
               bottom: 0,
               height: 18,
               start: startPercent,
