@@ -139,7 +139,7 @@ export const stockApi = {
   },
 
   // 获取个股新闻（财联社）
-  getStockNews: (symbol, limit = 20, lastTime = 0) => {
+  getStockNews: (symbol, limit = 5, lastTime = 0) => {
     return api.get(`/api/cn/stocks/${encodeURIComponent(symbol)}/news?limit=${limit}&lastTime=${lastTime}`);
   },
   

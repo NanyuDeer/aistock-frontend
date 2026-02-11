@@ -441,7 +441,7 @@ export default createStore({
         return null;
       }
     },
-    async fetchStockNews(_, { stockCode, limit = 20, lastTime = 0 }) {
+    async fetchStockNews(_, { stockCode, limit = 5, lastTime = 0 }) {
       try {
         console.log('[DEBUG] 发起获取股票新闻请求:', { stockCode, limit, lastTime });
         const response = await stockApi.getStockNews(stockCode, limit, lastTime);

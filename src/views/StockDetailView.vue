@@ -356,7 +356,7 @@ export default {
     const forecastData = ref({});
     const forecastSummary = ref('');
     const loadingForecast = ref(false);
-    const newsLimit = ref(20);
+    const newsLimit = ref(5);
     const newsCursor = ref(0);
     const totalNews = ref(0);
     const loadingMoreNews = ref(false);
