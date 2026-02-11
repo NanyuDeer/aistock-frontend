@@ -104,9 +104,9 @@ export const stockApi = {
     }).then(res => res.data);
   },
 
-  // 批量获取股票实时行情
-  getStockQuotes: (symbols) => {
-    return axios.get(`https://extapi.aistocklink.cn/api/cn/stock/quotes/core?symbols=${symbols}`, {
+  // 批量获取股票成交活跃行情（含价格与交易数据）
+  getStockActivityQuotes: (symbols) => {
+    return axios.get(`https://extapi.aistocklink.cn/api/cn/stock/quotes/activity?symbols=${symbols}`, {
       timeout: 8000
     }).then(res => res.data);
   },

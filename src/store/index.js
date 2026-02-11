@@ -240,7 +240,7 @@ export default createStore({
         const requests = [];
         groups.forEach(group => {
           requests.push(stockApi.getStockInfos(group));
-          requests.push(stockApi.getStockQuotes(group));
+          requests.push(stockApi.getStockActivityQuotes(group));
         });
 
         const results = await Promise.allSettled(requests);
@@ -336,7 +336,7 @@ export default createStore({
             const symbols = batch.join(',');
             return Promise.allSettled([
               stockApi.getStockInfos(symbols),
-              stockApi.getStockQuotes(symbols)
+              stockApi.getStockActivityQuotes(symbols)
             ]);
           });
           
@@ -433,7 +433,7 @@ export default createStore({
       try {
         const [infoRes, quoteRes] = await Promise.allSettled([
           stockApi.getStockInfos(code),
-          stockApi.getStockQuotes(code)
+          stockApi.getStockActivityQuotes(code)
         ]);
 
         const infoData = infoRes.status === 'fulfilled' && infoRes.value?.code === 200

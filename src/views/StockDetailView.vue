@@ -210,20 +210,20 @@
         <h3 class="section-title">交易数据</h3>
         <div class="data-grid">
           <div class="data-item">
-            <span class="label">开盘价</span>
-            <span class="value">{{ stockInfo.open }}</span>
+            <span class="label">最新价</span>
+            <span class="value">{{ stockInfo.price }}</span>
           </div>
           <div class="data-item">
-            <span class="label">最高价</span>
-            <span class="value">{{ stockInfo.high }}</span>
+            <span class="label">均价</span>
+            <span class="value">{{ stockInfo.avgPrice }}</span>
           </div>
           <div class="data-item">
-            <span class="label">最低价</span>
-            <span class="value">{{ stockInfo.low }}</span>
+            <span class="label">涨跌幅</span>
+            <span class="value">{{ stockInfo.changePercent }}%</span>
           </div>
           <div class="data-item">
-            <span class="label">5分钟变化</span>
-            <span class="value">{{ stockInfo.change5min }}</span>
+            <span class="label">涨跌额</span>
+            <span class="value">{{ stockInfo.changeAmount }}</span>
           </div>
           <div class="data-item">
             <span class="label">成交量</span>
@@ -234,12 +234,44 @@
             <span class="value">{{ stockInfo.turnover }}</span>
           </div>
           <div class="data-item">
-            <span class="label">总市值</span>
-            <span class="value">{{ stockInfo.marketCap }}</span>
+            <span class="label">换手率</span>
+            <span class="value">{{ stockInfo.turnoverRate }}</span>
           </div>
           <div class="data-item">
-            <span class="label">流通市值</span>
-            <span class="value">{{ stockInfo.floatMarketCap }}</span>
+            <span class="label">量比</span>
+            <span class="value">{{ stockInfo.volumeRatio }}</span>
+          </div>
+          <div class="data-item">
+            <span class="label">最高价</span>
+            <span class="value">{{ stockInfo.high }}</span>
+          </div>
+          <div class="data-item">
+            <span class="label">最低价</span>
+            <span class="value">{{ stockInfo.low }}</span>
+          </div>
+          <div class="data-item">
+            <span class="label">今开价</span>
+            <span class="value">{{ stockInfo.open }}</span>
+          </div>
+          <div class="data-item">
+            <span class="label">昨收价</span>
+            <span class="value">{{ stockInfo.prevClose }}</span>
+          </div>
+          <div class="data-item">
+            <span class="label">涨停价</span>
+            <span class="value">{{ stockInfo.limitUp }}</span>
+          </div>
+          <div class="data-item">
+            <span class="label">跌停价</span>
+            <span class="value">{{ stockInfo.limitDown }}</span>
+          </div>
+          <div class="data-item">
+            <span class="label">外盘</span>
+            <span class="value">{{ stockInfo.outerVolume }}</span>
+          </div>
+          <div class="data-item">
+            <span class="label">内盘</span>
+            <span class="value">{{ stockInfo.innerVolume }}</span>
           </div>
           <div class="data-item">
             <span class="label">最后更新</span>
@@ -324,18 +356,26 @@ export default {
       market: '', // 添加市场代码字段
       board: '--',
       price: '--',
+      avgPrice: '--',
       change: 0,
+      changeAmount: '--',
       changePercent: '--',
       industry: '--',
       listingDate: '--',
       totalShares: '--',
       floatShares: '--',
       open: '--',
+      prevClose: '--',
       high: '--',
       low: '--',
-      change5min: '--',
+      limitUp: '--',
+      limitDown: '--',
       volume: '--',
       turnover: '--',
+      turnoverRate: '--',
+      volumeRatio: '--',
+      outerVolume: '--',
+      innerVolume: '--',
       marketCap: '--',
       floatMarketCap: '--',
       infoUpdatedAt: '--',
@@ -884,6 +924,7 @@ export default {
           const quote = snapshot.quote || {};
 
           const latestPriceNum = toNumber(quote.最新价 ?? quote.最新价格 ?? quote.price ?? quote.latest_price);
+          const avgPriceNum = toNumber(quote.均价 ?? quote.avg_price);
           const changePercentNum = toNumber(quote.涨跌幅 ?? quote.change_percent);
           const changeAmountNum = toNumber(quote.涨跌额 ?? quote.change_amount);
           const changeNum = changeAmountNum !== null
@@ -897,18 +938,26 @@ export default {
             market: info.市场代码 || quote.市场代码 || stockInfo.value.market || '',
             board: info.所属板块 || '--',
             price: formatPrice(latestPriceNum),
+            avgPrice: formatPrice(avgPriceNum),
             change: changeNum,
+            changeAmount: formatPrice(changeAmountNum),
             changePercent: formatPercentValue(changePercentNum),
             industry: info.所属行业 || '未知行业',
             listingDate: formatListingDate(info.上市时间),
             totalShares: formatScaledValue(info.总股本, '股'),
             floatShares: formatScaledValue(info.流通股, '股'),
-            open: formatPrice(quote.今开 ?? quote.开盘价 ?? quote.open),
-            high: formatPrice(quote.最高 ?? quote.最高价 ?? quote.high),
-            low: formatPrice(quote.最低 ?? quote.最低价 ?? quote.low),
-            change5min: formatPercentText(quote['5分钟涨跌幅'] ?? quote['5分钟涨跌'] ?? quote.change_5min),
+            open: formatPrice(quote.今开价 ?? quote.今开 ?? quote.开盘价 ?? quote.open),
+            prevClose: formatPrice(quote.昨收价 ?? quote.昨收 ?? quote.prev_close),
+            high: formatPrice(quote.最高价 ?? quote.最高 ?? quote.high),
+            low: formatPrice(quote.最低价 ?? quote.最低 ?? quote.low),
+            limitUp: formatPrice(quote.涨停价 ?? quote.limit_up),
+            limitDown: formatPrice(quote.跌停价 ?? quote.limit_down),
             volume: formatScaledValue(quote.成交量 ?? quote.volume),
             turnover: formatScaledValue(quote.成交额 ?? quote.turnover, '元'),
+            turnoverRate: formatPercentText(quote.换手率 ?? quote.turnover_rate),
+            volumeRatio: formatPrice(quote.量比 ?? quote.volume_ratio),
+            outerVolume: formatScaledValue(quote.外盘 ?? quote.outer_volume),
+            innerVolume: formatScaledValue(quote.内盘 ?? quote.inner_volume),
             marketCap: formatScaledValue(info.总市值, '元'),
             floatMarketCap: formatScaledValue(info.流通市值, '元'),
             infoUpdatedAt: snapshot.infoUpdatedAt || '--',
@@ -1099,18 +1148,26 @@ export default {
           market: '',
           board: '--',
           price: '--',
+          avgPrice: '--',
           change: 0,
+          changeAmount: '--',
           changePercent: '--',
           industry: '--',
           listingDate: '--',
           totalShares: '--',
           floatShares: '--',
           open: '--',
+          prevClose: '--',
           high: '--',
           low: '--',
-          change5min: '--',
+          limitUp: '--',
+          limitDown: '--',
           volume: '--',
           turnover: '--',
+          turnoverRate: '--',
+          volumeRatio: '--',
+          outerVolume: '--',
+          innerVolume: '--',
           marketCap: '--',
           floatMarketCap: '--',
           infoUpdatedAt: '--',
