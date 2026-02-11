@@ -78,10 +78,10 @@ export default {
     const handleLogout = async () => {
       // 清理所有缓存
       await CacheManager.clearAllCache()
-      // 提交退出登录的mutation
-      store.commit('logout')
-      // 跳转到登录页
-      router.push('/login')
+      // 调用后端清除 Cookie 并清理本地状态
+      await store.dispatch('logout')
+      // 跳转到首页
+      router.push('/')
     }
 
     const mobileMenuOpen = ref(false)

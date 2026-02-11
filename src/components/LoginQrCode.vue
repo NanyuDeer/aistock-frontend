@@ -196,8 +196,8 @@ export default {
             
             stopPollingAndCountdown();
             
-            // token 由后端通过 Set-Cookie 设置，需要从 cookie 中获取
-            // 如果后端用的是 httpOnly cookie，前端无法直接访问，会在后续请求中自动带上
+            // 后端通过 Set-Cookie 设置 httpOnly Cookie（无法被 JS 读取）
+            // Cookie 会在后续所有请求中自动携带，用于身份验证
             // 这里延迟一下确保 cookie 已设置
             setTimeout(async () => {
               console.log('[QrCode] 登录成功，准备跳转');
