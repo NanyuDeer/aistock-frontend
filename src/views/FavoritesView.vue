@@ -161,7 +161,7 @@ export default {
     const favoriteStocks = ref([]);
     const refreshTimer = ref(null);
 
-    // 获取自选股数据
+    // 获取自选股数据（使用缓存优化）
     const fetchFavoriteStocks = async () => {
       try {
         loading.value = true;
@@ -169,27 +169,22 @@ export default {
         // 获取自选股列表
         const stocks = store.getters.favoriteStocks || [];
         
-        // 为每支股票获取实时价格数据
-        const enrichedStocks = await Promise.all(stocks.map(async (stock) => {
-          try {
-            const stockDetail = await store.dispatch('fetchStockDetail', stock.code);
-            if (stockDetail) {
-              return {
-                ...stock,
-                price: stockDetail.trading?.current_price || 0,
-                change: stockDetail.trading?.change_percent || 0,
-                marketCap: stockDetail.trading?.market_cap || 0,
-                industry: stockDetail.industry || '未知行业'
-              };
-            }
-            return stock;
-          } catch (err) {
-            console.error(`获取股票${stock.code}价格失败:`, err);
-            return stock;
-          }
-        }));
+        if (stocks.length === 0) {
+          favoriteStocks.value = [];
+          return;
+        }
         
-        favoriteStocks.value = enrichedStocks;
+        // 使用新的批量获取价格方法（优先从缓存，缺失的自动分批请求）
+        const stocksWithPrices = await store.dispatch('fetchBatchStockPrices', stocks);
+        
+        // 格式化数据以匹配表格显示
+        favoriteStocks.value = stocksWithPrices.map(stock => ({
+          ...stock,
+          price: stock.latest_price || stock.price || 0,
+          change: stock.change_percent || stock.change || 0,
+          marketCap: 0, // 市值信息暂时不可用，可以后续扩展
+          industry: stock.industry || '未知行业'
+        }));
       } catch (error) {
         console.error('获取自选股失败:', error);
         ElMessage.error('获取自选股数据失败');
@@ -279,10 +274,11 @@ export default {
       
       await fetchFavoriteStocks();
       
-      // 设置自动刷新定时器 (每60秒刷新一次)
+      // 设置自动刷新定时器 (每3分钟刷新一次价格)
       refreshTimer.value = setInterval(() => {
+        console.log('[FavoritesView] 定时刷新自选股价格');
         fetchFavoriteStocks();
-      }, 60000);
+      }, 3 * 60 * 1000);
     });
     
     onBeforeUnmount(() => {

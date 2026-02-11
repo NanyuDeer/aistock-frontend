@@ -1,5 +1,6 @@
 import { createStore } from 'vuex'
 import { authApi, stockApi } from '@/services/api'
+import cacheManager from '@/utils/cacheManager'
 
 export default createStore({
   state: {
@@ -227,6 +228,12 @@ export default createStore({
         // 1. 获取人气榜股票代码
         const rankResponse = await stockApi.getStockRank();
         if (rankResponse.code !== 200 || !rankResponse.data?.人气榜) {
+          // 如果请求失败，尝试从缓存获取
+          const cachedStocks = cacheManager.getHotStocks();
+          if (cachedStocks && cachedStocks.length > 0) {
+            console.log('[Store] 使用缓存的热门股票数据');
+            return cachedStocks;
+          }
           return [];
         }
 
@@ -286,15 +293,143 @@ export default createStore({
         });
 
         // 5. 按排名顺序返回
-        return rankList.map(rank => {
+        const hotStocks = rankList.map(rank => {
           const stock = stockMap[rank.股票代码];
           return stock ? { ...stock, rank: rank.当前排名 } : null;
         }).filter(Boolean);
+
+        // 6. 保存到缓存
+        if (hotStocks.length > 0) {
+          cacheManager.saveHotStocks(hotStocks);
+          cacheManager.saveStockPrices(hotStocks);
+          console.log(`[Store] 已缓存 ${hotStocks.length} 支热门股票价格`);
+        }
+
+        return hotStocks;
       } catch (error) {
         console.error('获取热门股票失败:', error);
+        // 出错时尝试返回缓存数据
+        const cachedStocks = cacheManager.getHotStocks();
+        if (cachedStocks && cachedStocks.length > 0) {
+          console.log('[Store] 请求失败，使用缓存的热门股票数据');
+          return cachedStocks;
+        }
         return [];
       }
     },
+    
+    /**
+     * 批量获取股票价格（优先从缓存，缺失的自动分批请求）
+     * @param {Array} stocks - 股票列表 [{code, name, market}, ...]
+     * @returns {Array} 包含价格的股票列表
+     */
+    async fetchBatchStockPrices(_, stocks) {
+      try {
+        if (!stocks || stocks.length === 0) return [];
+        
+        const codes = stocks.map(s => s.code);
+        
+        // 1. 从缓存获取价格
+        const { found, missing } = cacheManager.getBatchStockPrices(codes);
+        
+        // 2. 如果有缺失的，分批请求
+        let fetchedStocks = [];
+        if (missing.length > 0) {
+          console.log(`[Store] 需要请求 ${missing.length} 支股票的价格`);
+          
+          // 每批最多10支股票
+          const batchSize = 10;
+          const batches = [];
+          for (let i = 0; i < missing.length; i += batchSize) {
+            batches.push(missing.slice(i, i + batchSize));
+          }
+          
+          // 并发请求所有批次
+          const batchRequests = batches.map(batch => {
+            const symbols = batch.join(',');
+            return Promise.allSettled([
+              stockApi.getStockInfos(symbols),
+              stockApi.getStockQuotes(symbols)
+            ]);
+          });
+          
+          const batchResults = await Promise.all(batchRequests);
+          
+          // 解析结果
+          const allInfos = [];
+          const allQuotes = [];
+          
+          batchResults.forEach(results => {
+            // results 是一个包含 [infoResult, quoteResult] 的数组
+            const [infoResult, quoteResult] = results;
+            
+            if (infoResult.status === 'fulfilled' && infoResult.value?.code === 200) {
+              allInfos.push(...(infoResult.value.data?.股票信息 || []));
+            }
+            
+            if (quoteResult.status === 'fulfilled' && quoteResult.value?.code === 200) {
+              allQuotes.push(...(quoteResult.value.data?.行情 || []));
+            }
+          });
+          
+          // 组装数据
+          const stockMap = {};
+          allInfos.forEach(info => {
+            stockMap[info.股票代码] = {
+              code: info.股票代码,
+              name: info.股票简称,
+              market: info.市场代码,
+              industry: info.所属行业
+            };
+          });
+          
+          allQuotes.forEach(quote => {
+            if (stockMap[quote.股票代码]) {
+              stockMap[quote.股票代码].latest_price = quote.最新价;
+              stockMap[quote.股票代码].change_percent = quote.涨跌幅;
+            }
+          });
+          
+          fetchedStocks = Object.values(stockMap);
+          
+          // 保存到缓存
+          if (fetchedStocks.length > 0) {
+            cacheManager.saveStockPrices(fetchedStocks);
+            console.log(`[Store] 已缓存 ${fetchedStocks.length} 支新股票价格`);
+          }
+        }
+        
+        // 3. 合并缓存和新请求的数据
+        const allStocks = [...found, ...fetchedStocks];
+        
+        // 4. 按原始顺序返回，并补充原始股票的name和market信息
+        return stocks.map(stock => {
+          const priceData = allStocks.find(s => s.code === stock.code);
+          return {
+            code: stock.code,
+            name: priceData?.name || stock.name,
+            market: priceData?.market || stock.market,
+            industry: priceData?.industry || stock.industry,
+            latest_price: priceData?.latest_price || 0,
+            change_percent: priceData?.change_percent || 0,
+            // 保持兼容旧字段
+            price: priceData?.latest_price || 0,
+            change: priceData?.change_percent || 0
+          };
+        });
+      } catch (error) {
+        console.error('[Store] 批量获取股票价格失败:', error);
+        // 出错时返回带空价格的股票列表
+        return stocks.map(stock => ({
+          ...stock,
+          latest_price: 0,
+          change_percent: 0,
+          price: 0,
+          change: 0
+        }));
+      }
+    },
+    
     async fetchStockHistory(_, { code, years = 3 }) {
       try {
         const response = await stockApi.getStockHistory(code, years);

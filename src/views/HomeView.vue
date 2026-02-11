@@ -219,6 +219,8 @@ export default {
     let foreignRefreshInterval = null;
     let headlineRefreshInterval = null;
     let favoriteNewsRefreshInterval = null; // 新增自选股资讯刷新定时器
+    let hotStocksRefreshInterval = null; // 热门股票刷新定时器
+    let favoriteStocksPriceRefreshInterval = null; // 自选股价格刷新定时器
 
     // --- 标签导航功能 ---
     const navigateToTag = (tag) => {
@@ -365,17 +367,22 @@ export default {
       }
     };
 
-    // 获取自选股
+    // 获取自选股（使用缓存的价格）
     const fetchMyFavoriteStocks = async () => {
       if (!isLoggedIn.value) return;
       try {
         loadingFavorites.value = true;
         const stocks = store.getters.favoriteStocks || [];
-        myFavoriteStocks.value = stocks;
         
-        // 在获取自选股后，立即获取相关新闻
+        // 使用新的批量获取价格方法（优先从缓存）
         if (stocks.length > 0) {
+          const stocksWithPrices = await store.dispatch('fetchBatchStockPrices', stocks);
+          myFavoriteStocks.value = stocksWithPrices;
+          
+          // 在获取自选股后，立即获取相关新闻
           fetchFavoriteStockNews();
+        } else {
+          myFavoriteStocks.value = [];
         }
       } catch (error) {
         console.error('获取自选股失败:', error);
@@ -497,6 +504,12 @@ export default {
       // 获取热门股票
       fetchHotStocks();
       
+      // 热门股票每 5 分钟刷新一次价格
+      hotStocksRefreshInterval = setInterval(() => {
+        console.log('[HomeView] 定时刷新热门股票价格');
+        fetchHotStocks();
+      }, 5 * 60 * 1000);
+      
       // 如果登录，获取自选股资讯
       if (isLoggedIn.value) {
         fetchMyFavoriteStocks();
@@ -506,6 +519,12 @@ export default {
         favoriteNewsRefreshInterval = setInterval(() => {
           fetchFavoriteStockNews();
         }, 10 * 60 * 1000);
+        
+        // 自选股价格每 3 分钟刷新一次
+        favoriteStocksPriceRefreshInterval = setInterval(() => {
+          console.log('[HomeView] 定时刷新自选股价格');
+          fetchMyFavoriteStocks();
+        }, 3 * 60 * 1000);
       }
     });
 
@@ -515,6 +534,8 @@ export default {
       clearInterval(foreignRefreshInterval);
       clearInterval(headlineRefreshInterval);
       clearInterval(favoriteNewsRefreshInterval); // 清除自选股资讯刷新定时器
+      clearInterval(hotStocksRefreshInterval); // 清除热门股票刷新定时器
+      clearInterval(favoriteStocksPriceRefreshInterval); // 清除自选股价格刷新定时器
     });
 
     return {
