@@ -31,27 +31,27 @@
           stripe 
           class="stock-table"
           style="table-layout: auto; width: 100%;">
-          <el-table-column prop="code" label="代码" min-width="120">
+          <el-table-column prop="code" label="代码" min-width="120" align="center">
             <template #default="scope">
               <span class="market-code">{{ scope.row.market }}</span>
               <span>{{ scope.row.code }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="name" label="名称" min-width="150" />
-          <el-table-column label="最新价" align="right" min-width="100">
+          <el-table-column prop="name" label="名称" min-width="150" align="center" />
+          <el-table-column label="最新价" align="center" min-width="100">
             <template #default="scope">
-              <span>{{ formatPrice(scope.row.price) }}</span>
+              <span class="price-value">{{ formatPrice(scope.row.price) }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="涨跌幅" align="right" min-width="100">
+          <el-table-column label="涨跌幅" align="center" min-width="100">
             <template #default="scope">
-              <span :class="scope.row.change >= 0 ? 'stock-up' : 'stock-down'">
+              <span :class="scope.row.change >= 0 ? 'stock-up change-value' : 'stock-down change-value'">
                 {{ scope.row.change >= 0 ? '+' : '' }}{{ formatPercent(scope.row.change) }}%
               </span>
             </template>
           </el-table-column>
-          <el-table-column prop="industry" label="所属行业" min-width="140" />
-          <el-table-column label="操作" fixed="right" width="200">
+          <el-table-column prop="industry" label="所属行业" min-width="140" align="center" />
+          <el-table-column label="操作" fixed="right" width="200" align="center">
             <template #default="scope">
               <div class="action-buttons">
                 <el-button 
@@ -471,7 +471,13 @@ export default {
   border-radius: 12px;
 }
 
-.el-table__body-wrapper {
-  overflow: visible !important; /* 确保表格内容不裁剪 */
+.price-value {
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+
+.change-value {
+  font-size: 1.1rem;
+  font-weight: bold;
 }
 </style>
