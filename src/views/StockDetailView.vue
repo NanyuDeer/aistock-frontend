@@ -209,75 +209,104 @@
       <div class="stock-data-section">
         <h3 class="section-title">交易数据</h3>
         <div class="data-grid">
-          <div class="data-item">
-            <span class="label">最新价</span>
-            <span class="value">{{ stockInfo.price }}</span>
+          <div class="data-item is-key">
+            <div class="metric-line">
+              <span class="metric-label">最新价：</span>
+              <span :class="['metric-value', priceTrendClass]">{{ stockInfo.price }}</span>
+            </div>
           </div>
           <div class="data-item">
-            <span class="label">均价</span>
-            <span class="value">{{ stockInfo.avgPrice }}</span>
+            <div class="metric-line">
+              <span class="metric-label">均价：</span>
+              <span class="metric-value">{{ stockInfo.avgPrice }}</span>
+            </div>
+          </div>
+          <div class="data-item is-key">
+            <div class="metric-line">
+              <span class="metric-label">涨跌幅：</span>
+              <span :class="['metric-value', priceTrendClass]">{{ formatSignedPercent(stockInfo.changePercent) }}</span>
+            </div>
+          </div>
+          <div class="data-item is-key">
+            <div class="metric-line">
+              <span class="metric-label">涨跌额：</span>
+              <span :class="['metric-value', priceTrendClass]">{{ formatSignedPrice(stockInfo.changeAmount) }}</span>
+            </div>
           </div>
           <div class="data-item">
-            <span class="label">涨跌幅</span>
-            <span class="value">{{ stockInfo.changePercent }}%</span>
+            <div class="metric-line">
+              <span class="metric-label">成交量：</span>
+              <span class="metric-value">{{ stockInfo.volume }}</span>
+            </div>
           </div>
           <div class="data-item">
-            <span class="label">涨跌额</span>
-            <span class="value">{{ stockInfo.changeAmount }}</span>
+            <div class="metric-line">
+              <span class="metric-label">成交额：</span>
+              <span class="metric-value">{{ stockInfo.turnover }}</span>
+            </div>
           </div>
           <div class="data-item">
-            <span class="label">成交量</span>
-            <span class="value">{{ stockInfo.volume }}</span>
+            <div class="metric-line">
+              <span class="metric-label">换手率：</span>
+              <span class="metric-value">{{ stockInfo.turnoverRate }}</span>
+            </div>
           </div>
           <div class="data-item">
-            <span class="label">成交额</span>
-            <span class="value">{{ stockInfo.turnover }}</span>
+            <div class="metric-line">
+              <span class="metric-label">量比：</span>
+              <span class="metric-value">{{ stockInfo.volumeRatio }}</span>
+            </div>
           </div>
           <div class="data-item">
-            <span class="label">换手率</span>
-            <span class="value">{{ stockInfo.turnoverRate }}</span>
+            <div class="metric-line">
+              <span class="metric-label">最高价：</span>
+              <span class="metric-value">{{ stockInfo.high }}</span>
+            </div>
           </div>
           <div class="data-item">
-            <span class="label">量比</span>
-            <span class="value">{{ stockInfo.volumeRatio }}</span>
+            <div class="metric-line">
+              <span class="metric-label">最低价：</span>
+              <span class="metric-value">{{ stockInfo.low }}</span>
+            </div>
           </div>
           <div class="data-item">
-            <span class="label">最高价</span>
-            <span class="value">{{ stockInfo.high }}</span>
+            <div class="metric-line">
+              <span class="metric-label">今开价：</span>
+              <span class="metric-value">{{ stockInfo.open }}</span>
+            </div>
           </div>
           <div class="data-item">
-            <span class="label">最低价</span>
-            <span class="value">{{ stockInfo.low }}</span>
+            <div class="metric-line">
+              <span class="metric-label">昨收价：</span>
+              <span class="metric-value">{{ stockInfo.prevClose }}</span>
+            </div>
           </div>
           <div class="data-item">
-            <span class="label">今开价</span>
-            <span class="value">{{ stockInfo.open }}</span>
+            <div class="metric-line">
+              <span class="metric-label">涨停价：</span>
+              <span class="metric-value">{{ stockInfo.limitUp }}</span>
+            </div>
           </div>
           <div class="data-item">
-            <span class="label">昨收价</span>
-            <span class="value">{{ stockInfo.prevClose }}</span>
+            <div class="metric-line">
+              <span class="metric-label">跌停价：</span>
+              <span class="metric-value">{{ stockInfo.limitDown }}</span>
+            </div>
           </div>
           <div class="data-item">
-            <span class="label">涨停价</span>
-            <span class="value">{{ stockInfo.limitUp }}</span>
+            <div class="metric-line">
+              <span class="metric-label">外盘：</span>
+              <span class="metric-value">{{ stockInfo.outerVolume }}</span>
+            </div>
           </div>
           <div class="data-item">
-            <span class="label">跌停价</span>
-            <span class="value">{{ stockInfo.limitDown }}</span>
-          </div>
-          <div class="data-item">
-            <span class="label">外盘</span>
-            <span class="value">{{ stockInfo.outerVolume }}</span>
-          </div>
-          <div class="data-item">
-            <span class="label">内盘</span>
-            <span class="value">{{ stockInfo.innerVolume }}</span>
-          </div>
-          <div class="data-item">
-            <span class="label">最后更新</span>
-            <span class="value">{{ stockInfo.lastUpdated }}</span>
+            <div class="metric-line">
+              <span class="metric-label">内盘：</span>
+              <span class="metric-value">{{ stockInfo.innerVolume }}</span>
+            </div>
           </div>
         </div>
+        <div class="update-badge">最后更新：{{ stockInfo.lastUpdated }}</div>
       </div>
     </div>
     <el-dialog
@@ -915,6 +944,24 @@ export default {
       return num === null ? '--' : `${num.toFixed(2)}%`;
     };
 
+    const formatSignedPercent = (value) => {
+      const num = toNumber(value);
+      if (num === null) return '--';
+      return `${num > 0 ? '+' : ''}${num.toFixed(2)}%`;
+    };
+
+    const formatSignedPrice = (value) => {
+      const num = toNumber(value);
+      if (num === null) return '--';
+      return `${num > 0 ? '+' : ''}${num.toFixed(2)}`;
+    };
+
+    const priceTrendClass = computed(() => {
+      if (stockInfo.value.change > 0) return 'trend-up';
+      if (stockInfo.value.change < 0) return 'trend-down';
+      return 'trend-flat';
+    });
+
     const loadStockData = async () => {
       try {
         const snapshot = await store.dispatch('fetchStockSnapshot', stockInfo.value.code);
@@ -1215,6 +1262,9 @@ export default {
       toggleFavorite,
       getEvaluationClass,
       formatDate,
+      formatSignedPercent,
+      formatSignedPrice,
+      priceTrendClass,
       refreshAIEvaluation,
       loadingEvaluation,
       viewNewsDetail,
@@ -1409,10 +1459,17 @@ export default {
   }
 
   .stock-data-section {
+    background: #fff;
+    position: relative;
+    padding-bottom: 38px;
+
     .data-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 20px;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      width: 100%;
+      max-width: 1120px;
+      margin: 0 auto;
 
       @media (max-width: 992px) {
         grid-template-columns: repeat(2, 1fr);
@@ -1424,18 +1481,72 @@ export default {
 
       .data-item {
         display: flex;
-        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 12px;
+        border-radius: 6px;
+        border: 1px solid #e5e7eb;
+        background: #fff;
+        min-height: 42px;
 
-        .label {
-          font-size: 0.9rem;
-          color: var(--text-secondary);
+        &.is-key {
+          border-color: #d1d5db;
         }
 
-        .value {
-          font-size: 1.1rem;
-          font-weight: 500;
+        .metric-line {
+          display: flex;
+          align-items: baseline;
+          justify-content: center;
+          gap: 2px;
+          flex-wrap: wrap;
+          text-align: center;
+          line-height: 1.4;
+        }
+
+        .metric-label {
+          font-size: 0.84rem;
+          color: #6b7280;
+          letter-spacing: 0;
+        }
+
+        .metric-value {
+          font-size: 0.95rem;
+          font-weight: 600;
+          color: #111827;
           word-break: break-word;
         }
+
+        .metric-value.trend-up {
+          color: var(--danger-color);
+          font-weight: 700;
+        }
+
+        .metric-value.trend-down {
+          color: var(--success-color);
+          font-weight: 700;
+        }
+
+        .metric-value.trend-flat {
+          color: #4b5563;
+          font-weight: 700;
+        }
+      }
+    }
+
+    .update-badge {
+      position: absolute;
+      right: 20px;
+      bottom: 12px;
+      font-size: 0.74rem;
+      color: #9ca3af;
+      line-height: 1;
+      white-space: nowrap;
+      pointer-events: none;
+
+      @media (max-width: 576px) {
+        right: 12px;
+        bottom: 10px;
+        font-size: 0.7rem;
       }
     }
   }
