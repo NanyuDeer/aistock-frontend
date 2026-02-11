@@ -111,8 +111,20 @@ export const stockApi = {
     }).then(res => res.data);
   },
 
-  // 获取股票历史数据
-  getStockHistory: (code, years) => api.get(`/api/stocks/history?code=${code}&years=${years}`),
+  // 获取历史K线
+  getStockKline: ({ symbol, klt = 101, fqt = 1, limit = 1000, startDate, endDate }) => {
+    const params = new URLSearchParams({
+      symbol,
+      klt: String(klt),
+      fqt: String(fqt),
+      limit: String(limit)
+    });
+    if (startDate) params.append('startDate', String(startDate));
+    if (endDate) params.append('endDate', String(endDate));
+    return axios.get(`https://extapi.aistocklink.cn/api/cn/stock/quotes/kline?${params.toString()}`, {
+      timeout: 8000
+    }).then(res => res.data);
+  },
 
   // 获取股票业绩预测 - 增加失败重试
   getForecast: (code) => {

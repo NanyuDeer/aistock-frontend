@@ -1,29 +1,23 @@
 <template>
   <div class="stock-chart-section">
     <div class="chart-header">
-      <h3 class="section-title">价格走势</h3>
-      <div class="chart-timeframes">
-        <el-radio-group v-model="timeframe" size="small">
-          <el-radio-button label="日" value="day"></el-radio-button>
-          <el-radio-button label="月" value="month"></el-radio-button>
-        </el-radio-group>
+      <div class="title-group">
+        <h3 class="section-title">历史K线</h3>
+        <span class="adjustment-tag">前复权</span>
+      </div>
+      <div class="period-switch">
+        <button
+          v-for="option in periodOptions"
+          :key="option.klt"
+          type="button"
+          class="period-button"
+          :class="{ 'is-active': selectedKlt === option.klt }"
+          @click="handlePeriodChange(option.klt)"
+        >
+          {{ option.label }}
+        </button>
       </div>
     </div>
-    
-    <!-- 添加自定义图例组件 -->
-    <div class="custom-legend">
-      <span 
-        v-for="series in seriesList" 
-        :key="series" 
-        class="legend-item"
-        :class="{ 'legend-item-inactive': !seriesVisibility[series] }"
-        @click="toggleSeries(series)"
-      >
-        <span class="legend-icon" :class="getSeriesColorClass(series)"></span>
-        <span class="legend-label">{{ series }}</span>
-      </span>
-    </div>
-    
     <div class="stock-chart" ref="chartContainer"></div>
   </div>
 </template>
@@ -31,29 +25,35 @@
 <script>
 import { ref, onMounted, watch, onBeforeUnmount } from 'vue';
 import { useStore } from 'vuex';
-// 按需引入 ECharts
 import * as echarts from 'echarts/core';
-import { LineChart, BarChart } from 'echarts/charts';
-import { 
-  TitleComponent, 
-  TooltipComponent, 
-  LegendComponent, 
+import { CandlestickChart, BarChart } from 'echarts/charts';
+import {
+  TooltipComponent,
   GridComponent,
-  DataZoomComponent 
+  DataZoomComponent
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 
-// 注册必需的组件
 echarts.use([
-  LineChart,
+  CandlestickChart,
   BarChart,
-  TitleComponent,
   TooltipComponent,
-  LegendComponent,
   GridComponent,
   DataZoomComponent,
   CanvasRenderer
 ]);
+
+const PERIOD_OPTIONS = [
+  { label: '1', klt: 1 },
+  { label: '5', klt: 5 },
+  { label: '30', klt: 30 },
+  { label: '日线', klt: 101 },
+  { label: '周线', klt: 102 },
+  { label: '月线', klt: 103 }
+];
+
+const UP_COLOR = '#d94848';
+const DOWN_COLOR = '#2f9e44';
 
 export default {
   name: 'StockChart',
@@ -67,520 +67,495 @@ export default {
     const store = useStore();
     const chartContainer = ref(null);
     const chartInstance = ref(null);
-    const timeframe = ref('day');
-    const allHistory = ref([]);
-    const seriesList = ref([]);
-    const seriesVisibility = ref({
-      '最高价': true,
-      '最低价': true,
-      '成交量': true
-    });
-    
-    // 添加一个防抖函数
-    const debounce = (fn, delay) => {
-      let timer = null;
-      return function(...args) {
-        if (timer) clearTimeout(timer);
-        timer = setTimeout(() => {
-          fn.apply(this, args);
-        }, delay);
-      };
+    const selectedKlt = ref(101);
+    const periodOptions = PERIOD_OPTIONS;
+    const klineItems = ref([]);
+    const latestRequestId = ref(0);
+    let resizeTimer = null;
+
+    const toNumber = (value) => {
+      const num = Number(value);
+      return Number.isFinite(num) ? num : 0;
     };
 
-    // 初始化图表
-    const initChart = () => {
-      if (!chartContainer.value) return;
-
-      // 确保先完全销毁旧实例
-      if (chartInstance.value) {
-        try {
-          chartInstance.value.dispose();
-        } catch (e) {
-          console.warn('图表实例销毁失败:', e);
-        }
-        chartInstance.value = null;
-      }
-
-      // 使用 try-catch 包装以防止可能的异常
-      try {
-        chartInstance.value = echarts.init(chartContainer.value, null, {
-          renderer: 'canvas',
-          useDirtyRect: false // 关闭脏矩形渲染以提高稳定性
-        });
-        
-        chartInstance.value.showLoading();
-        updateChartData();
-      } catch (error) {
-        console.error('初始化图表失败:', error);
-      }
+    const formatLocalDateTime = (date) => {
+      const pad = (value) => String(value).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
     };
 
-    // 安全地处理窗口大小调整
-    const handleResize = debounce(() => {
-      if (!chartContainer.value) return;
-      
-      try {
-        if (chartInstance.value) {
-          chartInstance.value.resize();
-        } else {
-          // 如果实例不存在，重新创建
-          initChart();
-        }
-      } catch (error) {
-        console.error('处理窗口大小变化失败:', error);
-        // 如果resize失败，则尝试重新初始化图表
-        initChart();
+    const normalizeTime = (time) => {
+      if (time == null) return '';
+      const raw = String(time).trim();
+      if (!raw) return '';
+      if (/^\d{10}$/.test(raw)) {
+        const date = new Date(Number(raw) * 1000);
+        return Number.isNaN(date.getTime()) ? raw : formatLocalDateTime(date);
       }
-    }, 200);  // 添加200ms的防抖
+      if (/^\d{13}$/.test(raw)) {
+        const date = new Date(Number(raw));
+        return Number.isNaN(date.getTime()) ? raw : formatLocalDateTime(date);
+      }
+      return raw;
+    };
 
-    // 本地筛选历史数据
-    const filterHistoryByTimeframe = (history) => {
-      if (timeframe.value === 'day') {
-        return history.slice(-30);
-      } else {
-        const map = new Map();
-        history.forEach(item => {
-          const month = formatXAxisLabel(item.date || '').slice(0,7);
-          const h = item.high || 0, l = item.low || 0;
-          if (map.has(month)) {
-            const m = map.get(month);
-            m.high = Math.max(m.high, h);
-            m.low  = Math.min(m.low, l);
-          } else {
-            map.set(month, { date: month, high: h, low: l, volume: item.volume || 0 });
+    const formatSigned = (value, digits = 2) => {
+      if (!Number.isFinite(value)) return '--';
+      const formatted = value.toLocaleString('zh-CN', {
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits
+      });
+      return `${value > 0 ? '+' : ''}${formatted}`;
+    };
+
+    const formatPercent = (value) => {
+      if (!Number.isFinite(value)) return '--';
+      return `${formatSigned(value, 2)}%`;
+    };
+
+    const formatPrice = (value) => {
+      if (!Number.isFinite(value)) return '--';
+      return value.toLocaleString('zh-CN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    };
+
+    const formatVolume = (value) => {
+      if (!Number.isFinite(value)) return '--';
+      if (value >= 100000000) return `${(value / 100000000).toFixed(2)}亿`;
+      if (value >= 10000) return `${(value / 10000).toFixed(2)}万`;
+      return `${Math.round(value)}`;
+    };
+
+    const formatAxisLabel = (value) => {
+      const str = String(value || '');
+      if (!str) return '';
+      if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+        return str.slice(5);
+      }
+      if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}/.test(str)) {
+        return `${str.slice(5, 10)} ${str.slice(11, 16)}`;
+      }
+      return str;
+    };
+
+    const formatVolumeAxis = (value) => {
+      if (value >= 100000000) return `${(value / 100000000).toFixed(1)}亿`;
+      if (value >= 10000) return `${(value / 10000).toFixed(1)}万`;
+      return `${Math.round(value)}`;
+    };
+
+    const renderEmpty = (message) => {
+      if (!chartInstance.value) return;
+      chartInstance.value.setOption(
+        {
+          animation: false,
+          xAxis: { show: false },
+          yAxis: { show: false },
+          series: [],
+          graphic: {
+            type: 'text',
+            left: 'center',
+            top: 'middle',
+            style: {
+              text: message,
+              fill: '#9ca3af',
+              fontSize: 14
+            }
           }
-        });
-        return Array.from(map.values()).slice(-48);  // 最近48个月
-      }
+        },
+        true
+      );
     };
 
-    // 更新图表数据：首次拉取（年：4年，日：1年），后续本地过滤
-    const updateChartData = async () => {
+    const renderChart = () => {
       if (!chartInstance.value) return;
-      try {
-        if (!allHistory.value.length) {
-          const years = timeframe.value === 'month' ? 4 : 1;    // 月视图4年
-          const res = await store.dispatch('fetchStockHistory', {
-            code: props.stockCode,
-            years
-          });
-          allHistory.value = (res && res.history) ? res.history : [];
+      if (!klineItems.value.length) {
+        renderEmpty('暂无K线数据');
+        return;
+      }
+
+      const categories = klineItems.value.map(item => item.time);
+      const candles = klineItems.value.map(item => [item.open, item.close, item.low, item.high]);
+      const volumes = klineItems.value.map(item => ({
+        value: item.volume,
+        itemStyle: {
+          color: item.close >= item.open ? UP_COLOR : DOWN_COLOR
         }
-        const items = filterHistoryByTimeframe(allHistory.value);
-        
-        // 增强数据处理和格式化
-        const chartData = {
-          dates: items.map(i => i.date || ''),
-          // 确保数值类型数据不为 null/undefined
-          highPrices: items.map(i => parseFloat(i.high) || 0),
-          lowPrices: items.map(i => parseFloat(i.low) || 0),
-          volumes: timeframe.value === 'day'
-                      ? items.map(i => parseInt(i.volume, 10) || 0)
-                      : []
-        };
-        renderChart(chartData);
-      } catch (error) {
-        console.error('更新图表数据失败:', error);
-      }
-    };
+      }));
+      const startPercent = categories.length > 120
+        ? Math.round((1 - 120 / categories.length) * 100)
+        : 0;
 
-    // 渲染图表
-    const renderChart = (chartData) => {
-      if (!chartInstance.value) return;
-
-      try {
-        console.log('[DEBUG] 开始渲染图表, 数据点数量:', chartData.dates.length);
-        
-        // 计算y轴的合适范围
-        let minPrice = Math.min(...chartData.lowPrices);
-        let maxPrice = Math.max(...chartData.highPrices);
-        const padding = (maxPrice - minPrice) * 0.1; // 增加10%的边距
-        minPrice = Math.max(0, minPrice - padding); // 确保最小值不小于0
-        maxPrice = maxPrice + padding;
-        
-        // 更新系列列表和可见性状态
-        seriesList.value = timeframe.value === 'day' 
-          ? ['最高价', '最低价', '成交量'] 
-          : ['最高价', '最低价'];
-          
-        // 初始化所有系列为可见
-        seriesList.value.forEach(series => {
-          seriesVisibility.value[series] = true;
-        });
-        
-        // 决定是否显示数据点，当数据点少于一定数量时显示
-        const shouldShowSymbols = chartData.dates.length <= 60;
-        
-        const option = {
-          tooltip: {                      // 新增：基础 tooltip
-            trigger: 'axis'
+      chartInstance.value.setOption(
+        {
+          animation: false,
+          tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+              type: 'cross'
+            },
+            backgroundColor: 'rgba(18, 22, 28, 0.9)',
+            borderWidth: 0,
+            textStyle: {
+              color: '#f5f7fa'
+            },
+            formatter: (params) => {
+              const candle = params.find(item => item.seriesName === 'K线');
+              if (!candle) return '';
+              const row = klineItems.value[candle.dataIndex];
+              if (!row) return '';
+              const isUp = row.close >= row.open;
+              const trendColor = isUp ? UP_COLOR : DOWN_COLOR;
+              return [
+                `<div style="margin-bottom:6px;font-weight:600;">${row.time}</div>`,
+                `<div>开盘：${formatPrice(row.open)}</div>`,
+                `<div>收盘：<span style="color:${trendColor};font-weight:600;">${formatPrice(row.close)}</span></div>`,
+                `<div>最高：${formatPrice(row.high)}</div>`,
+                `<div>最低：${formatPrice(row.low)}</div>`,
+                `<div>成交量：${formatVolume(row.volume)}</div>`,
+                `<div>涨跌幅：<span style="color:${trendColor};font-weight:600;">${formatPercent(row.changePercent)}</span></div>`,
+                `<div>换手率：${formatPercent(row.turnoverRate)}</div>`
+              ].join('');
+            }
           },
-          legend: { show: false },  // 隐藏原生图例
-          xAxis: {
-            id: 'mainXAxis', // 添加 id
-            type:'category',
-            data:chartData.dates,
-            boundaryGap:true,
-            axisLine:{ lineStyle:{ color:'#ddd' } },
-            axisLabel:{ color:'#666' }
+          axisPointer: {
+            link: [{ xAxisIndex: [0, 1] }]
           },
+          grid: [
+            {
+              left: '6%',
+              right: '4%',
+              top: 10,
+              height: '64%'
+            },
+            {
+              left: '6%',
+              right: '4%',
+              top: '78%',
+              height: '14%'
+            }
+          ],
+          xAxis: [
+            {
+              type: 'category',
+              data: categories,
+              boundaryGap: true,
+              axisLine: { lineStyle: { color: '#d0d7e2' } },
+              axisTick: { show: false },
+              axisLabel: {
+                color: '#6b7280',
+                formatter: value => formatAxisLabel(value)
+              },
+              min: 'dataMin',
+              max: 'dataMax'
+            },
+            {
+              type: 'category',
+              gridIndex: 1,
+              data: categories,
+              boundaryGap: true,
+              axisLine: { show: false },
+              axisTick: { show: false },
+              axisLabel: { show: false },
+              min: 'dataMin',
+              max: 'dataMax'
+            }
+          ],
           yAxis: [
             {
-              id: 'priceYAxis', // 添加 id
-              type: 'value',
-              min: minPrice,
-              max: maxPrice,
-              axisLine: { lineStyle: { color: '#ddd' } },
-              axisLabel: { color: '#666', formatter: v => v.toFixed(2) },
-              splitLine: { show: true, lineStyle: { color: '#f5f5f5', type: 'dashed' } },
-              splitNumber: 5
+              scale: true,
+              splitNumber: 5,
+              axisLine: { show: false },
+              axisTick: { show: false },
+              axisLabel: {
+                color: '#6b7280',
+                formatter: value => formatPrice(toNumber(value))
+              },
+              splitLine: {
+                lineStyle: { color: '#eef1f5' }
+              }
             },
-            ...(timeframe.value === 'day' 
-              ? [{ 
-                  id: 'volumeYAxis', // 添加 id
-                  type: 'value', 
-                  name: '成交量', 
-                  position: 'right', 
-                  axisLabel: { color: '#999' } 
-                }] 
-              : [])
-           ],
-          series: [
-            { 
-              name:'最高价', 
-              type:'line', 
-              data:chartData.highPrices, 
-              smooth:true, 
-              showSymbol: shouldShowSymbols, // 当数据点少时显示
-              symbolSize: 4, // 设置合适的点大小
-              itemStyle:{ color:'#f56c6c' }, 
-              lineStyle:{width:2}, 
-              yAxisId: 'priceYAxis'
-            },
-            { 
-              name:'最低价', 
-              type:'line', 
-              data:chartData.lowPrices,  
-              smooth:true, 
-              showSymbol: shouldShowSymbols, // 当数据点少时显示
-              symbolSize: 4, // 设置合适的点大小
-              itemStyle:{ color:'#67c23a' }, 
-              lineStyle:{width:2}, 
-              yAxisId: 'priceYAxis'
-            },
-            ...(timeframe.value === 'day'
-              ? [{ 
-                  name: '成交量',
-                  type: 'bar',
-                  data: chartData.volumes,
-                  yAxisId: 'volumeYAxis',
-                  barMaxWidth: 10,
-                  itemStyle: { color: '#409EFF33' }
-                }]
-              : [])
+            {
+              gridIndex: 1,
+              scale: true,
+              splitNumber: 2,
+              axisLine: { show: false },
+              axisTick: { show: false },
+              axisLabel: {
+                color: '#9ca3af',
+                formatter: value => formatVolumeAxis(toNumber(value))
+              },
+              splitLine: { show: false }
+            }
           ],
-          grid: {
-            left: '3%',
-            right: '4%',
-            bottom: '10%',            // 增大下方空白
-            top: '15%',
-            containLabel: true
-          },
           dataZoom: [
             {
               type: 'inside',
-              xAxisId: 'mainXAxis', // 使用 xAxisId 替代 xAxisIndex
-              start: 0,
+              xAxisIndex: [0, 1],
+              start: startPercent,
+              end: 100
+            },
+            {
+              type: 'slider',
+              xAxisIndex: [0, 1],
+              bottom: 0,
+              height: 18,
+              start: startPercent,
               end: 100,
-              zoomLock: false
+              brushSelect: false
+            }
+          ],
+          series: [
+            {
+              name: 'K线',
+              type: 'candlestick',
+              data: candles,
+              itemStyle: {
+                color: UP_COLOR,
+                color0: DOWN_COLOR,
+                borderColor: UP_COLOR,
+                borderColor0: DOWN_COLOR
+              }
+            },
+            {
+              name: '成交量',
+              type: 'bar',
+              xAxisIndex: 1,
+              yAxisIndex: 1,
+              data: volumes,
+              barMaxWidth: 10
             }
           ]
-        };
+        },
+        true
+      );
+    };
 
-        chartInstance.value.hideLoading();
-        chartInstance.value.setOption(option, true);
-        console.log('[DEBUG] 图表渲染完成');
-        
-        chartInstance.value.off('legendselectchanged');
+    const fetchKlineData = async () => {
+      if (!props.stockCode || !chartInstance.value) return;
+      const requestId = ++latestRequestId.value;
+      chartInstance.value.showLoading({ text: '加载K线数据...' });
+      try {
+        const result = await store.dispatch('fetchStockKline', {
+          symbol: props.stockCode,
+          klt: selectedKlt.value,
+          fqt: 1,
+          limit: selectedKlt.value >= 100 ? 1000 : 600
+        });
+        if (requestId !== latestRequestId.value) return;
+
+        const normalized = (result?.items || [])
+          .map(item => {
+            const open = toNumber(item['开盘价']);
+            const close = toNumber(item['收盘价']);
+            const low = toNumber(item['最低价']);
+            const high = toNumber(item['最高价']);
+            const time = normalizeTime(item['时间']);
+            if (!time) return null;
+            return {
+              time,
+              open,
+              close,
+              low,
+              high,
+              volume: toNumber(item['成交量']),
+              changePercent: toNumber(item['涨跌幅']),
+              turnoverRate: toNumber(item['换手率'])
+            };
+          })
+          .filter(Boolean)
+          .sort((a, b) => a.time.localeCompare(b.time));
+
+        klineItems.value = normalized;
+        renderChart();
       } catch (error) {
-        console.error('[ERROR] 渲染图表失败:', error);
-        // 如果渲染失败，尝试使用最简单的配置重新渲染
-        try {
-          const simpleOption = {
-            xAxis: {
-              type: 'category',
-              data: chartData.dates,
-              boundaryGap: true
-            },
-            yAxis: { type: 'value' },
-            series: [
-              {
-                name: '最高价',
-                type: 'line',
-                data: chartData.highPrices || []
-              },
-              {
-                name: '最低价',
-                type: 'line',
-                data: chartData.lowPrices || []
-              }
-            ]
-          };
+        console.error('获取K线失败:', error);
+        if (requestId !== latestRequestId.value) return;
+        klineItems.value = [];
+        renderEmpty('K线加载失败');
+      } finally {
+        if (requestId === latestRequestId.value && chartInstance.value) {
           chartInstance.value.hideLoading();
-          chartInstance.value.setOption(simpleOption, true);
-        } catch (fallbackError) {
-          console.error('[ERROR] 备用图表渲染也失败:', fallbackError);
         }
       }
     };
 
-    // 格式化X轴标签
-    const formatXAxisLabel = (dateStr) => {
-      if (!dateStr) return '';
-      // 支持 YYYY-MM-DD 或 YYYYMMDD
-      if (/^\d{8}$/.test(dateStr)) {
-        // 20240101 -> 2024-01-01
-        return `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`;
+    const initChart = () => {
+      if (!chartContainer.value) return;
+      if (chartInstance.value) {
+        chartInstance.value.dispose();
       }
-      if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-        return dateStr;
-      }
-      // 其他格式直接返回
-      return dateStr;
+      chartInstance.value = echarts.init(chartContainer.value, null, {
+        renderer: 'canvas'
+      });
+      renderEmpty('加载中...');
     };
 
-    // 对外暴露刷新图表的方法
-    const refreshChart = () => {
-      updateChartData();
+    const handleResize = () => {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        if (chartInstance.value) {
+          chartInstance.value.resize();
+        }
+      }, 120);
     };
 
-    // 切换系列可见性
-    const toggleSeries = (seriesName) => {
-      if (!chartInstance.value) return;
-      
-      // 更新可见性状态
-      seriesVisibility.value[seriesName] = !seriesVisibility.value[seriesName];
-      
-      try {
-        // 获取当前图表配置
-        const option = chartInstance.value.getOption();
-        
-        // 找到对应的系列索引
-        const seriesIndex = option.series.findIndex(s => s.name === seriesName);
-        if (seriesIndex === -1) return;
-        
-        // 克隆系列数组以避免直接修改对象
-        const newSeries = [...option.series];
-        const isVisible = seriesVisibility.value[seriesName];
-        
-        // 保持原有的 showSymbol 设置（基于数据点数量）
-        const currentShowSymbol = newSeries[seriesIndex].showSymbol;
-        
-        // 更新系列可见性
-        newSeries[seriesIndex] = {
-          ...newSeries[seriesIndex],
-          silent: !isVisible,  // 静默处理事件
-          showSymbol: isVisible ? currentShowSymbol : true,  // 保持原有配置，若隐藏则不显示点
-          lineStyle: {
-            ...newSeries[seriesIndex].lineStyle,
-            opacity: isVisible ? 1 : 0.1
-          },
-          itemStyle: {
-            ...newSeries[seriesIndex].itemStyle,
-            opacity: isVisible ? 1 : 0.1
-          }
-        };
-        
-        // 更新图表
-        chartInstance.value.setOption({ series: newSeries });
-        console.log(`[DEBUG] 切换系列 ${seriesName} 可见性: ${isVisible}`);
-      } catch (error) {
-        console.error('[ERROR] 切换系列可见性失败:', error);
-      }
-    };
-    
-    // 获取系列颜色类名
-    const getSeriesColorClass = (series) => {
-      switch (series) {
-        case '最高价': return 'color-high';
-        case '最低价': return 'color-low';
-        case '成交量': return 'color-volume';
-        default: return '';
-      }
+    const handlePeriodChange = (klt) => {
+      if (selectedKlt.value === klt) return;
+      selectedKlt.value = klt;
     };
 
-    // 监听时间范围变化
-    watch(timeframe, async () => {
-      initChart(); // 直接调用initChart而不是手动销毁
+    watch(selectedKlt, () => {
+      fetchKlineData();
     });
 
-    // 监听股票代码变化
     watch(() => props.stockCode, (newCode, oldCode) => {
       if (newCode && newCode !== oldCode) {
-        allHistory.value = [];
-        if (chartInstance.value) {
-          updateChartData();
-        } else {
-          initChart();
-        }
+        klineItems.value = [];
+        fetchKlineData();
       }
     });
 
     onMounted(() => {
       initChart();
-      // 使用防抖函数处理resize事件
+      fetchKlineData();
       window.addEventListener('resize', handleResize);
     });
 
     onBeforeUnmount(() => {
       window.removeEventListener('resize', handleResize);
+      if (resizeTimer) clearTimeout(resizeTimer);
       if (chartInstance.value) {
-        try {
-          chartInstance.value.dispose();
-        } catch (e) {
-          console.warn('卸载组件时图表实例销毁失败:', e);
-        }
+        chartInstance.value.dispose();
         chartInstance.value = null;
       }
     });
 
     return {
-      timeframe,
       chartContainer,
-      seriesList,
-      seriesVisibility,
-      toggleSeries,
-      getSeriesColorClass,
-      refreshChart: updateChartData
+      selectedKlt,
+      periodOptions,
+      handlePeriodChange
     };
   }
-}
+};
 </script>
 
 <style lang="scss" scoped>
 .stock-chart-section {
   background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-  padding: 20px;
+  border: 1px solid #edf1f5;
+  border-radius: 10px;
+  padding: 16px 18px;
   margin-bottom: 20px;
 
   .chart-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
 
-    @media (max-width: 576px) {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 10px;
-    }
+  .title-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
   }
 
   .section-title {
-    margin-top: 0;
-    margin-bottom: 0;
-    font-size: 1.5rem;
+    margin: 0;
+    font-size: 1.2rem;
     font-weight: 600;
+    color: #1f2937;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+
+  .adjustment-tag {
+    color: #9ca3af;
+    font-size: 12px;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .period-switch {
+    margin-left: auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+    max-width: 460px;
+    min-width: 0;
+  }
+
+  .period-button {
+    border: 1px solid #d8dee8;
+    background: #fff;
+    color: #4b5563;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.4;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover {
+      border-color: #9ea8b6;
+      color: #1f2937;
+    }
+
+    &.is-active {
+      color: #1e40af;
+      border-color: #9ab0f5;
+      background: #f4f8ff;
+      font-weight: 600;
+    }
   }
 
   .stock-chart {
-    height: 400px;
     width: 100%;
+    height: 420px;
+  }
+}
 
-    @media (max-width: 576px) {
-      height: 320px;
-    }
-    
-    // 为 ECharts 添加自定义样式
-    :deep(.tooltip-container) {
-      font-size: 12px;
-      line-height: 1.5;
-    }
+@media (max-width: 768px) {
+  .stock-chart-section {
+    padding: 14px 14px 12px;
 
-    :deep(.tooltip-title) {
-      font-weight: bold;
-      text-align: center;
-      margin-bottom: 5px;
-      font-size: 14px;
-      border-bottom: 1px dotted #ddd;
-      padding-bottom: 3px;
-    }
-
-    :deep(.tooltip-item) {
-      display: flex;
-      justify-content: space-between;
-      margin: 2px 0;
-    }
-
-    :deep(.tooltip-label) {
-      color: #666;
-      margin-right: 12px;
-    }
-
-    :deep(.tooltip-value) {
-      font-weight: 600;
-      color: #333;
-    }
-
-    :deep(.tooltip-up) {
-      color: #f56c6c !important;
-    }
-
-    :deep(.tooltip-down) {
-      color: #67c23a !important;
+    .stock-chart {
+      height: 360px;
     }
   }
+}
 
-  .custom-legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-    margin-bottom: 10px;
+@media (max-width: 576px) {
+  .stock-chart-section {
+    .chart-header {
+      flex-direction: column;
+      align-items: stretch;
+    }
 
-    @media (max-width: 576px) {
-      gap: 8px;
+    .title-group {
+      justify-content: space-between;
     }
-    
-    .legend-item {
-      display: flex;
-      align-items: center;
-      cursor: pointer;
-      padding: 4px 8px;
-      border-radius: 4px;
-      transition: all 0.2s;
-      user-select: none;
-      
-      &:hover {
-        background-color: #f5f7fa;
-      }
-      
-      &.legend-item-inactive {
-        opacity: 0.5;
-      }
+
+    .period-switch {
+      width: 100%;
+      max-width: none;
+      justify-content: flex-start;
     }
-    
-    .legend-icon {
-      width: 16px;
-      height: 3px;
-      margin-right: 6px;
-      
-      &.color-high {
-        background-color: #f56c6c;
-      }
-      
-      &.color-low {
-        background-color: #67c23a;
-      }
-      
-      &.color-volume {
-        background-color: #409EFF;
-      }
+
+    .period-button {
+      flex: 1 1 calc(33.333% - 6px);
+      padding: 6px 0;
+      text-align: center;
     }
-    
-    .legend-label {
-      font-size: 12px;
+
+    .stock-chart {
+      height: 320px;
     }
   }
 }

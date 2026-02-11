@@ -398,10 +398,7 @@ export default createStore({
             market: priceData?.market || stock.market,
             industry: priceData?.industry || stock.industry,
             latest_price: priceData?.latest_price || 0,
-            change_percent: priceData?.change_percent || 0,
-            // 保持兼容旧字段
-            price: priceData?.latest_price || 0,
-            change: priceData?.change_percent || 0
+            change_percent: priceData?.change_percent || 0
           };
         });
       } catch (error) {
@@ -410,22 +407,43 @@ export default createStore({
         return stocks.map(stock => ({
           ...stock,
           latest_price: 0,
-          change_percent: 0,
-          price: 0,
-          change: 0
+          change_percent: 0
         }));
       }
     },
     
-    async fetchStockHistory(_, { code, years = 3 }) {
+    async fetchStockKline(_, {
+      symbol,
+      klt = 101,
+      fqt = 1,
+      limit = 1000,
+      startDate = '',
+      endDate = ''
+    }) {
+      if (!symbol) {
+        return null;
+      }
       try {
-        const response = await stockApi.getStockHistory(code, years);
-        if (response.code === 0) {
-          return response.data;
+        const response = await stockApi.getStockKline({
+          symbol,
+          klt,
+          fqt,
+          limit,
+          startDate,
+          endDate
+        });
+        if (response.code === 200 && response.data) {
+          return {
+            symbol: response.data['股票代码'] || symbol,
+            period: response.data['K线周期'] || '',
+            adjustment: response.data['复权类型'] || '',
+            count: response.data['数量'] || 0,
+            items: response.data['K线'] || []
+          };
         }
         return null;
       } catch (error) {
-        console.error('获取股票历史价格数据失败:', error);
+        console.error('获取股票K线数据失败:', error);
         return null;
       }
     },
