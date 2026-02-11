@@ -267,6 +267,41 @@ export default {
                 color0: DOWN_COLOR,
                 borderColor: UP_COLOR,
                 borderColor0: DOWN_COLOR
+              },
+              markPoint: {
+                symbol: 'circle',
+                symbolSize: 10,
+                animation: false,
+                label: {
+                  show: true,
+                  fontSize: 11,
+                  color: '#111827',
+                  backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                  borderColor: '#d1d5db',
+                  borderWidth: 1,
+                  borderRadius: 4,
+                  padding: [2, 5],
+                  formatter: (params) => {
+                    const value = toNumber(params.value);
+                    return `${params.name}：${formatPrice(value)}`;
+                  }
+                },
+                data: [
+                  {
+                    name: '最高',
+                    type: 'max',
+                    valueDim: 'highest',
+                    itemStyle: { color: '#dc2626' },
+                    label: { position: 'top' }
+                  },
+                  {
+                    name: '最低',
+                    type: 'min',
+                    valueDim: 'lowest',
+                    itemStyle: { color: '#16a34a' },
+                    label: { position: 'bottom' }
+                  }
+                ]
               }
             }
           ]
