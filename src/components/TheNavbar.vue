@@ -262,6 +262,7 @@ export default {
         width: 32px;
         height: 32px;
         border-radius: 50%;
+        border: 2px solid #e0e0e0;
         margin-right: 8px;
       }
       
