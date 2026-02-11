@@ -31,27 +31,27 @@
           stripe 
           class="stock-table"
           style="table-layout: auto; width: 100%;">
-          <el-table-column prop="code" label="代码" :width="120">
+          <el-table-column prop="code" label="代码" min-width="120">
             <template #default="scope">
               <span class="market-code">{{ scope.row.market }}</span>
               <span>{{ scope.row.code }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="name" label="名称" :width="150" />
-          <el-table-column label="最新价" align="right" :width="100">
+          <el-table-column prop="name" label="名称" min-width="150" />
+          <el-table-column label="最新价" align="right" min-width="100">
             <template #default="scope">
               <span>{{ formatPrice(scope.row.price) }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="涨跌幅" align="right" :width="100">
+          <el-table-column label="涨跌幅" align="right" min-width="100">
             <template #default="scope">
               <span :class="scope.row.change >= 0 ? 'stock-up' : 'stock-down'">
                 {{ scope.row.change >= 0 ? '+' : '' }}{{ formatPercent(scope.row.change) }}%
               </span>
             </template>
           </el-table-column>
-          <el-table-column prop="industry" label="所属行业" :width="140" />
-          <el-table-column label="操作" fixed="right" :width="200">
+          <el-table-column prop="industry" label="所属行业" min-width="140" />
+          <el-table-column label="操作" fixed="right" width="200">
             <template #default="scope">
               <div class="action-buttons">
                 <el-button 
