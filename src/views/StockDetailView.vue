@@ -54,6 +54,81 @@
         </div>
       </div>
 
+      <div class="stock-analysis-section stock-tabs-section">
+        <h3 class="section-title">AI投资建议</h3>
+        <!-- 已登录用户显示AI投资建议 -->
+        <div v-if="isLoggedIn" class="analysis-content">
+          <div class="analysis-header">
+            <div class="analysis-title">
+              <div class="rating-display">
+                <span :class="getEvaluationClass(analysisResult.conclusion)">
+                  {{ analysisResult.conclusion || '加载中...' }}
+                </span>
+              </div>
+            </div>
+            <div class="analysis-meta">
+              <span class="analysis-date">分析日期：{{ analysisResult.date }}</span>
+              <el-button 
+                size="small" 
+                type="primary" 
+                @click="refreshAIEvaluation" 
+                :loading="loadingEvaluation"
+                class="refresh-btn">
+                <img v-if="!loadingEvaluation" src="@/assets/refresh.svg" alt="刷新" class="button-icon" />
+                刷新评测
+              </el-button>
+            </div>
+          </div>
+          
+          <div class="analysis-detail">
+            <h4>分析依据</h4>
+            <div class="markdown-content" v-html="analysisResult.detail"></div>
+          </div>
+          
+          <div class="reference-news" v-if="analysisResult.newsList && analysisResult.newsList.length > 0">
+            <h4>参考新闻</h4>
+            <ul class="news-reference-list">
+              <li v-for="(news, index) in analysisResult.newsList" :key="index" class="news-reference-item">
+                <div class="news-number">{{ index + 1 }}.</div>
+                <a 
+                  :href="news.link || '#'" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  class="news-reference-title"
+                >
+                  {{ news.title }}
+                </a>
+                <div class="news-reference-time">{{ formatDate(news.publish_time) }}</div>
+              </li>
+            </ul>
+          </div>
+        </div>
+        
+        <!-- 未登录用户显示登录提示 -->
+        <div v-else class="login-required-content">
+          <div class="login-prompt">
+            <div class="prompt-icon">
+              🔒
+            </div>
+            <h3>需要登录才能查看AI投资建议</h3>
+            <p>登录后可获得：</p>
+            <ul class="feature-list">
+              <li>🤖 AI智能投资建议分析</li>
+              <li>📊 专业股票评级</li>
+              <li>📈 详细分析依据</li>
+              <li>📰 相关新闻参考</li>
+            </ul>
+            <el-button 
+              type="primary" 
+              size="large" 
+              @click="goToLogin"
+              class="login-button">
+              立即登录
+            </el-button>
+          </div>
+        </div>
+      </div>
+
       <div class="stock-tabs-section">
         <h3 class="section-title">资讯汇聚</h3>
         <el-tabs v-model="activeTab">
@@ -81,79 +156,6 @@
                   {{ hasMoreNews ? '加载更多' : '已加载全部' }}
                 </el-button>
                 <span class="news-total">已加载 {{ stockNews.length }}/{{ totalNews }}</span>
-              </div>
-            </div>
-          </el-tab-pane>
-          <el-tab-pane label="AI投资建议" name="analysis">
-            <!-- 已登录用户显示AI投资建议 -->
-            <div v-if="isLoggedIn" class="analysis-content">
-              <div class="analysis-header">
-                <div class="analysis-title">
-                  <div class="rating-display">
-                    <span :class="getEvaluationClass(analysisResult.conclusion)">
-                      {{ analysisResult.conclusion || '加载中...' }}
-                    </span>
-                  </div>
-                </div>
-                <div class="analysis-meta">
-                  <span class="analysis-date">分析日期：{{ analysisResult.date }}</span>
-                  <el-button 
-                    size="small" 
-                    type="primary" 
-                    @click="refreshAIEvaluation" 
-                    :loading="loadingEvaluation"
-                    class="refresh-btn">
-                    <img v-if="!loadingEvaluation" src="@/assets/refresh.svg" alt="刷新" class="button-icon" />
-                    刷新评测
-                  </el-button>
-                </div>
-              </div>
-              
-              <div class="analysis-detail">
-                <h4>分析依据</h4>
-                <div class="markdown-content" v-html="analysisResult.detail"></div>
-              </div>
-              
-              <div class="reference-news" v-if="analysisResult.newsList && analysisResult.newsList.length > 0">
-                <h4>参考新闻</h4>
-                <ul class="news-reference-list">
-                  <li v-for="(news, index) in analysisResult.newsList" :key="index" class="news-reference-item">
-                    <div class="news-number">{{ index + 1 }}.</div>
-                    <a 
-                      :href="news.link || '#'" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      class="news-reference-title"
-                    >
-                      {{ news.title }}
-                    </a>
-                    <div class="news-reference-time">{{ formatDate(news.publish_time) }}</div>
-                  </li>
-                </ul>
-              </div>
-            </div>
-            
-            <!-- 未登录用户显示登录提示 -->
-            <div v-else class="login-required-content">
-              <div class="login-prompt">
-                <div class="prompt-icon">
-                  🔒
-                </div>
-                <h3>需要登录才能查看AI投资建议</h3>
-                <p>登录后可获得：</p>
-                <ul class="feature-list">
-                  <li>🤖 AI智能投资建议分析</li>
-                  <li>📊 专业股票评级</li>
-                  <li>📈 详细分析依据</li>
-                  <li>📰 相关新闻参考</li>
-                </ul>
-                <el-button 
-                  type="primary" 
-                  size="large" 
-                  @click="goToLogin"
-                  class="login-button">
-                  立即登录
-                </el-button>
               </div>
             </div>
           </el-tab-pane>
@@ -1090,6 +1092,10 @@ export default {
         
         loadStockData();
         loadNewsAndAnalysis();
+        if (isLoggedIn.value) {
+          loadingEvaluation.value = true;
+          loadAIEvaluation(false);
+        }
         
         // 重新设置自动刷新定时器
         setupAutoRefresh();
@@ -1099,13 +1105,17 @@ export default {
       }
     });
 
-    watch(activeTab, async (newTab) => {
-      if (newTab === 'analysis' && isLoggedIn.value) {
-        loadingEvaluation.value = true;
-        await loadAIEvaluation(false); // 切换到 "AI投资建议" Tab 时自动加载数据
-        loadingEvaluation.value = false;
-      } else if (newTab === 'forecast') {
+    watch(activeTab, (newTab) => {
+      if (newTab === 'forecast') {
         loadForecast();
+      }
+    });
+
+    watch(isLoggedIn, async (loggedIn) => {
+      if (loggedIn) {
+        checkIfFavorite();
+        loadingEvaluation.value = true;
+        await loadAIEvaluation(false);
       }
     });
 
@@ -1145,6 +1155,8 @@ export default {
       // 加载时检查是否已在自选列表中
       if (isLoggedIn.value) {
         checkIfFavorite();
+        loadingEvaluation.value = true;
+        loadAIEvaluation(false);
       }
       
       // 设置自动刷新定时器
@@ -1211,6 +1223,10 @@ export default {
     max-width: 1200px;
     margin: 0 auto;
     padding: 0 20px;
+
+    @media (max-width: 576px) {
+      padding: 0 12px;
+    }
   }
 
   .stock-header {
@@ -1265,6 +1281,37 @@ export default {
 
         .stock-down {
           color: var(--success-color);
+        }
+      }
+
+      @media (max-width: 576px) {
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: 8px;
+
+        h1 {
+          width: 100%;
+          font-size: 1.4rem;
+          line-height: 1.35;
+
+          .stock-code-container {
+            font-size: 0.95rem;
+            margin-left: 6px;
+            padding: 2px 6px;
+          }
+        }
+
+        .stock-price-info {
+          margin-left: 0;
+          margin-right: 0;
+
+          .current-price {
+            font-size: 1.3rem;
+          }
+        }
+
+        > .el-button {
+          margin-left: auto;
         }
       }
     }
@@ -1368,6 +1415,7 @@ export default {
         .value {
           font-size: 1.1rem;
           font-weight: 500;
+          word-break: break-word;
         }
       }
     }
@@ -1433,6 +1481,11 @@ export default {
         align-items: center;
         justify-content: space-between;
         margin-top: 16px;
+
+        @media (max-width: 576px) {
+          flex-wrap: wrap;
+          gap: 8px;
+        }
       }
 
       .news-total {
@@ -1447,6 +1500,11 @@ export default {
         justify-content: space-between;
         align-items: flex-start;
         margin-bottom: 20px;
+
+        @media (max-width: 576px) {
+          flex-direction: column;
+          gap: 10px;
+        }
 
         .analysis-title {
           display: flex;
@@ -1488,6 +1546,11 @@ export default {
           flex-direction: column;
           align-items: flex-end;
           gap: 8px;
+
+          @media (max-width: 576px) {
+            width: 100%;
+            align-items: flex-start;
+          }
         }
 
         .analysis-date {
@@ -1540,6 +1603,11 @@ export default {
             color: #777;
             margin: 10px 0;
           }
+
+          :deep(*) {
+            overflow-wrap: anywhere;
+            word-break: break-word;
+          }
         }
       }
 
@@ -1564,6 +1632,7 @@ export default {
             display: flex;
             justify-content: flex-start;
             align-items: center;
+            min-width: 0;
             
             &:last-child {
               border-bottom: none;
@@ -1577,6 +1646,7 @@ export default {
 
             .news-reference-title {
               flex: 1;
+              min-width: 0;
               font-size: 0.95rem;
               color: #999;  // 浅灰色
               white-space: nowrap;
@@ -1595,6 +1665,23 @@ export default {
               font-size: 0.85rem;
               color: var(--text-tertiary);
               white-space: nowrap;
+            }
+
+            @media (max-width: 576px) {
+              display: grid;
+              grid-template-columns: 20px 1fr;
+              row-gap: 4px;
+              align-items: start;
+
+              .news-number {
+                width: 20px;
+              }
+
+              .news-reference-time {
+                grid-column: 2;
+                margin-left: 0;
+                font-size: 0.78rem;
+              }
             }
           }
         }
@@ -1620,6 +1707,7 @@ export default {
     line-height: 1.7;
     color: var(--text-secondary);
     white-space: pre-wrap;
+    overflow-wrap: anywhere;
     margin-bottom: 12px;
   }
 }

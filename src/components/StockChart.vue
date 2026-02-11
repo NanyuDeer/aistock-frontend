@@ -470,6 +470,12 @@ export default {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 15px;
+
+    @media (max-width: 576px) {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+    }
   }
 
   .section-title {
@@ -482,6 +488,10 @@ export default {
   .stock-chart {
     height: 400px;
     width: 100%;
+
+    @media (max-width: 576px) {
+      height: 320px;
+    }
     
     // 为 ECharts 添加自定义样式
     :deep(.tooltip-container) {
@@ -528,6 +538,10 @@ export default {
     flex-wrap: wrap;
     gap: 15px;
     margin-bottom: 10px;
+
+    @media (max-width: 576px) {
+      gap: 8px;
+    }
     
     .legend-item {
       display: flex;

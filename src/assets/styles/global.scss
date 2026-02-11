@@ -52,7 +52,8 @@ a:visited {
 
 /* 布局容器 */
 .container {
-  width: 1200px;
+  width: 100%;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 0 15px;
 }

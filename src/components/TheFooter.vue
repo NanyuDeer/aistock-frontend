@@ -68,6 +68,12 @@ export default {
 
   .beian-info {
     font-size: 0.8rem;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    row-gap: 6px;
+    word-break: break-word;
     
     a {
       color: var(--text-tertiary);

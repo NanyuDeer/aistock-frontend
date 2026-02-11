@@ -131,6 +131,8 @@ export default {
   }
   
   .logo {
+    min-width: 0;
+
     a {
       display: flex;
       align-items: center;
@@ -138,6 +140,7 @@ export default {
       color: var(--primary-color);
       font-weight: bold;
       font-size: 1.35rem;
+      min-width: 0;
       
       img {
         height: 36px;
@@ -248,6 +251,25 @@ export default {
       display: none;
     }
   }
+
+  @media (max-width: 1100px) {
+    .logo {
+      a {
+        font-size: 1.1rem;
+
+        .logo-divider,
+        .logo-text {
+          display: none;
+        }
+      }
+    }
+
+    .nav-links {
+      .nav-item {
+        margin: 0 10px;
+      }
+    }
+  }
   
   .user-area {
     display: flex;
@@ -312,6 +334,30 @@ export default {
 
     @media (max-width: 768px) {
       display: none;
+    }
+  }
+
+  @media (max-width: 576px) {
+    padding: 0 10px;
+
+    .navbar-container {
+      height: 60px;
+    }
+
+    .logo {
+      a {
+        font-size: 1rem;
+        max-width: calc(100vw - 72px);
+
+        img {
+          height: 30px;
+        }
+
+        .logo-divider,
+        .logo-text {
+          display: none;
+        }
+      }
     }
   }
 }
