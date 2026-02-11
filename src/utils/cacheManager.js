@@ -21,8 +21,8 @@ class CacheManager {
   // 清理各种缓存
   async clearCache() {
     try {
-      // 清理 localStorage 中的旧数据（保留用户登录信息）
-      const preserveKeys = ['token', 'user', 'favoriteStocks'];
+      // 清理 localStorage 中的旧数据（保留用户信息和自选股）
+      const preserveKeys = ['user', 'favoriteStocks'];
       const allKeys = Object.keys(localStorage);
       allKeys.forEach(key => {
         if (!preserveKeys.includes(key)) {

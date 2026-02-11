@@ -157,8 +157,6 @@ export default {
             ElMessage.error(`添加 ${stock.name} 到自选股失败`);
           }
         }
-        // 刷新自选股列表
-        await store.dispatch('fetchFavoriteStocks');
       } catch (error) {
         console.error('操作自选股失败:', error);
         ElMessage.error('操作失败，请稍后再试');
@@ -180,11 +178,6 @@ export default {
       window.scrollTo(0, 0);
       
       fetchTagStocks();
-      
-      // 如果用户已登录，预先加载自选股列表
-      if (store.getters.isLoggedIn) {
-        store.dispatch('fetchFavoriteStocks');
-      }
     });
     
     return {

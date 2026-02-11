@@ -10,17 +10,21 @@ const app = createApp(App)
 // 应用启动时检查并清理缓存
 CacheManager.checkAndClearCache();
 
-// 只有在有token的情况下才尝试获取用户信息
-if (localStorage.getItem('token')) {
-  store.dispatch('fetchUserInfo').catch(() => {
-    console.error('无法获取用户信息，已清除登录状态');
-    // 如果获取用户信息失败，清除登录状态
-    store.commit('logout');
-  });
+// 应用启动时恢复登录状态，等待完成后再挂载应用
+// 确保组件渲染时已有用户信息和自选股数据
+async function initApp() {
+  try {
+    const authed = await store.dispatch('checkCookieAuth');
+    if (authed) {
+      console.log('[Main] Cookie 认证成功，已恢复用户状态');
+    }
+  } catch (e) {
+    console.warn('[Main] 初始化认证失败:', e);
+  }
+
+  app.use(store)
+  app.use(router)
+  app.mount('#app')
 }
 
-app.use(store)
-app.use(router)
-// 移除全量使用
-// app.use(ElementPlus)
-app.mount('#app')
+initApp()

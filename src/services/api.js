@@ -14,25 +14,22 @@ axiosRetry(axios, {
 
 // 开发模式下使用相对路径，生产模式下使用完整URL
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://api.aistocklink.cn' 
+  ? 'https://extapi.aistocklink.cn' 
   : 'http://localhost:8000';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 180000, // 增加超时时间为 180 秒
+  timeout: 15000, // 超时时间改为 15 秒，避免长时间阻塞
   headers: {
     'Content-Type': 'application/json'
   },
   withCredentials: true // 确保跨域请求时携带 cookie
 });
 
-// 请求拦截器 - 添加token
+// 请求拦截器
 api.interceptors.request.use(
   config => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
+    // Cookie 会自动携带，无需手动添加 Authorization header
     return config;
   },
   error => Promise.reject(error)
@@ -43,8 +40,7 @@ api.interceptors.response.use(
   response => response.data,
   error => {
     if (error.response && error.response.status === 401) {
-      // 未授权，清除token和用户信息
-      localStorage.removeItem('token');
+      // 未授权，清除用户信息
       localStorage.removeItem('user');
       
       // 不强制重定向，让路由守卫和组件自己处理
@@ -56,14 +52,20 @@ api.interceptors.response.use(
 
 // 扫码登录相关API
 export const authApi = {
-  // 获取扫码登录URL
-  getScanLoginUrl: () => api.get('/api/auth/scan-login-url'),
+  // 获取扫码登录二维码
+  getScanLoginUrl: () => api.get('/api/auth/wechat/login/scan'),
   
-  // 检查扫码登录状态
-  checkScanLoginStatus: (state) => api.get(`/api/auth/login-status?state=${state}`),
+  // 轮询检查扫码登录状态
+  checkScanLoginStatus: (state) => api.get(`/api/auth/wechat/login/scan/poll?state=${state}`),
   
   // 获取用户信息
   getUserInfo: () => api.get('/api/user/info'),
+
+  // 通过 Cookie 获取当前登录用户信息和自选股
+  getAuthMe: () => api.get('/api/users/me'),
+
+  // 退出登录（清除后端 HttpOnly Cookie）
+  logout: () => api.post('/api/auth/logout'),
 
   // 更新用户信息（昵称和头像）
   updateUserProfile: (nickname, avatar_url) => api.post('/api/user/profile', { 
@@ -72,22 +74,16 @@ export const authApi = {
   })
 };
 
+// 微信网页授权登录地址（用于微信浏览器内跳转）
+export const WECHAT_OAUTH_LOGIN_URL = 'https://extapi.aistocklink.cn/api/auth/wechat/login';
+
 // 股票相关API
 export const stockApi = {
-  // 获取当前用户的所有自选股票
-  getStocks: () => api.get('/api/stocks/get'),
+  // 批量添加自选股票（新版 API）
+  addStocks: (symbols) => api.post('/api/users/me/favorites', { symbols }),
 
-  // 批量添加自选股票
-  addStocks: (stocks) => api.post('/api/stocks/add', { stocks }),
-
-  // 批量删除自选股票
-  removeStocks: (stockCodes) => api.post('/api/stocks/remove', { codes: stockCodes }),
-
-  // 通过图片 OCR 批量添加自选股票
-  addStocksFromImage: (imageBase64) => api.post('/api/stocks/add_from_image', { image: imageBase64 }),
-
-  // 确认添加从图片中识别的股票
-  confirmStocksFromImage: () => api.post('/api/stocks/confirm_from_image'),
+  // 批量删除自选股票（新版 API）
+  removeStocks: (symbols) => api.post('/api/users/me/favorites/delete', { symbols }),
 
   // 根据关键词搜索股票（新版extapi）
   searchStocks: (keyword, pageSize = 20) => {

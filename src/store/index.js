@@ -4,7 +4,7 @@ import { authApi, stockApi } from '@/services/api'
 export default createStore({
   state: {
     user: JSON.parse(localStorage.getItem('user')) || null, // 从 localStorage 恢复用户信息
-    isAuthenticated: !!localStorage.getItem('token'), // 从 localStorage 恢复登录状态
+    isAuthenticated: false, // 登录状态由 checkCookieAuth 动态设置
     stockList: [],
     marketOverview: {},
     favoriteStocks: JSON.parse(localStorage.getItem('favoriteStocks')) || [] // 自选股列表
@@ -43,7 +43,6 @@ export default createStore({
       state.favoriteStocks = []
       // 清除所有localStorage数据
       localStorage.removeItem('user'); // 清除用户信息
-      localStorage.removeItem('token'); // 清除 token
       localStorage.removeItem('favoriteStocks'); // 清除自选股
       // 清除所有sessionStorage
       sessionStorage.clear();
@@ -55,13 +54,6 @@ export default createStore({
     async login({ commit }, userData) {
       try {
         commit('setUser', userData);
-
-        // 从 localStorage 中读取 token 并设置
-        const token = localStorage.getItem('token');
-        if (token) {
-          console.log('Token 已成功存储:', token);
-        }
-
         return true;
       } catch (error) {
         console.error('登录失败:', error);
@@ -91,6 +83,43 @@ export default createStore({
       }
     },
 
+    // 通过 Cookie 检测微信网页授权登录状态（OAuth 回调后使用）
+    async checkCookieAuth({ commit, dispatch }) {
+      try {
+        const response = await authApi.getAuthMe();
+        // 适配新版 API 返回格式 (code 200)
+        if (response.code === 200 && response.data) {
+          const userData = response.data;
+          const user = {
+            id: userData.openid,
+            name: userData.nickname,
+            avatar: userData.avatar_url,
+            createdAt: userData.created_at,
+            stocksCount: userData['自选股'] ? userData['自选股'].length : 0
+          };
+          
+          commit('setUser', user);
+          
+          // 同步自选股数据
+          if (userData['自选股'] && Array.isArray(userData['自选股'])) {
+            const stocks = userData['自选股'].map(s => ({
+              code: s['股票代码'],
+              name: s['股票简称'],
+              market: s['市场代码']
+            }));
+            commit('setFavoriteStocks', stocks);
+          }
+
+          console.log('[Store] Cookie 认证成功，用户:', user.name);
+          return true;
+        }
+        return false;
+      } catch (error) {
+        console.log('[Store] Cookie 认证未检测到登录状态');
+        return false;
+      }
+    },
+
     async updateUserProfile({ commit, state }, { nickname, avatar_url }) {
       try {
         const response = await authApi.updateUserProfile(nickname, avatar_url);
@@ -105,55 +134,76 @@ export default createStore({
         return false;
       }
     },
-    async fetchFavoriteStocks({ commit }) {
+    async addFavoriteStocks({ commit, state }, stocks) {
       try {
-        const response = await stockApi.getStocks();
-        if (response.code === 0) {
-          commit('setFavoriteStocks', response.data);
-          return true;
-        }
-        return false;
-      } catch (error) {
-        console.error('获取自选股失败:', error);
-        return false;
-      }
-    },
-    async addFavoriteStocks({ dispatch, commit, state }, stocks) {
-      try {
-        console.log('[DEBUG] 发起添加自选股请求:', stocks);
-        const response = await stockApi.addStocks(stocks);
+        // 转换为股票代码数组
+        const symbols = stocks.map(s => s.code || s);
+        console.log('[DEBUG] 发起添加自选股请求:', symbols);
+        const response = await stockApi.addStocks(symbols);
         console.log('[DEBUG] 添加自选股响应:', response);
         
-        if (response.code === 0) {
-          // 直接调用 fetchFavoriteStocks 来获取最新的自选股列表
-          await dispatch('fetchFavoriteStocks');
-          return response.data;
+        if (response.code === 200 && response.data) {
+          // 新 API 返回完整用户信息 + 自选股列表，直接更新
+          const userData = response.data;
+          if (userData['自选股'] && Array.isArray(userData['自选股'])) {
+            const favoriteStocks = userData['自选股'].map(s => ({
+              code: s['股票代码'],
+              name: s['股票简称'],
+              market: s['市场代码']
+            }));
+            commit('setFavoriteStocks', favoriteStocks);
+            
+            // 同时更新用户的自选股计数
+            const user = {
+              ...state.user,
+              stocksCount: favoriteStocks.length
+            };
+            commit('setUser', user);
+          }
+          return true;
         } else {
           console.error('添加自选股失败，服务器返回错误:', response);
-          return null;
+          return false;
         }
       } catch (error) {
         console.error('添加自选股失败:', error);
-        return null;
+        return false;
       }
     },
-    async removeFavoriteStocks({ dispatch, commit, state }, stockCodes) {
+    async removeFavoriteStocks({ commit, state }, stockCodes) {
       try {
-        console.log('[DEBUG] 发起删除自选股请求:', stockCodes);
-        const response = await stockApi.removeStocks(stockCodes);
+        // 确保是数组格式
+        const symbols = Array.isArray(stockCodes) ? stockCodes : [stockCodes];
+        console.log('[DEBUG] 发起删除自选股请求:', symbols);
+        const response = await stockApi.removeStocks(symbols);
         console.log('[DEBUG] 删除自选股响应:', response);
         
-        if (response.code === 0) {
-          // 直接调用 fetchFavoriteStocks 来获取最新的自选股列表
-          await dispatch('fetchFavoriteStocks');
-          return response.data;
+        if (response.code === 200 && response.data) {
+          // 新 API 返回完整用户信息 + 自选股列表，直接更新
+          const userData = response.data;
+          if (userData['自选股'] && Array.isArray(userData['自选股'])) {
+            const favoriteStocks = userData['自选股'].map(s => ({
+              code: s['股票代码'],
+              name: s['股票简称'],
+              market: s['市场代码']
+            }));
+            commit('setFavoriteStocks', favoriteStocks);
+            
+            // 同时更新用户的自选股计数
+            const user = {
+              ...state.user,
+              stocksCount: favoriteStocks.length
+            };
+            commit('setUser', user);
+          }
+          return true;
         } else {
           console.error('删除自选股失败，服务器返回错误:', response);
-          return null;
+          return false;
         }
       } catch (error) {
         console.error('删除自选股失败:', error);
-        return null;
+        return false;
       }
     },
     async searchStocks(_, { keyword, limit }) {
@@ -243,19 +293,6 @@ export default createStore({
       } catch (error) {
         console.error('获取热门股票失败:', error);
         return [];
-      }
-    },
-    async addStocksFromImage({ dispatch }, imageBase64) {
-      try {
-        const response = await stockApi.addStocksFromImage(imageBase64);
-        if (response.code === 0) {
-          await dispatch('fetchFavoriteStocks'); // 更新自选股列表
-          return response.data;
-        }
-        return null;
-      } catch (error) {
-        console.error('通过图片添加自选股失败:', error);
-        return null;
       }
     },
     async fetchStockHistory(_, { code, years = 3 }) {
@@ -454,10 +491,10 @@ export default createStore({
       }
     },
 
-    async fetchStockEvaluation(_, { stockCode, refresh = false }) {
+    async fetchStockEvaluation({ state }, { stockCode, refresh = false }) {
       try {
         // 检查用户是否登录
-        if (!localStorage.getItem('token')) {
+        if (!state.isAuthenticated) {
           console.error('[DEBUG] 获取股票AI评估失败: 用户未登录');
           return null;
         }
@@ -609,7 +646,12 @@ export default createStore({
         return false;
       }
     },
-    logout({ commit }) {
+    async logout({ commit }) {
+      try {
+        await authApi.logout();
+      } catch (err) {
+        console.warn('[Store] 退出登录调用失败，忽略继续清理本地状态:', err);
+      }
       commit('logout');
     }
   }

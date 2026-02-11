@@ -165,7 +165,6 @@ export default {
     const fetchFavoriteStocks = async () => {
       try {
         loading.value = true;
-        await store.dispatch('fetchFavoriteStocks');
         
         // 获取自选股列表
         const stocks = store.getters.favoriteStocks || [];
@@ -222,8 +221,6 @@ export default {
         const result = await store.dispatch('removeFavoriteStocks', [stock.code]);
         if (result) {
           ElMessage.success(`已将 ${stock.name} 从自选股中移除`);
-          await store.dispatch('fetchFavoriteStocks');
-          store.commit('setFavoriteStocks', store.getters.favoriteStocks); // 更新缓存
         } else {
           ElMessage.error('移除自选股失败');
         }

@@ -75,9 +75,8 @@ export default {
       morning_report: false
     })
 
-    const uploadHeaders = {
-      Authorization: `Bearer ${document.cookie.replace(/(?:(?:^|.*;\s*)token\s*=\s*([^;]*).*$)|^.*$/, '$1')}`
-    }
+    // Cookie 会通过 withCredentials 自动携带，无需手动设置
+    const uploadHeaders = {}
 
     const handleAvatarUploadSuccess = (response) => {
       if (response.code === 0) {
@@ -106,14 +105,9 @@ export default {
       }
     }
 
-    const fetchFavoriteStocks = async () => {
+    const fetchFavoriteStocks = () => {
       try {
-        const success = await store.dispatch('fetchFavoriteStocks')
-        if (success) {
-          favoriteStocks.value = store.getters.favoriteStocks
-        } else {
-          ElMessage.error('获取自选股失败')
-        }
+        favoriteStocks.value = store.getters.favoriteStocks
       } catch (error) {
         console.error('获取自选股失败:', error)
       }

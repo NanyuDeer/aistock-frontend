@@ -99,11 +99,68 @@ const router = createRouter({
   routes
 })
 
+// 判断是否在微信浏览器中
+function isWechatBrowser() {
+  return /MicroMessenger/i.test(navigator.userAgent);
+}
+
+// 标记是否已完成 Cookie 认证检查
+let cookieAuthChecked = false;
+// Cookie 认证结果的 Promise（避免多次路由触发重复请求）
+let cookieAuthPromise = null;
+
+// 微信浏览器中检查 Cookie 认证状态（OAuth 回调后的首次访问）
+async function checkWechatCookieAuth() {
+  if (cookieAuthChecked) return false;
+  if (!isWechatBrowser()) return false;
+  
+  cookieAuthChecked = true;
+  try {
+    const store = (await import('@/store')).default;
+    const authed = await store.dispatch('checkCookieAuth');
+    return authed;
+  } catch (e) {
+    console.log('[Router] Cookie 认证检查失败:', e);
+    return false;
+  }
+}
+
 // 路由级别的标题管理
-router.beforeEach((to, from, next) => {
-  const isLoggedIn = localStorage.getItem('token') !== null;
+router.beforeEach(async (to, from, next) => {
+  // 动态导入 store 以避免循环依赖
+  const store = (await import('@/store')).default;
+  let isLoggedIn = store.getters.isLoggedIn;
+  
   // 设置页面标题
   document.title = to.meta.title || '股票资讯AI智能分析 - 智能股票分析平台';
+
+  // 微信浏览器 OAuth 回调后，登录状态通过 httpOnly Cookie 维护
+  // 首次路由时检查一次 Cookie 认证
+  if (!isLoggedIn && !cookieAuthChecked && isWechatBrowser()) {
+    // 复用同一个 Promise，避免并发路由守卫重复请求
+    if (!cookieAuthPromise) {
+      cookieAuthPromise = checkWechatCookieAuth();
+    }
+    
+    // 如果目标页面需要登录，则必须等待检查结果
+    // 否则（如去首页），不阻塞路由，后台执行检查
+    if (to.meta.requiresAuth) {
+      const authed = await cookieAuthPromise;
+      if (authed) {
+        isLoggedIn = true; // 检查通过，状态已更新到 store
+      }
+    } else {
+      // 非阻塞模式：后台执行检查，成功后 store 会自动更新，UI 响应式变化
+      cookieAuthPromise.then(authed => {
+        if (authed) {
+          console.log('[Router] 后台 Cookie 认证成功');
+        }
+      });
+    }
+  }
+  
+  // 再次确认登录状态（因为上面的 check 可能更新了 store）
+  isLoggedIn = store.getters.isLoggedIn;
   
   // 权限检查 - 只对需要登录的页面进行检查
   if (to.meta.requiresAuth && !isLoggedIn) {

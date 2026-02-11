@@ -370,7 +370,6 @@ export default {
       if (!isLoggedIn.value) return;
       try {
         loadingFavorites.value = true;
-        await store.dispatch('fetchFavoriteStocks');
         const stocks = store.getters.favoriteStocks || [];
         myFavoriteStocks.value = stocks;
         

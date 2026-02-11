@@ -290,7 +290,6 @@ export default {
         
         if (result) {
           ElMessage.success(`已将 ${stock.name} 添加到自选股`);
-          await store.dispatch('fetchFavoriteStocks');
         } else {
           ElMessage.error('添加自选股失败');
         }
@@ -411,8 +410,6 @@ export default {
         if (result) {
           ElMessage.success(`成功添加${selectedStocks.value.length}支股票到自选股`);
           imageResultVisible.value = false;
-          
-          await store.dispatch('fetchFavoriteStocks');
         } else {
           ElMessage.error('添加股票失败');
         }
@@ -427,10 +424,6 @@ export default {
     onMounted(async () => {
       // 重置滚动位置到顶部
       window.scrollTo(0, 0);
-      
-      if (store.getters.isLoggedIn) {
-        await store.dispatch('fetchFavoriteStocks');
-      }
     });
     
     return {

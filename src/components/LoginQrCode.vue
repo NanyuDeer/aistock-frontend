@@ -59,8 +59,10 @@ export default {
     const qrCodeValue = ref('')
     const qrImageUrl = ref('')
     const sessionState = ref('')
-    const expiresIn = ref(120) // 二维码有效期，单位秒
+    const expiresIn = ref(300) // 二维码有效期，单位秒（5分钟）
     const loading = ref(false)
+    const pollCount = ref(0) // 轮询计数器
+    const maxPollCount = 150 // 最大轮询次数（2秒 * 150 = 5分钟）
     
     const store = useStore()
 
@@ -91,21 +93,21 @@ export default {
         // 清除之前的定时器
         stopPollingAndCountdown()
         
-        console.log('[QrCode] 发送API请求获取扫码登录URL')
+        console.log('[QrCode] 发送API请求获取扫码登录二维码')
         const response = await authApi.getScanLoginUrl()
-        console.log('[QrCode] 获取扫码登录URL响应:', response)
+        console.log('[QrCode] 获取扫码登录二维码响应:', response)
         
-        // 修改这里：直接使用响应数据，不假设它在data字段中
-        if (response.code === 0) {
-          // 直接从响应中提取需要的数据
-          const { qrcode_url, session_id, state, expires_in } = response
+        // 适配新的响应格式：{ code: 200, message: "success", data: { state, qr_url, expire_seconds } }
+        if (response.code === 200 && response.data) {
+          // 从 data 字段中提取需要的数据
+          const { state, qr_url, expire_seconds } = response.data
           
-          qrImageUrl.value = qrcode_url || ''
-          sessionState.value = state || session_id || ''
+          qrImageUrl.value = qr_url || ''
+          sessionState.value = state || ''
           
-          // 如果后端返回了有效期，则使用它
-          if (expires_in && typeof expires_in === 'number') {
-            expiresIn.value = expires_in
+          // 使用后端返回的有效期
+          if (expire_seconds && typeof expire_seconds === 'number') {
+            expiresIn.value = expire_seconds
           }
           
           console.log('[QrCode] 成功获取二维码数据:', {
@@ -129,8 +131,8 @@ export default {
             status.value = 'expired'
           }
         } else {
-          console.error('[QrCode] API响应错误码:', response.code, response.message || '')
-          ElMessage.error(`获取二维码失败: ${response.message || '请重试'}`)
+          console.error('[QrCode] API响应错误:', response.code, response.message || '')
+          ElMessage.error(`获取二维码失败: ${response.message || '未知错误'}`)
           status.value = 'expired'
         }
       } catch (error) {
@@ -151,11 +153,14 @@ export default {
         clearInterval(pollTimer.value)
       }
       
+      // 重置轮询计数器
+      pollCount.value = 0
+      
       // 立即执行一次检查
       checkLoginStatus()
       
-      // 设置轮询间隔（每3秒检查一次）
-      pollTimer.value = setInterval(checkLoginStatus, 3000)
+      // 设置轮询间隔（每2秒检查一次）
+      pollTimer.value = setInterval(checkLoginStatus, 2000)
     }
     
     // 检查登录状态
@@ -164,47 +169,67 @@ export default {
         return;
       }
       
+      // 增加轮询计数
+      pollCount.value++;
+      console.log('[QrCode] 检查登录状态 (第', pollCount.value, '次):', sessionState.value);
+      
+      // 检查是否超过最大轮询次数
+      if (pollCount.value > maxPollCount) {
+        console.log('[QrCode] 超过最大轮询次数，二维码已过期');
+        status.value = 'expired';
+        stopPollingAndCountdown();
+        ElMessage.warning('二维码已过期，请刷新');
+        return;
+      }
+      
       try {
-        console.log('[QrCode] 检查登录状态:', sessionState.value);
         const response = await authApi.checkScanLoginStatus(sessionState.value);
         console.log('[QrCode] 登录状态检查响应:', response);
         
-        if (response && response.code === 0) {
-          const loginStatus = response.data?.status || response.status || '';
-          const token = response.data?.token || response.token || '';
-          const userInfo = response.data?.user_info || response.user_info || null;
+        // 适配新的响应格式：{ code: 200, message: "pending"/"confirmed", data: { status, openid } }
+        if (response && response.code === 200) {
+          const loginStatus = response.data?.status || response.message || '';
           
-          if (loginStatus === 'confirmed' && token) {
+          if (loginStatus === 'confirmed') {
             console.log('[QrCode] 扫码登录成功');
             status.value = 'confirmed';
             
             stopPollingAndCountdown();
             
-            localStorage.setItem('token', token);
-            
-            setTimeout(() => {
-              const user = userInfo || {
-                id: response.data?.user_id || response.user_id || 0,
-                name: response.data?.nickname || response.nickname || '用户',
-                avatar: response.data?.avatar_url || response.avatar_url || ''
+            // token 由后端通过 Set-Cookie 设置，需要从 cookie 中获取
+            // 如果后端用的是 httpOnly cookie，前端无法直接访问，会在后续请求中自动带上
+            // 这里延迟一下确保 cookie 已设置
+            setTimeout(async () => {
+              console.log('[QrCode] 登录成功，准备跳转');
+              
+              // 通知父组件登录成功（传递最小用户信息）
+              const user = {
+                openid: response.data?.openid || '',
+                name: '用户',
+                avatar: ''
               };
-              console.log('[QrCode] 通知父组件用户登录成功, 用户信息:', user);
               
               // 将用户信息存储到 Vuex
-              store.commit('setCurrentUser', user);
               store.commit('setIsLoggedIn', true);
               
               emit('login-success', user);
-            }, 1000);
-          } else if (loginStatus === 'expired') {
-            console.log('[QrCode] 二维码已过期');
-            status.value = 'expired';
-            stopPollingAndCountdown();
+            }, 500);
+          } else if (loginStatus === 'pending') {
+            // 继续等待
+            console.log('[QrCode] 等待用户扫码...');
           }
         }
       } catch (error) {
         console.error('[QrCode] 检查登录状态异常:', error);
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        
+        // 如果是 404 错误，说明二维码已过期或无效
+        if (error.response && error.response.status === 404) {
+          console.log('[QrCode] 二维码已过期或无效');
+          status.value = 'expired';
+          stopPollingAndCountdown();
+          ElMessage.warning('二维码已过期，请刷新');
+        }
+        // 其他错误继续轮询，不中断
       }
     }
     

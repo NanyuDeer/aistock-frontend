@@ -896,7 +896,6 @@ export default {
       window.removeEventListener('resize', () => {
          forecastChartInstance && forecastChartInstance.resize();
       });
-        await store.dispatch('fetchFavoriteStocks');
       } catch (error) {
         console.error('操作自选股失败:', error);
         ElMessage.error('操作失败，请稍后再试');
@@ -1060,9 +1059,7 @@ export default {
       loadNewsAndAnalysis();
       // 加载时检查是否已在自选列表中
       if (isLoggedIn.value) {
-        store.dispatch('fetchFavoriteStocks').then(() => {
-          checkIfFavorite();
-        });
+        checkIfFavorite();
       }
       
       // 设置自动刷新定时器
