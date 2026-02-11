@@ -429,15 +429,38 @@ export default createStore({
         return null;
       }
     },
-    async fetchStockDetail(_, code) {
+    async fetchStockSnapshot(_, code) {
       try {
-        const response = await stockApi.getStockDetail(code);
-        if (response.code === 0) {
-          return response.data;
+        const [infoRes, quoteRes] = await Promise.allSettled([
+          stockApi.getStockInfos(code),
+          stockApi.getStockQuotes(code)
+        ]);
+
+        const infoData = infoRes.status === 'fulfilled' && infoRes.value?.code === 200
+          ? infoRes.value.data
+          : null;
+        const quoteData = quoteRes.status === 'fulfilled' && quoteRes.value?.code === 200
+          ? quoteRes.value.data
+          : null;
+
+        const infoList = infoData?.股票信息 || [];
+        const quoteList = quoteData?.行情 || [];
+        const info = infoList.find(item => item.股票代码 === code) || infoList[0] || null;
+        const quote = quoteList.find(item => item.股票代码 === code) || quoteList[0] || null;
+
+        if (!info && !quote) {
+          return null;
         }
-        return null;
+
+        return {
+          info,
+          quote,
+          source: infoData?.来源 || '东方财富',
+          infoUpdatedAt: infoData?.更新时间 || '',
+          quoteUpdatedAt: quoteData?.更新时间 || ''
+        };
       } catch (error) {
-        console.error('获取股票详细信息失败:', error);
+        console.error('获取股票快照失败:', error);
         return null;
       }
     },

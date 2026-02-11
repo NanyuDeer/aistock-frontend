@@ -111,9 +111,6 @@ export const stockApi = {
     }).then(res => res.data);
   },
 
-  // 获取股票详细信息
-  getStockDetail: (code) => api.get(`/api/stocks/detail?code=${code}`),
-
   // 获取股票历史数据
   getStockHistory: (code, years) => api.get(`/api/stocks/history?code=${code}&years=${years}`),
 

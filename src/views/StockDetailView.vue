@@ -30,7 +30,27 @@
         </div>
         <div class="stock-tags">
           <el-tag size="small" type="info">行业：{{ stockInfo.industry }}</el-tag>
+          <el-tag size="small" type="info">板块：{{ stockInfo.board }}</el-tag>
           <el-tag size="small" type="info">上市日期：{{ stockInfo.listingDate }}</el-tag>
+          <el-tag size="small" type="info">信息更新时间：{{ stockInfo.infoUpdatedAt }}</el-tag>
+        </div>
+        <div class="stock-meta-grid">
+          <div class="meta-item">
+            <span class="meta-label">总股本</span>
+            <span class="meta-value">{{ stockInfo.totalShares }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">流通股</span>
+            <span class="meta-value">{{ stockInfo.floatShares }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">总市值</span>
+            <span class="meta-value">{{ stockInfo.marketCap }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">流通市值</span>
+            <span class="meta-value">{{ stockInfo.floatMarketCap }}</span>
+          </div>
         </div>
       </div>
 
@@ -236,8 +256,12 @@
             <span class="value">{{ stockInfo.turnover }}</span>
           </div>
           <div class="data-item">
-            <span class="label">市值</span>
+            <span class="label">总市值</span>
             <span class="value">{{ stockInfo.marketCap }}</span>
+          </div>
+          <div class="data-item">
+            <span class="label">流通市值</span>
+            <span class="value">{{ stockInfo.floatMarketCap }}</span>
           </div>
           <div class="data-item">
             <span class="label">最后更新</span>
@@ -320,12 +344,14 @@ export default {
       name: '加载中...',
       code: route.params.code || '',
       market: '', // 添加市场代码字段
+      board: '--',
       price: '--',
       change: 0,
       changePercent: '--',
       industry: '--',
-      region: '--',
       listingDate: '--',
+      totalShares: '--',
+      floatShares: '--',
       open: '--',
       high: '--',
       low: '--',
@@ -333,6 +359,8 @@ export default {
       volume: '--',
       turnover: '--',
       marketCap: '--',
+      floatMarketCap: '--',
+      infoUpdatedAt: '--',
       lastUpdated: '--'
     });
 
@@ -831,30 +859,88 @@ export default {
       }
     };
 
+    const toNumber = (value) => {
+      if (value === null || value === undefined) return null;
+      if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+      const normalized = String(value).replace(/,/g, '').trim();
+      if (!normalized) return null;
+      const parsed = Number(normalized);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    const formatListingDate = (value) => {
+      const text = value === null || value === undefined ? '' : String(value).trim();
+      if (!text) return '--';
+      if (/^\d{8}$/.test(text)) {
+        return `${text.slice(0, 4)}-${text.slice(4, 6)}-${text.slice(6, 8)}`;
+      }
+      return text;
+    };
+
+    const formatScaledValue = (value, suffix = '') => {
+      const num = toNumber(value);
+      if (num === null) {
+        return typeof value === 'string' && value.trim() ? value : '--';
+      }
+      const abs = Math.abs(num);
+      if (abs >= 1e8) return `${(num / 1e8).toFixed(2)}亿${suffix}`;
+      if (abs >= 1e4) return `${(num / 1e4).toFixed(2)}万${suffix}`;
+      return `${num.toLocaleString('zh-CN', { maximumFractionDigits: 2 })}${suffix}`;
+    };
+
+    const formatPrice = (value) => {
+      const num = toNumber(value);
+      return num === null ? '--' : num.toFixed(2);
+    };
+
+    const formatPercentValue = (value) => {
+      const num = toNumber(value);
+      return num === null ? '--' : num.toFixed(2);
+    };
+
+    const formatPercentText = (value) => {
+      const num = toNumber(value);
+      return num === null ? '--' : `${num.toFixed(2)}%`;
+    };
+
     const loadStockData = async () => {
       try {
-        const stockDetail = await store.dispatch('fetchStockDetail', stockInfo.value.code);
+        const snapshot = await store.dispatch('fetchStockSnapshot', stockInfo.value.code);
 
-        if (stockDetail) {
-          const tradingData = stockDetail.trading || {};
+        if (snapshot) {
+          const info = snapshot.info || {};
+          const quote = snapshot.quote || {};
+
+          const latestPriceNum = toNumber(quote.最新价 ?? quote.最新价格 ?? quote.price ?? quote.latest_price);
+          const changePercentNum = toNumber(quote.涨跌幅 ?? quote.change_percent);
+          const changeAmountNum = toNumber(quote.涨跌额 ?? quote.change_amount);
+          const changeNum = changeAmountNum !== null
+            ? changeAmountNum
+            : (latestPriceNum !== null && changePercentNum !== null ? latestPriceNum * changePercentNum / 100 : 0);
+
           stockInfo.value = {
-            name: stockDetail.name || '未知',
-            code: stockDetail.code || stockInfo.value.code,
-            market: stockDetail.market || '', // 从API响应获取市场代码
-            price: tradingData.current_price || '--',
-            change: tradingData.current_price * tradingData.change_percent / 100 || 0,
-            changePercent: tradingData.change_percent || '--',
-            industry: stockDetail.industry || '未知行业',
-            region: '未知',
-            listingDate: stockDetail.listing_date || '--',
-            open: tradingData.open || '--',
-            high: tradingData.high || '--',
-            low: tradingData.low || '--',
-            change5min: tradingData.change_5min || '--',
-            volume: tradingData.volume || '--',
-            turnover: tradingData.turnover || '--',
-            marketCap: tradingData.market_cap || '--',
-            lastUpdated: tradingData.last_updated || '--'
+            ...stockInfo.value,
+            name: info.股票简称 || quote.股票简称 || stockInfo.value.name || '未知',
+            code: info.股票代码 || quote.股票代码 || stockInfo.value.code,
+            market: info.市场代码 || quote.市场代码 || stockInfo.value.market || '',
+            board: info.所属板块 || '--',
+            price: formatPrice(latestPriceNum),
+            change: changeNum,
+            changePercent: formatPercentValue(changePercentNum),
+            industry: info.所属行业 || '未知行业',
+            listingDate: formatListingDate(info.上市时间),
+            totalShares: formatScaledValue(info.总股本, '股'),
+            floatShares: formatScaledValue(info.流通股, '股'),
+            open: formatPrice(quote.今开 ?? quote.开盘价 ?? quote.open),
+            high: formatPrice(quote.最高 ?? quote.最高价 ?? quote.high),
+            low: formatPrice(quote.最低 ?? quote.最低价 ?? quote.low),
+            change5min: formatPercentText(quote['5分钟涨跌幅'] ?? quote['5分钟涨跌'] ?? quote.change_5min),
+            volume: formatScaledValue(quote.成交量 ?? quote.volume),
+            turnover: formatScaledValue(quote.成交额 ?? quote.turnover, '元'),
+            marketCap: formatScaledValue(info.总市值, '元'),
+            floatMarketCap: formatScaledValue(info.流通市值, '元'),
+            infoUpdatedAt: snapshot.infoUpdatedAt || '--',
+            lastUpdated: quote.更新时间 || quote.时间 || quote.update_time || snapshot.quoteUpdatedAt || '--'
           };
 
           document.title = `${stockInfo.value.name}(${stockInfo.value.market || '未知'}${stockInfo.value.code}) - AI StockLink`;
@@ -869,7 +955,7 @@ export default {
         ElMessage.error('获取股票数据失败');
       }
     };
-    
+
     const checkIfFavorite = () => {
       const favoriteStocks = store.getters.favoriteStocks || [];
       isFavorite.value = favoriteStocks.some(stock => stock.code === stockInfo.value.code);
@@ -1033,12 +1119,14 @@ export default {
           name: '加载中...',
           code: route.params.code || '',
           market: '',
+          board: '--',
           price: '--',
           change: 0,
           changePercent: '--',
           industry: '--',
-          region: '--',
           listingDate: '--',
+          totalShares: '--',
+          floatShares: '--',
           open: '--',
           high: '--',
           low: '--',
@@ -1046,6 +1134,8 @@ export default {
           volume: '--',
           turnover: '--',
           marketCap: '--',
+          floatMarketCap: '--',
+          infoUpdatedAt: '--',
           lastUpdated: '--'
         };
       }
@@ -1182,6 +1272,43 @@ export default {
     .stock-tags {
       display: flex;
       gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .stock-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+
+      @media (max-width: 992px) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      @media (max-width: 576px) {
+        grid-template-columns: 1fr;
+      }
+
+      .meta-item {
+        background: #f7f9fc;
+        border: 1px solid #edf0f5;
+        border-radius: 8px;
+        padding: 10px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .meta-label {
+        font-size: 0.85rem;
+        color: var(--text-tertiary);
+      }
+
+      .meta-value {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
     }
   }
 
