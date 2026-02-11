@@ -30,7 +30,7 @@
           border 
           stripe 
           class="stock-table"
-          style="table-layout: fixed; width: 100%;">
+          style="table-layout: auto; width: 100%;">
           <el-table-column prop="code" label="代码" :width="120">
             <template #default="scope">
               <span class="market-code">{{ scope.row.market }}</span>
@@ -101,10 +101,6 @@
               <div class="info-row">
                 <span class="label">行业</span>
                 <span class="value">{{ stock.industry || '未知' }}</span>
-              </div>
-              <div class="info-row">
-                <span class="label">市值</span>
-                <span class="value">{{ formatMarketCap(stock.marketCap) }}</span>
               </div>
             </div>
             <div class="card-footer">
@@ -338,7 +334,8 @@ export default {
     min-height: 200px;
     
     .stock-table {
-      width: 100%; /* 确保表格占满全部宽度 */
+      table-layout: auto; /* 恢复表格自适应宽度 */
+      width: 100%;
       margin-bottom: 20px;
       display: block;
       
@@ -456,6 +453,10 @@ export default {
   z-index: 1; /* 提升按钮的层级，避免被遮挡 */
   overflow: visible; /* 防止按钮被遮挡 */
   padding: 8px; /* 增加按钮与边框的间距 */
+}
+
+.action-buttons .el-button:last-child {
+  margin-left: auto; /* 使取消关注按钮靠右对齐 */
 }
 
 .market-code {
