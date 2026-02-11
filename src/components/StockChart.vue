@@ -262,6 +262,9 @@ export default {
               name: 'K线',
               type: 'candlestick',
               data: candles,
+              large: false,
+              progressive: 0,
+              progressiveThreshold: 0,
               itemStyle: {
                 color: UP_COLOR,
                 color0: DOWN_COLOR,
