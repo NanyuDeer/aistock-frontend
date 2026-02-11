@@ -314,4 +314,22 @@ export default {
     }
   }
 }
+
+// 移除下拉菜单中 router-link 的默认样式（下划线、颜色等）
+:deep(.el-dropdown-menu__item) {
+  a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    width: 100%;
+    
+    &:hover {
+      color: inherit;
+    }
+    
+    &:visited {
+      color: inherit;
+    }
+  }
+}
 </style>

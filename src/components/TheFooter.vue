@@ -1,7 +1,7 @@
 <template>
   <footer class="site-footer">
     <div class="container">
-      <p>&copy; 2025 AI StockLink. All Rights Reserved.</p>
+      <p>&copy; 2025 - 2026 AI StockLink. All Rights Reserved.</p>
       <div class="footer-links">
         <router-link to="/update-logs" class="footer-link">更新日志</router-link>
         <span class="divider">|</span>

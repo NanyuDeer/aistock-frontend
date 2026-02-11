@@ -11,6 +11,20 @@ html, body {
   font-size: 16px;
 }
 
+/* 移除所有链接的默认下划线和颜色 */
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+a:hover {
+  text-decoration: none;
+}
+
+a:visited {
+  color: inherit;
+}
+
 /* 颜色变量 */
 :root {
   --primary-color: #409EFF;
