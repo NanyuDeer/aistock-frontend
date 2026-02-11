@@ -441,27 +441,28 @@ export default createStore({
         return null;
       }
     },
-    async fetchStockNews(_, { stockCode, page = 1, limit = 5 }) {
+    async fetchStockNews(_, { stockCode, limit = 20, lastTime = 0 }) {
       try {
-        console.log('[DEBUG] 发起获取股票新闻请求:', { stockCode, page, limit });
-        const response = await stockApi.getStockNews(stockCode, page, limit);
+        console.log('[DEBUG] 发起获取股票新闻请求:', { stockCode, limit, lastTime });
+        const response = await stockApi.getStockNews(stockCode, limit, lastTime);
         console.log('[DEBUG] 获取股票新闻响应:', response);
 
-        if (response.code === 0 && response.data) {
-          const newsList = response.data.news || [];
-          const pagination = response.data.pagination || {};
+        if (response.code === 200 && response.data) {
+          const data = response.data;
+          const newsList = data['个股新闻'] || [];
           return {
             list: newsList,
-            total: pagination.total || 0,
-            currentPage: pagination.page || 1,
-            totalPages: pagination.total_pages || 1,
-            hasMore: pagination.has_more || false
+            total: data['总数量'] || newsList.length,
+            lastTime: data.lastTime || lastTime,
+            stockName: data['股票简称'] || '',
+            keyword: data['查询关键词'] || '',
+            updatedAt: data['更新时间'] || ''
           };
         }
-        return { list: [], total: 0, currentPage: 1, totalPages: 1, hasMore: false };
+        return { list: [], total: 0, lastTime, stockName: '', keyword: '', updatedAt: '' };
       } catch (error) {
         console.error('获取股票新闻失败:', error);
-        return { list: [], total: 0, currentPage: 1, totalPages: 1, hasMore: false };
+        return { list: [], total: 0, lastTime, stockName: '', keyword: '', updatedAt: '' };
       }
     },
     async fetchNewsDetail(_, newsId) {

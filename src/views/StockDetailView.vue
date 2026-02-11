@@ -40,7 +40,7 @@
           <el-tab-pane label="股票资讯" name="news">
             <div class="stock-news-list">
               <div v-for="(news, index) in stockNews" :key="index" class="news-item">
-                <h4 @click="viewNewsDetail(news.id)" class="news-title">{{ news.title }}</h4>
+                <h4 @click="viewNewsDetail(news)" class="news-title">{{ news.title }}</h4>
                 <p v-if="news.summary" class="news-summary">{{ news.summary }}</p>
                 <div class="news-footer">
                   <a v-if="news.url" :href="news.url" target="_blank" rel="noopener noreferrer" class="news-link">
@@ -49,23 +49,20 @@
                   <span class="news-time">{{ news.time }}</span>
                 </div>
               </div>
-              <el-empty v-if="stockNews.length === 0" description="暂无相关资讯">
-                <template #description>
-                  <p>暂无相关资讯</p>
-                  <p v-if="isRetryingNews" class="retry-info">
-                    <span class="loading-icon"></span> 正在重试 ({{ newsRetryCount }}/8)...
-                  </p>
-                </template>
-              </el-empty>
+              <el-empty v-if="stockNews.length === 0" description="暂无相关资讯" />
+              <div v-if="stockNews.length > 0" class="news-actions">
+                <el-button
+                  type="primary"
+                  plain
+                  @click="loadMoreNews"
+                  :disabled="!hasMoreNews"
+                  :loading="loadingMoreNews"
+                >
+                  {{ hasMoreNews ? '加载更多' : '已加载全部' }}
+                </el-button>
+                <span class="news-total">已加载 {{ stockNews.length }}/{{ totalNews }}</span>
+              </div>
             </div>
-            <el-pagination
-              v-if="totalNews > pageSize"
-              @current-change="handlePageChange"
-              :current-page="currentPage"
-              :page-size="pageSize"
-              :total="totalNews"
-              layout="prev, pager, next">
-            </el-pagination>
           </el-tab-pane>
           <el-tab-pane label="AI投资建议" name="analysis">
             <!-- 已登录用户显示AI投资建议 -->
@@ -255,11 +252,20 @@
       width="50%">
       <div v-if="currentNewsDetail">
         <h3>{{ currentNewsDetail.title }}</h3>
-        <div v-html="currentNewsDetail.content"></div>
+        <div class="news-detail-content">{{ currentNewsDetail.content }}</div>
         <div class="news-footer">
           <span class="news-source">{{ currentNewsDetail.source }}</span>
           <span class="news-time">{{ currentNewsDetail.publish_time }}</span>
         </div>
+        <a
+          v-if="currentNewsDetail.url"
+          :href="currentNewsDetail.url"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="news-link"
+        >
+          查看原文
+        </a>
       </div>
       <div v-else>
         <el-empty description="暂无新闻详情"></el-empty>
@@ -350,9 +356,10 @@ export default {
     const forecastData = ref({});
     const forecastSummary = ref('');
     const loadingForecast = ref(false);
-    const currentPage = ref(1);
-    const pageSize = ref(5);
+    const newsLimit = ref(20);
+    const newsCursor = ref(0);
     const totalNews = ref(0);
+    const loadingMoreNews = ref(false);
 
     const md = new MarkdownIt({
       breaks: true,
@@ -389,10 +396,6 @@ export default {
       }
     };
 
-    // 新闻自动重试相关变量
-    const newsRetryCount = ref(0);
-    const newsRetryTimer = ref(null);
-    const isRetryingNews = ref(false);
     const isForecastExpanded = ref(false);
     const forecastChartRef = ref(null);
     let forecastChartInstance = null;
@@ -401,6 +404,37 @@ export default {
       const details = forecastData.value?.['业绩预测详表_详细指标预测'];
       return Array.isArray(details) && details.length > 0;
     });
+
+    const hasMoreNews = computed(() => totalNews.value > stockNews.value.length);
+
+    const parseChinaTimeToUnix = (timeText) => {
+      if (!timeText || typeof timeText !== 'string') return 0;
+      const match = timeText.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
+      if (!match) return 0;
+      const [, year, month, day, hour, minute, second] = match;
+      return Math.floor(
+        Date.UTC(
+          Number(year),
+          Number(month) - 1,
+          Number(day),
+          Number(hour) - 8,
+          Number(minute),
+          Number(second)
+        ) / 1000
+      );
+    };
+
+    const normalizeStockNewsItem = (item) => {
+      const content = item.内容 || item.content || '';
+      return {
+        id: item.ID || item.id || `${item.标题 || item.title || ''}-${item.时间 || item.time || ''}`,
+        title: item.标题 || item.title || '',
+        summary: content,
+        content,
+        url: item.链接 || item.url || '',
+        time: item.时间 || item.time || ''
+      };
+    };
 
     const generateForecastSummary = () => {
       if (forecastData.value && forecastData.value.摘要) {
@@ -670,78 +704,63 @@ export default {
       }
     };
 
+    const loadNewsAndAnalysis = async (append = false) => {
+      const requestLastTime = append ? newsCursor.value : 0;
+      if (append) {
+        loadingMoreNews.value = true;
+      }
 
-    const loadNewsAndAnalysis = async () => {
       try {
         const newsData = await store.dispatch('fetchStockNews', {
           stockCode: stockInfo.value.code,
-          page: currentPage.value,
-          limit: pageSize.value
+          limit: newsLimit.value,
+          lastTime: requestLastTime
         });
 
-        if (newsData && newsData.list && newsData.list.length > 0) {
-          stockNews.value = newsData.list.map(item => ({
-            id: item.id,
-            title: item.title,
-            summary: item.summary || item.content?.substring(0, 100) || item.description || '',
-            url: item.url || '#', // 使用新闻的 URL
-            time: item.time || item.publish_time || new Date().toLocaleString()
-          }));
-          totalNews.value = newsData.total || stockNews.value.length;
-          currentPage.value = newsData.currentPage || 1;
-          
-          // 重置重试计数
-          newsRetryCount.value = 0;
-          isRetryingNews.value = false;
-          
-          // 清除可能存在的重试定时器
-          if (newsRetryTimer.value) {
-            clearTimeout(newsRetryTimer.value);
-            newsRetryTimer.value = null;
-          }
-        } else {
-          stockNews.value = [];
-          totalNews.value = 0;
-          
-          // 如果没有新闻，开始自动重试机制
-          startNewsRetry();
+        const previousCount = stockNews.value.length;
+        const incomingNews = (newsData?.list || []).map(normalizeStockNewsItem);
+        if (!append) {
+          stockNews.value = incomingNews;
+        } else if (incomingNews.length > 0) {
+          const merged = [...stockNews.value, ...incomingNews];
+          const seen = new Set();
+          stockNews.value = merged.filter(item => {
+            const key = `${item.id}-${item.time}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
         }
+
+        totalNews.value = Number(newsData?.total || stockNews.value.length);
+        if (append && stockNews.value.length === previousCount) {
+          totalNews.value = stockNews.value.length;
+        }
+        if (incomingNews.length > 0) {
+          const lastItem = incomingNews[incomingNews.length - 1];
+          const nextCursor = parseChinaTimeToUnix(lastItem.time);
+          if (nextCursor > 0) {
+            newsCursor.value = nextCursor;
+          }
+        }
+        lastNewsUpdate.value = new Date();
       } catch (error) {
         console.error('获取股票新闻失败:', error);
-        stockNews.value = [];
-        totalNews.value = 0;
-        
-        // 错误情况也启动重试
-        startNewsRetry();
+        if (!append) {
+          stockNews.value = [];
+          totalNews.value = 0;
+          newsCursor.value = 0;
+        }
+      } finally {
+        if (append) {
+          loadingMoreNews.value = false;
+        }
       }
     };
-    
-    // 新闻自动重试机制
-    const startNewsRetry = () => {
-      // 如果已经在重试中或已达到最大重试次数，则不再重试
-      if (isRetryingNews.value || newsRetryCount.value >= 8) {
-        if (newsRetryCount.value >= 8) {
-          console.log('[NEWS] 已达到最大重试次数(8次)，停止重试');
-          isRetryingNews.value = false;
-        }
-        return;
-      }
-      
-      isRetryingNews.value = true;
-      newsRetryCount.value++;
-      
-      console.log(`[NEWS] 暂无资讯，30秒后将进行第 ${newsRetryCount.value}/8 次重试`);
-      
-      // 清除之前的定时器（如果有）
-      if (newsRetryTimer.value) {
-        clearTimeout(newsRetryTimer.value);
-      }
-      
-      // 设置3秒后重试
-      newsRetryTimer.value = setTimeout(async () => {
-        console.log(`[NEWS] 执行第 ${newsRetryCount.value} 次资讯重试`);
-        await loadNewsAndAnalysis();
-      }, 3000); // 3秒
+
+    const loadMoreNews = async () => {
+      if (!hasMoreNews.value || loadingMoreNews.value) return;
+      await loadNewsAndAnalysis(true);
     };
     
     const mapConclusionToRating = (conclusion) => {
@@ -921,29 +940,16 @@ export default {
       return '';
     };
 
-    const handlePageChange = async (page) => {
-      currentPage.value = page;
-      await loadNewsAndAnalysis(); // 重新加载新闻数据
-    };
-
-    const viewNewsDetail = async (newsId) => {
-      try {
-        console.log(`查看新闻详情，新闻ID: ${newsId}`);
-        newsDetailDialogVisible.value = true;
-        currentNewsDetail.value = null; // 清空当前新闻详情，显示加载状态
-
-        const response = await store.dispatch('fetchNewsDetail', newsId);
-        if (response) {
-          currentNewsDetail.value = response;
-        } else {
-          ElMessage.error('获取新闻详情失败');
-          newsDetailDialogVisible.value = false;
-        }
-      } catch (error) {
-        console.error('获取新闻详情失败:', error);
-        ElMessage.error('获取新闻详情失败');
-        newsDetailDialogVisible.value = false;
-      }
+    const viewNewsDetail = (news) => {
+      if (!news) return;
+      currentNewsDetail.value = {
+        title: news.title || '',
+        content: news.content || news.summary || '',
+        source: '财联社',
+        publish_time: news.time || '',
+        url: news.url || ''
+      };
+      newsDetailDialogVisible.value = true;
     };
 
     // 定时器相关
@@ -973,12 +979,6 @@ export default {
     // 清除所有定时器
     const clearAllTimers = () => {
       clearAutoRefreshTimers();
-      
-      // 清除新闻重试定时器
-      if (newsRetryTimer.value) {
-        clearTimeout(newsRetryTimer.value);
-        newsRetryTimer.value = null;
-      }
     };
     
     // 清除自动刷新定时器
@@ -998,14 +998,9 @@ export default {
     watch(() => route.params.code, (newCode) => {
       if (newCode && newCode !== stockInfo.value.code) {
         stockInfo.value.code = newCode;
-        
-        // 切换股票时重置新闻重试状态
-        newsRetryCount.value = 0;
-        isRetryingNews.value = false;
-        if (newsRetryTimer.value) {
-          clearTimeout(newsRetryTimer.value);
-          newsRetryTimer.value = null;
-        }
+        stockNews.value = [];
+        totalNews.value = 0;
+        newsCursor.value = 0;
         
         loadStockData();
         loadNewsAndAnalysis();
@@ -1088,10 +1083,11 @@ export default {
       analysisResult,
       currentNewsDetail,
       newsDetailDialogVisible,
-      currentPage,
-      pageSize,
       totalNews,
+      hasMoreNews,
+      loadingMoreNews,
       loadNewsAndAnalysis,
+      loadMoreNews,
       loadAIEvaluation,
       loadStockData,
       toggleFavorite,
@@ -1099,13 +1095,10 @@ export default {
       formatDate,
       refreshAIEvaluation,
       loadingEvaluation,
-      handlePageChange,
       viewNewsDetail,
       mapConclusionToRating,  // 确保函数被返回
       lastPriceUpdate,
       lastNewsUpdate,
-      isRetryingNews,
-      newsRetryCount,
       forecastChartRef,
       isLoggedIn,
       goToLogin,
@@ -1293,6 +1286,18 @@ export default {
           }
         }
       }
+
+      .news-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 16px;
+      }
+
+      .news-total {
+        font-size: 0.9rem;
+        color: var(--text-tertiary);
+      }
     }
 
     .analysis-content {
@@ -1470,27 +1475,11 @@ export default {
     }
   }
   
-  .retry-info {
-    font-size: 0.9rem;
-    color: var(--text-tertiary);
-    margin-top: 5px;
-    
-    .loading-icon {
-      display: inline-block;
-      width: 14px;
-      height: 14px;
-      margin-right: 5px;
-      border: 2px solid #e6e6e6;
-      border-radius: 50%;
-      border-top: 2px solid #409EFF;
-      vertical-align: middle;
-      animation: spin 1s linear infinite;
-    }
-    
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
+  .news-detail-content {
+    line-height: 1.7;
+    color: var(--text-secondary);
+    white-space: pre-wrap;
+    margin-bottom: 12px;
   }
 }
 

@@ -138,9 +138,9 @@ export const stockApi = {
     return api.get(url);
   },
 
-  // 获取股票相关新闻列表（用于股票详情页）
-  getStockNews: (code, page = 1, limit = 5) => {
-    return api.get(`/api/news/get?code=${encodeURIComponent(code)}&page=${page}&limit=${limit}`);
+  // 获取个股新闻（财联社）
+  getStockNews: (symbol, limit = 20, lastTime = 0) => {
+    return api.get(`/api/cn/stocks/${encodeURIComponent(symbol)}/news?limit=${limit}&lastTime=${lastTime}`);
   },
   
   // 获取自选股推送新闻
@@ -148,13 +148,6 @@ export const stockApi = {
     return api.get(`/api/news/pushnews?page=${page}&limit=${limit}`);
   },
   
-  // 获取新闻详情（用于股票详情页旧接口）
-  getNewsDetail: (newsId) => {
-    return api.get(`/api/news/detail?id=${encodeURIComponent(newsId)}`, {
-      timeout: 300000
-    });
-  },
-
   // --- 新版资讯 API（主页用） ---
   // 头条新闻
   getHeadlineNews: () => {
