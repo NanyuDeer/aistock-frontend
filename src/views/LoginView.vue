@@ -39,6 +39,7 @@ import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
 import LoginQrCode from '@/components/LoginQrCode.vue'
 import { WECHAT_OAUTH_LOGIN_URL } from '@/services/api'
+import { ElMessage } from 'element-plus'
 import 'element-plus/es/components/message/style/css';
 
 export default {
@@ -75,35 +76,46 @@ export default {
     
     // 扫码登录成功回调（非微信浏览器）
     const handleLoginSuccess = async (user) => {
-      if (isProcessingLogin.value) return;
+      console.log('[LoginView] ========== 接收到 login-success 事件 ==========');
+      console.log('[LoginView] 用户信息:', user);
+      
+      if (isProcessingLogin.value) {
+        console.log('[LoginView] 正在处理登录中，跳过重复处理');
+        return;
+      }
+      
       try {
         isProcessingLogin.value = true;
-        console.log('[LoginView] 处理登录成功事件');
+        console.log('[LoginView] 开始处理登录成功事件');
 
         // 后端已通过 Set-Cookie 设置 httpOnly cookie
         // 使用 checkCookieAuth 验证登录状态并获取用户信息
+        console.log('[LoginView] 调用 checkCookieAuth 验证登录状态...');
         const success = await store.dispatch('checkCookieAuth');
         
         if (success) {
-          console.log('[LoginView] Cookie 认证成功，登录完成');
+          console.log('[LoginView] ✅ Cookie 认证成功，登录完成');
           setTimeout(() => {
             const redirect = router.currentRoute.value.query.redirect;
             const targetPath = redirect || '/';
+            console.log('[LoginView] 准备跳转到:', targetPath);
             router.push(targetPath);
           }, 500);
         } else {
-          console.error('[LoginView] Cookie 认证失败');
+          console.error('[LoginView] ❌ Cookie 认证失败，尝试降级方案');
           // 降级方案：尝试使用旧的方式
           await store.dispatch('login', user);
           await store.dispatch('fetchUserInfo');
           setTimeout(() => {
             const redirect = router.currentRoute.value.query.redirect;
             const targetPath = redirect || '/';
+            console.log('[LoginView] 降级方案：准备跳转到:', targetPath);
             router.push(targetPath);
           }, 500);
         }
       } catch (error) {
-        console.error('[LoginView] 处理登录失败:', error);
+        console.error('[LoginView] ❌ 处理登录失败:', error);
+        ElMessage.error('登录处理失败，请刷新页面重试');
       } finally {
         isProcessingLogin.value = false;
       }

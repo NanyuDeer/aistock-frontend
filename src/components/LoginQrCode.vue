@@ -184,14 +184,15 @@ export default {
       
       try {
         const response = await authApi.checkScanLoginStatus(sessionState.value);
-        console.log('[QrCode] 登录状态检查响应:', response);
+        console.log('[QrCode] 登录状态检查响应:', JSON.stringify(response, null, 2));
         
         // 适配新的响应格式：{ code: 200, message: "pending"/"confirmed", data: { status, openid } }
         if (response && response.code === 200) {
           const loginStatus = response.data?.status || response.message || '';
+          console.log('[QrCode] 解析到的登录状态:', loginStatus);
           
           if (loginStatus === 'confirmed') {
-            console.log('[QrCode] 扫码登录成功');
+            console.log('[QrCode] ✅ 扫码登录成功！');
             status.value = 'confirmed';
             
             stopPollingAndCountdown();
@@ -200,19 +201,18 @@ export default {
             // Cookie 会在后续所有请求中自动携带，用于身份验证
             // 这里延迟一下确保 cookie 已设置
             setTimeout(async () => {
-              console.log('[QrCode] 登录成功，准备跳转');
+              console.log('[QrCode] 准备通知父组件处理登录成功事件...');
               
-              // 通知父组件登录成功（传递最小用户信息）
+              // 通知父组件登录成功（父组件会调用 checkCookieAuth 获取完整用户信息）
               const user = {
                 openid: response.data?.openid || '',
                 name: '用户',
                 avatar: ''
               };
               
-              // 将用户信息存储到 Vuex
-              store.commit('setIsLoggedIn', true);
-              
+              console.log('[QrCode] 即将触发 login-success 事件');
               emit('login-success', user);
+              console.log('[QrCode] login-success 事件已触发');
             }, 500);
           } else if (loginStatus === 'pending') {
             // 继续等待
