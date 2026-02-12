@@ -388,7 +388,8 @@ export default {
 <style lang="scss" scoped>
 .forecast-page {
   .page-container {
-    padding-top: 90px;
+    padding: 12px;
+    padding-top: 68px;
     background: var(--background-color);
     min-height: 100vh;
   }
@@ -409,6 +410,11 @@ export default {
   }
 
   @media (max-width: 480px) {
+    .page-container {
+      padding: 8px;
+      padding-top: 64px;
+    }
+
     :deep(.el-table .cell) {
       padding-left: 4px;
       padding-right: 4px;
