@@ -38,6 +38,8 @@
           <el-table
             :data="tableData"
             table-layout="fixed"
+            :header-cell-style="getHeaderCellStyle"
+            :cell-style="getCellStyle"
             border
             stripe
             style="width: 100%"
@@ -69,7 +71,6 @@
               prop="forecastNetprofitYoy"
               label="净利润同比(%)"
               :min-width="columnMinWidth.yoy"
-              align="right"
               sortable="custom"
               show-overflow-tooltip
             >
@@ -352,6 +353,20 @@ export default {
       return text.replace(/(\d+(?:\.\d+)?%)/g, `<span class="highlight-number ${tone}">$1</span>`)
     }
 
+    const getHeaderCellStyle = ({ column }) => {
+      if (column?.property === 'forecastNetprofitYoy') {
+        return { textAlign: 'right' }
+      }
+      return { textAlign: 'center' }
+    }
+
+    const getCellStyle = ({ column }) => {
+      if (column?.property === 'forecastNetprofitYoy') {
+        return { textAlign: 'right' }
+      }
+      return { textAlign: 'center' }
+    }
+
     const handleResize = () => {
       viewportWidth.value = window.innerWidth
     }
@@ -386,7 +401,9 @@ export default {
       handleSortChange,
       handleSizeChange,
       handleCurrentChange,
-      formatSummary
+      formatSummary,
+      getHeaderCellStyle,
+      getCellStyle
     }
   }
 }

@@ -142,7 +142,7 @@
             </div>
 
             <div class="forecast-ranking-section">
-              <h3 class="section-title">预测盈利排行榜</h3>
+              <h3 class="section-title ranking-title" @click="goToForecastPage">预测盈利排行榜</h3>
               <div class="forecast-ranking-card">
                 <el-table
                   :data="forecastRanking"
@@ -604,14 +604,14 @@ export default {
 
         const response = await stockApi.getProfitForecastList({
           page: 1,
-          pageSize: 5,
+          pageSize: 8,
           sortBy: 'forecast_netprofit_yoy',
           sortOrder: 'desc'
         });
 
         const list = response?.data?.['盈利预测列表'] || response?.data?.list || response?.data?.items || [];
         const normalized = Array.isArray(list)
-          ? list.slice(0, 5).map(mapForecastRanking).filter(item => item.code)
+          ? list.slice(0, 8).map(mapForecastRanking).filter(item => item.code)
           : [];
 
         if (normalized.length > 0) {
@@ -688,6 +688,10 @@ export default {
 
     const onForecastRowClick = (row) => {
       goToStockDetailByCode(row?.code);
+    };
+
+    const goToForecastPage = () => {
+      router.push('/forecast');
     };
 
     // 处理热门股票收藏/取消收藏
@@ -848,6 +852,7 @@ export default {
       loadingForecastRanking,
       onForecastRowClick,
       goToStockDetailByCode,
+      goToForecastPage,
       
       // 自选股相关
       myFavoriteStocks,
@@ -955,6 +960,10 @@ export default {
     .hot-stocks-section {
       flex: 2;
 
+      :deep(.stock-card-list) {
+        margin-top: 0;
+      }
+
       :deep(.stock-card-list .stock-cards .stock-card) {
         flex: 1 1 calc(33.333% - 10px);
         max-width: calc(33.333% - 10px);
@@ -966,7 +975,20 @@ export default {
       min-width: 320px;
 
       .section-title {
-        margin-bottom: 15px;
+        margin: 0 0 15px 0;
+      }
+
+      .ranking-title {
+        font-size: 1.4rem;
+        font-weight: 500;
+        line-height: 1.4;
+        color: var(--text-primary);
+        cursor: pointer;
+        transition: color 0.2s ease;
+
+        &:hover {
+          color: var(--primary-color);
+        }
       }
 
         .forecast-ranking-card {
