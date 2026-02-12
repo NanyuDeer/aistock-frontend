@@ -19,6 +19,16 @@
       </div>
     </div>
     <div class="stock-chart" ref="chartContainer"></div>
+    <div v-if="klineItems.length > 1" class="chart-range-slider">
+      <el-slider
+        v-model="zoomRange"
+        range
+        :min="0"
+        :max="100"
+        :step="1"
+        :show-tooltip="false"
+      />
+    </div>
   </div>
 </template>
 
@@ -26,20 +36,19 @@
 import { ref, onMounted, watch, onBeforeUnmount } from 'vue';
 import { useStore } from 'vuex';
 import * as echarts from 'echarts/core';
-import { CandlestickChart, BarChart } from 'echarts/charts';
+import { CandlestickChart } from 'echarts/charts';
 import {
   TooltipComponent,
   GridComponent,
-  DataZoomComponent
+  MarkPointComponent
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 
 echarts.use([
   CandlestickChart,
-  BarChart,
   TooltipComponent,
   GridComponent,
-  DataZoomComponent,
+  MarkPointComponent,
   CanvasRenderer
 ]);
 
@@ -70,6 +79,7 @@ export default {
     const selectedKlt = ref(101);
     const periodOptions = PERIOD_OPTIONS;
     const klineItems = ref([]);
+    const zoomRange = ref([0, 100]);
     const latestRequestId = ref(0);
     let resizeTimer = null;
 
@@ -162,6 +172,22 @@ export default {
       );
     };
 
+    const getVisibleItems = () => {
+      const items = klineItems.value;
+      if (!items.length) return [];
+      const total = items.length;
+      const startRaw = Array.isArray(zoomRange.value) ? Number(zoomRange.value[0]) : 0;
+      const endRaw = Array.isArray(zoomRange.value) ? Number(zoomRange.value[1]) : 100;
+      const startPercent = Math.max(0, Math.min(100, Number.isFinite(startRaw) ? startRaw : 0));
+      const endPercent = Math.max(0, Math.min(100, Number.isFinite(endRaw) ? endRaw : 100));
+      let startIndex = Math.floor(startPercent / 100 * total);
+      let endIndex = Math.ceil(endPercent / 100 * total);
+      if (endIndex <= startIndex) {
+        endIndex = Math.min(total, startIndex + 1);
+      }
+      return items.slice(startIndex, endIndex);
+    };
+
     const renderChart = () => {
       if (!chartInstance.value) return;
       if (!klineItems.value.length) {
@@ -169,12 +195,28 @@ export default {
         return;
       }
 
-      const categories = klineItems.value.map(item => item.time);
-      const candles = klineItems.value.map(item => [item.open, item.close, item.low, item.high]);
-      const initialWindowSize = 60;
-      const startPercent = categories.length > initialWindowSize
-        ? Math.round((1 - initialWindowSize / categories.length) * 100)
-        : 0;
+      const visibleItems = getVisibleItems();
+      if (!visibleItems.length) {
+        renderEmpty('暂无K线数据');
+        return;
+      }
+
+      const categories = visibleItems.map(item => item.time);
+      const candles = visibleItems.map(item => [item.open, item.close, item.low, item.high]);
+      let highestIndex = 0;
+      let lowestIndex = 0;
+      let highestValue = visibleItems[0].high;
+      let lowestValue = visibleItems[0].low;
+      for (let i = 1; i < visibleItems.length; i += 1) {
+        if (visibleItems[i].high > highestValue) {
+          highestValue = visibleItems[i].high;
+          highestIndex = i;
+        }
+        if (visibleItems[i].low < lowestValue) {
+          lowestValue = visibleItems[i].low;
+          lowestIndex = i;
+        }
+      }
 
       chartInstance.value.setOption(
         {
@@ -192,7 +234,7 @@ export default {
             formatter: (params) => {
               const candle = params.find(item => item.seriesName === 'K线');
               if (!candle) return '';
-              const row = klineItems.value[candle.dataIndex];
+              const row = visibleItems[candle.dataIndex];
               if (!row) return '';
               const isUp = row.close >= row.open;
               const trendColor = isUp ? UP_COLOR : DOWN_COLOR;
@@ -238,25 +280,6 @@ export default {
               lineStyle: { color: '#eef1f5' }
             }
           },
-          dataZoom: [
-            {
-              type: 'inside',
-              xAxisIndex: [0],
-              filterMode: 'filter',
-              start: startPercent,
-              end: 100
-            },
-            {
-              type: 'slider',
-              xAxisIndex: [0],
-              filterMode: 'filter',
-              bottom: 0,
-              height: 18,
-              start: startPercent,
-              end: 100,
-              brushSelect: false
-            }
-          ],
           series: [
             {
               name: 'K线',
@@ -292,15 +315,15 @@ export default {
                 data: [
                   {
                     name: '最高',
-                    type: 'max',
-                    valueDim: 'highest',
+                    coord: [categories[highestIndex], highestValue],
+                    value: highestValue,
                     itemStyle: { color: '#dc2626' },
                     label: { position: 'top' }
                   },
                   {
                     name: '最低',
-                    type: 'min',
-                    valueDim: 'lowest',
+                    coord: [categories[lowestIndex], lowestValue],
+                    value: lowestValue,
                     itemStyle: { color: '#16a34a' },
                     label: { position: 'bottom' }
                   }
@@ -349,6 +372,13 @@ export default {
           .sort((a, b) => a.time.localeCompare(b.time));
 
         klineItems.value = normalized;
+        const initialWindowSize = 60;
+        if (normalized.length > initialWindowSize) {
+          const start = Math.round((1 - initialWindowSize / normalized.length) * 100);
+          zoomRange.value = [start, 100];
+        } else {
+          zoomRange.value = [0, 100];
+        }
         renderChart();
       } catch (error) {
         console.error('获取K线失败:', error);
@@ -391,6 +421,10 @@ export default {
       fetchKlineData();
     });
 
+    watch(zoomRange, () => {
+      renderChart();
+    }, { deep: true });
+
     watch(() => props.stockCode, (newCode, oldCode) => {
       if (newCode && newCode !== oldCode) {
         klineItems.value = [];
@@ -416,6 +450,8 @@ export default {
     return {
       chartContainer,
       selectedKlt,
+      klineItems,
+      zoomRange,
       periodOptions,
       handlePeriodChange
     };
@@ -499,6 +535,11 @@ export default {
   .stock-chart {
     width: 100%;
     height: 420px;
+  }
+
+  .chart-range-slider {
+    margin-top: 10px;
+    padding: 0 4px;
   }
 }
 
