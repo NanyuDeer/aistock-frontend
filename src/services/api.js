@@ -200,8 +200,9 @@ export const stockApi = {
   },
   
   // 获取自选股推送新闻
-  getPushNews: (page = 1, limit = 5) => {
-    return api.get(`/api/news/pushnews?page=${page}&limit=${limit}`);
+  getPushNews: (_page = 1, _limit = 5) => {
+    // 新版占位接口：当前只返回空列表
+    return api.get('/api/users/me/news/push');
   },
   
   // --- 新版资讯 API（主页用） ---

@@ -713,13 +713,15 @@ export default createStore({
     async fetchPushNews(_, { page = 1, limit = 5 } = {}) {
       try {
         const response = await stockApi.getPushNews(page, limit);
-        if (response.code === 0) {
-          return response.data;
+        if (response?.code === 200) {
+          return {
+            news: response?.data?.['推送新闻'] || []
+          };
         }
-        return null;
+        return { news: [] };
       } catch (error) {
         console.error('获取自选股推送新闻失败:', error);
-        return null;
+        return { news: [] };
       }
     },
     
