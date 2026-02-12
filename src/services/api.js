@@ -281,10 +281,9 @@ export const stockApi = {
   },
   
   // 更新用户推送设置
-  updateUserPushSettings: (userId, settings) => {
-    return api.post('/api/wechat/push/settings', { 
-      user_id: userId, 
-      settings: settings 
+  updateUserPushSettings: (settingType, enabled) => {
+    return api.put(`/api/users/me/settings/${encodeURIComponent(settingType)}`, {
+      enabled: !!enabled
     });
   },
   

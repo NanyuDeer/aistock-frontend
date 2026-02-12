@@ -123,14 +123,9 @@ export default {
       
       settingsLoading.value = true;
       try {
-        const settings = {
-          stock_push: pushSettings.value.stock_push,
-          morning_report: pushSettings.value.morning_report
-        };
-        
         const success = await store.dispatch('updatePushSettings', {
-          userId: user.id,
-          settings: settings
+          type,
+          enabled: !!pushSettings.value[type]
         });
         
         if (success) {

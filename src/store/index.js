@@ -928,13 +928,22 @@ export default createStore({
     },
     
     // 添加更新推送设置的action
-    async updatePushSettings(_, { userId, settings }) {
+    async updatePushSettings(_, { type, enabled }) {
       try {
-        console.log('[DEBUG] 发起更新推送设置请求:', userId, settings);
-        const response = await stockApi.updateUserPushSettings(userId, settings);
+        const settingTypeMap = {
+          stock_push: 'stock_push',
+          morning_report: 'daily_news_push'
+        };
+        const targetSettingType = settingTypeMap[type];
+        if (!targetSettingType) {
+          return false;
+        }
+
+        console.log('[DEBUG] 发起更新推送设置请求:', targetSettingType, enabled);
+        const response = await stockApi.updateUserPushSettings(targetSettingType, enabled);
         console.log('[DEBUG] 更新推送设置响应:', response);
-        
-        return response.code === 0;
+
+        return response?.code === 200;
       } catch (error) {
         console.error('更新推送设置失败:', error);
         return false;
