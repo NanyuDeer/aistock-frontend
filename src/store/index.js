@@ -656,17 +656,25 @@ export default createStore({
     },
 
     async fetchStockEvaluation(_, { stockCode, refresh = false }) {
+      if (!stockCode) return null;
       try {
-        console.log('[DEBUG] 发起获取股票AI评估请求:', stockCode, '刷新:', refresh);
-        const response = await stockApi.getStockEvaluation(stockCode, refresh);
-        console.log('[DEBUG] 获取股票AI评估响应:', response);
-        
-        if (response.code === 0 && response.data) {
+        const response = refresh
+          ? await stockApi.createStockAnalysis(stockCode)
+          : await stockApi.getStockAnalysis(stockCode);
+
+        if (response.code === 200 && response.data) {
+          const data = response.data;
           return {
-            conclusion: response.data.conclusion || '未知',
-            evaluation_time: response.data.evaluation_time || '',
-            news_list: response.data.news_list || [],
-            reason: response.data.reason || '暂无评估理由'
+            source: data['来源'] || '',
+            model: data['模型'] || '',
+            analysisId: data['分析ID'] || '',
+            stockCode: data['股票代码'] || stockCode,
+            stockName: data['股票简称'] || '',
+            analysisTime: data['分析时间'] || '',
+            conclusion: data['结论'] || '未知',
+            coreLogic: data['核心逻辑'] || '',
+            riskWarning: data['风险提示'] || '',
+            inputSummary: data['输入摘要'] || null
           };
         }
         return null;

@@ -203,6 +203,14 @@ export default {
 
       const categories = visibleItems.map(item => item.time);
       const candles = visibleItems.map(item => [item.open, item.close, item.low, item.high]);
+      const visibleHighs = visibleItems.map(item => item.high);
+      const visibleLows = visibleItems.map(item => item.low);
+      const rawMax = Math.max(...visibleHighs);
+      const rawMin = Math.min(...visibleLows);
+      const range = Math.max(rawMax - rawMin, Math.abs(rawMax) * 0.02, 0.01);
+      const axisPadding = range * 0.12;
+      const axisMin = rawMin - axisPadding;
+      const axisMax = rawMax + axisPadding;
       let highestIndex = 0;
       let lowestIndex = 0;
       let highestValue = visibleItems[0].high;
@@ -269,6 +277,8 @@ export default {
           },
           yAxis: {
             scale: true,
+            min: axisMin,
+            max: axisMax,
             splitNumber: 5,
             axisLine: { show: false },
             axisTick: { show: false },
@@ -297,7 +307,7 @@ export default {
               },
               markPoint: {
                 symbol: 'circle',
-                symbolSize: 10,
+                symbolSize: 6,
                 animation: false,
                 z: 12,
                 label: {
@@ -320,7 +330,7 @@ export default {
                     name: '最高',
                     coord: [categories[highestIndex], highestValue],
                     value: highestValue,
-                    itemStyle: { color: '#dc2626' },
+                    itemStyle: { color: '#111827' },
                     label: {
                       position: 'top',
                       align: highestIndex < 2 ? 'left' : (highestIndex > categories.length - 3 ? 'right' : 'center'),
@@ -331,7 +341,7 @@ export default {
                     name: '最低',
                     coord: [categories[lowestIndex], lowestValue],
                     value: lowestValue,
-                    itemStyle: { color: '#16a34a' },
+                    itemStyle: { color: '#111827' },
                     label: {
                       position: 'bottom',
                       align: lowestIndex < 2 ? 'left' : (lowestIndex > categories.length - 3 ? 'right' : 'center'),

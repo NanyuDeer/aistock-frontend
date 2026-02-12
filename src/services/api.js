@@ -198,10 +198,14 @@ export const stockApi = {
     return api.get(`/api/tags/leaders?tag=${encodeURIComponent(tagName)}`);
   },
 
-  // 获取 AI 评估结果
-  getStockEvaluation: (stockCode, refresh = 0) => {
-    const url = `/api/eva?code=${encodeURIComponent(stockCode)}&refresh=${refresh}`;
-    return api.get(url);
+  // 获取个股最近一次AI评价
+  getStockAnalysis: (symbol) => {
+    return api.get(`/api/cn/stocks/${encodeURIComponent(symbol)}/analysis`);
+  },
+
+  // 触发一次新的个股AI评价
+  createStockAnalysis: (symbol) => {
+    return api.post(`/api/cn/stocks/${encodeURIComponent(symbol)}/analysis`);
   },
 
   // 获取市场概览数据

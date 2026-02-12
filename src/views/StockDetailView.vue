@@ -67,6 +67,9 @@
             </div>
             <div class="analysis-meta">
               <span class="analysis-date">分析日期：{{ analysisResult.date }}</span>
+              <span class="analysis-source" v-if="analysisResult.source">
+                来源：{{ analysisResult.source }}<template v-if="analysisResult.model"> · 模型：{{ analysisResult.model }}</template>
+              </span>
               <el-button 
                 size="small" 
                 type="primary" 
@@ -81,26 +84,31 @@
           </div>
           
           <div class="analysis-detail">
-            <h4>分析依据</h4>
-            <div class="markdown-content" v-html="analysisResult.detail"></div>
+            <h4>核心逻辑</h4>
+            <div class="markdown-content" v-html="analysisResult.coreLogic"></div>
           </div>
-          
-          <div class="reference-news" v-if="analysisResult.newsList && analysisResult.newsList.length > 0">
-            <h4>参考新闻</h4>
-            <ul class="news-reference-list">
-              <li v-for="(news, index) in analysisResult.newsList" :key="index" class="news-reference-item">
-                <div class="news-number">{{ index + 1 }}.</div>
-                <a 
-                  :href="news.link || '#'" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  class="news-reference-title"
-                >
-                  {{ news.title }}
-                </a>
-                <div class="news-reference-time">{{ formatDate(news.publish_time) }}</div>
-              </li>
-            </ul>
+
+          <div class="analysis-detail">
+            <h4>风险提示</h4>
+            <div class="markdown-content" v-html="analysisResult.riskWarning"></div>
+          </div>
+
+          <div class="analysis-detail" v-if="analysisResult.inputSummary">
+            <h4>输入摘要</h4>
+            <div class="input-summary-grid">
+              <div class="input-item">
+                <span class="input-label">新闻数量</span>
+                <span class="input-value">{{ analysisResult.inputSummary.newsCount }}</span>
+              </div>
+              <div class="input-item input-item-wide">
+                <span class="input-label">业绩预测摘要</span>
+                <span class="input-value">{{ analysisResult.inputSummary.forecastSummary }}</span>
+              </div>
+              <div class="input-item input-item-wide" v-if="analysisResult.inputSummary.tradingDataText">
+                <span class="input-label">交易数据</span>
+                <span class="input-value">{{ analysisResult.inputSummary.tradingDataText }}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -418,12 +426,13 @@ export default {
     const stockNews = ref([]);
     const analysisResult = ref({
       conclusion: '',
-      rating: '',
       date: '',
-      summary: '',
-      detail: '',
-      factors: [],
-      newsList: []
+      coreLogic: '',
+      riskWarning: '',
+      source: '',
+      model: '',
+      analysisId: '',
+      inputSummary: null
     });
 
     const currentNewsDetail = ref(null);
@@ -837,63 +846,62 @@ export default {
       await loadNewsAndAnalysis(true);
     };
     
-    const mapConclusionToRating = (conclusion) => {
-      if (!conclusion) return '';
-      
-      if (['看多', '强烈看多', '买入', '利好'].includes(conclusion)) {
-        return 'rating-buy';
-      } else if (['重大利好'].includes(conclusion)) {
-        return 'rating-strong-buy';
-      } else if (['看空', '强烈看空', '卖出', '利空'].includes(conclusion)) {
-        return 'rating-sell';
-      } else if (['重大利空'].includes(conclusion)) {
-        return 'rating-strong-sell';
-      } else if (['中性', '观望', '持有'].includes(conclusion)) {
-        return 'rating-hold';
-      }
-      return '';
-    };
-
     const loadAIEvaluation = async (refresh = false) => {
       try {
-        console.log('[DEBUG] 发起获取股票AI评估请求:', stockInfo.value.code, '刷新:', refresh);
         const evaluation = await store.dispatch('fetchStockEvaluation', {
           stockCode: stockInfo.value.code,
           refresh: refresh
         });
 
-        console.log('[DEBUG] 接收到评估结果:', evaluation);
-
         if (evaluation) {
+          const tradingData = evaluation.inputSummary?.交易数据 || {};
+          const tradingParts = [];
+          if (tradingData['股票代码']) {
+            tradingParts.push(`股票代码 ${tradingData['股票代码']}`);
+          }
+          if (tradingData['最新价'] !== undefined && tradingData['最新价'] !== null) {
+            tradingParts.push(`最新价 ${tradingData['最新价']}`);
+          }
+
           analysisResult.value = {
             conclusion: evaluation.conclusion || '未知',
-            rating: mapConclusionToRating(evaluation.conclusion),
-            date: evaluation.evaluation_time || formatDate(new Date()),
-            summary: md.render(evaluation.reason || '暂无分析内容'), 
-            detail: md.render(evaluation.reason || '暂无分析内容'),
-            newsList: evaluation.news_list || []
+            date: evaluation.analysisTime || '--',
+            coreLogic: md.render(evaluation.coreLogic || '暂无核心逻辑'),
+            riskWarning: md.render(evaluation.riskWarning || '暂无风险提示'),
+            source: evaluation.source || '',
+            model: evaluation.model || '',
+            analysisId: evaluation.analysisId || '',
+            inputSummary: evaluation.inputSummary
+              ? {
+                  newsCount: evaluation.inputSummary['新闻数量'] ?? '--',
+                  forecastSummary: evaluation.inputSummary['业绩预测摘要'] || '--',
+                  tradingDataText: tradingParts.join('，')
+                }
+              : null
           };
-          
-          console.log('[DEBUG] 解析后的新闻列表:', analysisResult.value.newsList);
         } else {
           analysisResult.value = {
             conclusion: '未知',
-            rating: '未知',
-            date: formatDate(new Date()),
-            summary: '暂无AI评估数据',
-            detail: '无法获取AI评估结果，请稍后再试。',
-            newsList: []
+            date: '--',
+            coreLogic: '暂无AI评估数据',
+            riskWarning: '无法获取AI评估结果，请稍后再试。',
+            source: '',
+            model: '',
+            analysisId: '',
+            inputSummary: null
           };
         }
       } catch (error) {
         console.error('获取股票AI评估失败:', error);
         analysisResult.value = {
           conclusion: '获取失败',
-          rating: '未知',
-          date: formatDate(new Date()),
-          summary: 'AI评估数据获取失败',
-          detail: '获取AI评估结果时发生错误，请稍后再试。',
-          newsList: []
+          date: '--',
+          coreLogic: 'AI评估数据获取失败',
+          riskWarning: '获取AI评估结果时发生错误，请稍后再试。',
+          source: '',
+          model: '',
+          analysisId: '',
+          inputSummary: null
         };
       } finally {
         loadingEvaluation.value = false;
@@ -1268,7 +1276,6 @@ export default {
       refreshAIEvaluation,
       loadingEvaluation,
       viewNewsDetail,
-      mapConclusionToRating,  // 确保函数被返回
       lastPriceUpdate,
       lastNewsUpdate,
       forecastChartRef,
@@ -1687,6 +1694,11 @@ export default {
         .analysis-date {
           color: var(--text-tertiary);
         }
+
+        .analysis-source {
+          color: var(--text-tertiary);
+          font-size: 0.9rem;
+        }
       }
 
       .analysis-detail {
@@ -1740,6 +1752,45 @@ export default {
             word-break: break-word;
           }
         }
+      }
+
+      .input-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+
+        @media (max-width: 576px) {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .input-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 10px 12px;
+        border: 1px solid #edf1f5;
+        border-radius: 8px;
+        background: #fafcff;
+      }
+
+      .input-item-wide {
+        grid-column: span 2;
+
+        @media (max-width: 576px) {
+          grid-column: span 1;
+        }
+      }
+
+      .input-label {
+        color: var(--text-tertiary);
+        font-size: 0.85rem;
+      }
+
+      .input-value {
+        color: var(--text-primary);
+        line-height: 1.5;
+        overflow-wrap: anywhere;
       }
 
       .reference-news {
