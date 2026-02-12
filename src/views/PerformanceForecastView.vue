@@ -111,7 +111,8 @@
               :current-page="currentPage"
               :page-sizes="pageSizeOptions"
               :page-size="pageSize"
-              layout="total, sizes, prev, pager, next, jumper"
+              :layout="paginationLayout"
+              :size="paginationSize"
               :total="total"
               background
             />
@@ -153,6 +154,13 @@ export default {
     const isNarrowScreen = computed(() => viewportWidth.value <= 480)
     const showUpdateTimeColumn = computed(() => viewportWidth.value > 768)
     const pageSizeOptions = computed(() => (isMobileScreen.value ? [10, 20, 50] : [10, 20, 50, 100, 200, 500]))
+    const paginationLayout = computed(() => {
+      if (viewportWidth.value <= 360) return 'prev, pager, next'
+      if (viewportWidth.value <= 640) return 'total, prev, pager, next'
+      if (viewportWidth.value <= 900) return 'total, sizes, prev, pager, next'
+      return 'total, sizes, prev, pager, next, jumper'
+    })
+    const paginationSize = computed(() => (isMobileScreen.value ? 'small' : 'default'))
 
     const columnMinWidth = computed(() => {
       if (viewportWidth.value <= 360) {
@@ -409,6 +417,8 @@ export default {
       showUpdateTimeColumn,
       columnMinWidth,
       pageSizeOptions,
+      paginationLayout,
+      paginationSize,
       handleSearch,
       handleReset,
       handleSortFilterChange,
@@ -459,6 +469,20 @@ export default {
     padding-right: 8px;
   }
 
+  .pagination-container {
+    padding: 20px 0;
+    display: flex;
+    justify-content: flex-end;
+
+    :deep(.el-pagination) {
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      row-gap: 8px;
+      justify-content: flex-end;
+    }
+  }
+
   @media (max-width: 480px) {
     .page-container {
       padding: 8px;
@@ -473,8 +497,12 @@ export default {
 
     .pagination-container {
       justify-content: center;
-      overflow-x: auto;
+      overflow-x: visible;
       padding: 12px 0 4px;
+
+      :deep(.el-pagination) {
+        justify-content: center;
+      }
     }
   }
 
@@ -497,12 +525,15 @@ export default {
         width: 100%;
       }
     }
-  }
 
-  .pagination-container {
-    padding: 20px 0;
-    display: flex;
-    justify-content: flex-end;
+    .pagination-container {
+      justify-content: center;
+      padding: 12px 0 6px;
+
+      :deep(.el-pagination) {
+        justify-content: center;
+      }
+    }
   }
 
   .summary-text {
