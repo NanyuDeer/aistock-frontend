@@ -366,7 +366,7 @@ export default {
           symbol: props.stockCode,
           klt: selectedKlt.value,
           fqt: 1,
-          limit: selectedKlt.value >= 100 ? 300 : 240
+          limit: 100
         });
         if (requestId !== latestRequestId.value) return;
 

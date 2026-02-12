@@ -2,6 +2,57 @@ import { createStore } from 'vuex'
 import { authApi, stockApi } from '@/services/api'
 import cacheManager from '@/utils/cacheManager'
 
+const KLINE_TOTAL_LIMIT = 100;
+const KLINE_MAX_PAGES = 3;
+
+function parseKlineTime(rawTime) {
+  const text = String(rawTime || '').trim();
+  if (!text) return null;
+  const digits = text.replace(/\D/g, '');
+  if (digits.length < 8) return null;
+
+  const year = Number(digits.slice(0, 4));
+  const month = Number(digits.slice(4, 6)) - 1;
+  const day = Number(digits.slice(6, 8));
+  const hour = digits.length >= 10 ? Number(digits.slice(8, 10)) : 0;
+  const minute = digits.length >= 12 ? Number(digits.slice(10, 12)) : 0;
+  const second = digits.length >= 14 ? Number(digits.slice(12, 14)) : 0;
+  return new Date(year, month, day, hour, minute, second);
+}
+
+function buildKlineEndCursor(rawTime, klt) {
+  const source = String(rawTime || '').trim();
+  const digits = source.replace(/\D/g, '');
+  const base = parseKlineTime(source);
+  if (!base || digits.length < 8) return '';
+
+  const next = new Date(base.getTime());
+  if (klt >= 100) {
+    if (klt === 102) {
+      next.setDate(next.getDate() - 7);
+    } else if (klt === 103) {
+      next.setMonth(next.getMonth() - 1);
+    } else {
+      next.setDate(next.getDate() - 1);
+    }
+  } else {
+    const stepMinutes = Math.max(1, Number(klt) || 1);
+    next.setMinutes(next.getMinutes() - stepMinutes);
+  }
+
+  const pad2 = n => String(n).padStart(2, '0');
+  const y = next.getFullYear();
+  const m = pad2(next.getMonth() + 1);
+  const d = pad2(next.getDate());
+  const h = pad2(next.getHours());
+  const mm = pad2(next.getMinutes());
+  const s = pad2(next.getSeconds());
+
+  if (digits.length >= 14) return `${y}${m}${d}${h}${mm}${s}`;
+  if (digits.length >= 12) return `${y}${m}${d}${h}${mm}`;
+  return `${y}${m}${d}`;
+}
+
 export default createStore({
   state: {
     user: JSON.parse(localStorage.getItem('user')) || null, // 从 localStorage 恢复用户信息
@@ -416,7 +467,7 @@ export default createStore({
       symbol,
       klt = 101,
       fqt = 1,
-      limit = 300,
+      limit = KLINE_TOTAL_LIMIT,
       startDate = '',
       endDate = ''
     }) {
@@ -424,21 +475,80 @@ export default createStore({
         return null;
       }
       try {
-        const response = await stockApi.getStockKline({
-          symbol,
-          klt,
-          fqt,
-          limit,
-          startDate,
-          endDate
-        });
-        if (response.code === 200 && response.data) {
+        const targetLimit = Math.min(
+          KLINE_TOTAL_LIMIT,
+          Math.max(1, Number.parseInt(limit, 10) || KLINE_TOTAL_LIMIT)
+        );
+        const pageCount = targetLimit <= 60 ? 2 : KLINE_MAX_PAGES;
+        const pageSize = Math.ceil(targetLimit / pageCount);
+
+        let cursorEndDate = endDate;
+        let meta = null;
+        const mergedItems = [];
+        const seenTimes = new Set();
+
+        for (let page = 0; page < pageCount && mergedItems.length < targetLimit; page += 1) {
+          const remain = targetLimit - mergedItems.length;
+          const response = await stockApi.getStockKline({
+            symbol,
+            klt,
+            fqt,
+            limit: Math.min(pageSize, remain),
+            startDate,
+            endDate: cursorEndDate
+          });
+
+          if (response.code !== 200 || !response.data) {
+            break;
+          }
+
+          if (!meta) {
+            meta = response.data;
+          }
+
+          const items = Array.isArray(response.data['K线']) ? response.data['K线'] : [];
+          if (items.length === 0) {
+            break;
+          }
+
+          for (const item of items) {
+            const key = String(item?.['时间'] || '');
+            if (!key || seenTimes.has(key)) continue;
+            seenTimes.add(key);
+            mergedItems.push(item);
+            if (mergedItems.length >= targetLimit) break;
+          }
+
+          if (mergedItems.length >= targetLimit) {
+            break;
+          }
+
+          let oldestRawTime = '';
+          let oldestTime = null;
+          for (const item of items) {
+            const raw = String(item?.['时间'] || '');
+            const parsed = parseKlineTime(raw);
+            if (!parsed) continue;
+            if (!oldestTime || parsed < oldestTime) {
+              oldestTime = parsed;
+              oldestRawTime = raw;
+            }
+          }
+
+          const nextEndDate = buildKlineEndCursor(oldestRawTime, klt);
+          if (!nextEndDate || String(nextEndDate) === String(cursorEndDate || '')) {
+            break;
+          }
+          cursorEndDate = nextEndDate;
+        }
+
+        if (meta) {
           return {
-            symbol: response.data['股票代码'] || symbol,
-            period: response.data['K线周期'] || '',
-            adjustment: response.data['复权类型'] || '',
-            count: response.data['数量'] || 0,
-            items: response.data['K线'] || []
+            symbol: meta['股票代码'] || symbol,
+            period: meta['K线周期'] || '',
+            adjustment: meta['复权类型'] || '',
+            count: mergedItems.length,
+            items: mergedItems.slice(0, targetLimit)
           };
         }
         return null;
