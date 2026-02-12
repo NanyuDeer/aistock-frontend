@@ -253,8 +253,8 @@ export default {
           grid: {
             left: '6%',
             right: '4%',
-            top: 10,
-            bottom: 36
+            top: 26,
+            bottom: 52
           },
           xAxis: {
             type: 'category',
@@ -285,6 +285,7 @@ export default {
               name: 'K线',
               type: 'candlestick',
               data: candles,
+              clip: false,
               large: false,
               progressive: 0,
               progressiveThreshold: 0,
@@ -298,6 +299,7 @@ export default {
                 symbol: 'circle',
                 symbolSize: 10,
                 animation: false,
+                z: 12,
                 label: {
                   show: true,
                   fontSize: 11,
@@ -307,6 +309,7 @@ export default {
                   borderWidth: 1,
                   borderRadius: 4,
                   padding: [2, 5],
+                  distance: 8,
                   formatter: (params) => {
                     const value = toNumber(params.value);
                     return `${params.name}：${formatPrice(value)}`;
@@ -318,14 +321,20 @@ export default {
                     coord: [categories[highestIndex], highestValue],
                     value: highestValue,
                     itemStyle: { color: '#dc2626' },
-                    label: { position: 'top' }
+                    label: {
+                      position: highestIndex > categories.length - 4 ? 'left' : 'right',
+                      verticalAlign: 'top'
+                    }
                   },
                   {
                     name: '最低',
                     coord: [categories[lowestIndex], lowestValue],
                     value: lowestValue,
                     itemStyle: { color: '#16a34a' },
-                    label: { position: 'bottom' }
+                    label: {
+                      position: lowestIndex > categories.length - 4 ? 'left' : 'right',
+                      verticalAlign: 'bottom'
+                    }
                   }
                 ]
               }
