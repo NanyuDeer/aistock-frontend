@@ -416,7 +416,7 @@ export default createStore({
       symbol,
       klt = 101,
       fqt = 1,
-      limit = 1000,
+      limit = 300,
       startDate = '',
       endDate = ''
     }) {

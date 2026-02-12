@@ -2,6 +2,8 @@ import axios from 'axios';
 import axiosRetry from 'axios-retry';
 
 const RETRY_TIMES = 4;
+const DEFAULT_KLINE_LIMIT = 300;
+const MAX_KLINE_LIMIT = 300;
 const retryConfig = {
   retries: RETRY_TIMES,
   shouldResetTimeout: true,
@@ -124,12 +126,16 @@ export const stockApi = {
   },
 
   // 获取历史K线
-  getStockKline: ({ symbol, klt = 101, fqt = 1, limit = 1000, startDate, endDate }) => {
+  getStockKline: ({ symbol, klt = 101, fqt = 1, limit = DEFAULT_KLINE_LIMIT, startDate, endDate }) => {
+    const parsedLimit = Number(limit);
+    const safeLimit = Number.isFinite(parsedLimit)
+      ? Math.min(Math.max(Math.floor(parsedLimit), 1), MAX_KLINE_LIMIT)
+      : DEFAULT_KLINE_LIMIT;
     const params = new URLSearchParams({
       symbol,
       klt: String(klt),
       fqt: String(fqt),
-      limit: String(limit)
+      limit: String(safeLimit)
     });
     if (startDate) params.append('startDate', String(startDate));
     if (endDate) params.append('endDate', String(endDate));
