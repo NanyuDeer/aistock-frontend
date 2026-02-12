@@ -1,16 +1,25 @@
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
 
-// 配置 axios-retry
-axiosRetry(axios, { 
-  retries: 3, 
-  retryDelay: (retryCount) => {
-    return retryCount * 1000;
-  },
+const RETRY_TIMES = 4;
+const retryConfig = {
+  retries: RETRY_TIMES,
+  shouldResetTimeout: true,
+  retryDelay: (retryCount) => retryCount * 1000,
   retryCondition: (error) => {
-    return axiosRetry.isNetworkOrIdempotentRequestError(error) || error.code === 'ECONNABORTED';
+    const status = error?.response?.status;
+    // 失败、超时、网络错误或任意非200状态都进行重试
+    return (
+      error.code === 'ECONNABORTED' ||
+      !error.response ||
+      (typeof status === 'number' && status !== 200) ||
+      axiosRetry.isNetworkError(error)
+    );
   }
-});
+};
+
+// 配置 axios-retry（全局 axios）
+axiosRetry(axios, retryConfig);
 
 // 开发模式下使用相对路径，生产模式下使用完整URL
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
@@ -25,6 +34,9 @@ const api = axios.create({
   },
   withCredentials: true // 确保跨域请求时携带 cookie
 });
+
+// 配置 axios-retry（自定义实例 api）
+axiosRetry(api, retryConfig);
 
 // 请求拦截器
 api.interceptors.request.use(
