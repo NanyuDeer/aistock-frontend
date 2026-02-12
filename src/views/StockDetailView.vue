@@ -124,6 +124,20 @@
           </el-tab-pane>
           <el-tab-pane label="业绩预测" name="forecast">
             <div class="forecast-content" v-loading="loadingForecast">
+              <div class="forecast-toolbar">
+                <el-button
+                  size="small"
+                  type="primary"
+                  plain
+                  @click="refreshForecast"
+                  :loading="loadingForecast"
+                  :disabled="!isLoggedIn"
+                  class="refresh-btn"
+                >
+                  <img v-if="!loadingForecast" src="@/assets/refresh.svg" alt="刷新" class="button-icon" />
+                  刷新预测
+                </el-button>
+              </div>
               <div v-if="forecastData && (forecastData.symbol || forecastData['股票代码'])">
                 
                 <!-- 总结部分 -->
@@ -738,10 +752,14 @@ export default {
       });
     };
 
-    const loadForecast = async () => {
+    const loadForecast = async (forceRefresh = false) => {
+      if (loadingForecast.value) return;
       loadingForecast.value = true;
       try {
-        const responseList = await store.dispatch('fetchStockForecast', stockInfo.value.code);
+        const responseList = await store.dispatch('fetchStockForecast', {
+          stockCode: stockInfo.value.code,
+          forceRefresh
+        });
         
         if (responseList && (responseList.symbol || responseList['股票代码'])) { 
            forecastData.value = responseList;
@@ -760,6 +778,11 @@ export default {
       } finally {
         loadingForecast.value = false;
       }
+    };
+
+    const refreshForecast = async () => {
+      if (!isLoggedIn.value) return;
+      await loadForecast(true);
     };
 
     const loadNewsAndAnalysis = async (append = false) => {
@@ -1232,6 +1255,7 @@ export default {
       forecastSummary,
       loadingForecast,
       loadForecast,
+      refreshForecast,
       isForecastExpanded,
       hasForecastChartData
     };
@@ -1800,6 +1824,12 @@ export default {
 }
 
 .forecast-content {
+  .forecast-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 12px;
+  }
+
   .forecast-summary-card {
     background: linear-gradient(135deg, #f0f9ff 0%, #e6f7ff 100%);
     border: 1px solid #bae7ff;

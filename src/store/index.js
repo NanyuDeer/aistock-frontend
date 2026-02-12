@@ -642,9 +642,12 @@ export default createStore({
       }
     },
     
-    async fetchStockForecast(_, stockCode) {
+    async fetchStockForecast(_, payload) {
+      const stockCode = typeof payload === 'string' ? payload : payload?.stockCode;
+      const forceRefresh = typeof payload === 'object' ? !!payload.forceRefresh : false;
+      if (!stockCode) return [];
       try {
-        const response = await stockApi.getForecast(stockCode);
+        const response = await stockApi.getForecast(stockCode, { forceRefresh });
         if (response.code === 200) {
           return response.data;
         }
@@ -659,7 +662,7 @@ export default createStore({
       if (!stockCode) return null;
       try {
         const response = refresh
-          ? await stockApi.createStockAnalysis(stockCode)
+          ? await stockApi.createStockAnalysis(stockCode, { forceRefresh: true })
           : await stockApi.getStockAnalysis(stockCode);
 
         if (response.code === 200 && response.data) {

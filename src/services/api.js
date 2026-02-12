@@ -127,9 +127,10 @@ export const stockApi = {
   },
 
   // 获取股票业绩预测 - 增加失败重试
-  getForecast: (code) => {
+  getForecast: (code, { forceRefresh = false } = {}) => {
+    const query = forceRefresh ? '?forceRefresh=1' : '';
     // 默认超时8秒，使用全局 axios 实例的重试机制
-    return axios.get(`https://extapi.aistocklink.cn/api/cn/stock/profit-forecast/${code}`, {
+    return axios.get(`https://extapi.aistocklink.cn/api/cn/stock/profit-forecast/${code}${query}`, {
       timeout: 8000
     }).then(res => res.data);
   },
@@ -199,13 +200,15 @@ export const stockApi = {
   },
 
   // 获取个股最近一次AI评价
-  getStockAnalysis: (symbol) => {
-    return api.get(`/api/cn/stocks/${encodeURIComponent(symbol)}/analysis`);
+  getStockAnalysis: (symbol, { forceRefresh = false } = {}) => {
+    const query = forceRefresh ? '?forceRefresh=1' : '';
+    return api.get(`/api/cn/stocks/${encodeURIComponent(symbol)}/analysis${query}`);
   },
 
   // 触发一次新的个股AI评价
-  createStockAnalysis: (symbol) => {
-    return api.post(`/api/cn/stocks/${encodeURIComponent(symbol)}/analysis`);
+  createStockAnalysis: (symbol, { forceRefresh = false } = {}) => {
+    const query = forceRefresh ? '?forceRefresh=1' : '';
+    return api.post(`/api/cn/stocks/${encodeURIComponent(symbol)}/analysis${query}`);
   },
 
   // 获取市场概览数据
