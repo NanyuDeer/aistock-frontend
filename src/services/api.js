@@ -126,26 +126,54 @@ export const stockApi = {
     }).then(res => res.data);
   },
 
-  // 获取股票业绩预测 - 增加失败重试
+  // 获取单只股票业绩预测（摘要 + 详细指标）
   getForecast: (code, { forceRefresh = false } = {}) => {
     const query = forceRefresh ? '?forceRefresh=1' : '';
-    // 默认超时8秒，使用全局 axios 实例的重试机制
-    return axios.get(`https://extapi.aistocklink.cn/api/cn/stock/profit-forecast/${code}${query}`, {
+    return axios.get(`https://extapi.aistocklink.cn/api/cn/stock/${code}/profit-forecast${query}`, {
       timeout: 8000
     }).then(res => res.data);
   },
 
-  // 获取业绩预测筛选选项
-  getForecastOptions: () => api.get('/api/stocks/forecast/options'),
+  // 盈利预测分页列表
+  getProfitForecastList: ({
+    page = 1,
+    pageSize = 50,
+    sortBy = 'forecast_netprofit_yoy',
+    sortOrder = ''
+  } = {}) => {
+    const finalSortOrder = sortOrder || (sortBy === 'symbol' ? 'asc' : 'desc');
+    const params = new URLSearchParams({
+      page: String(page),
+      pageSize: String(pageSize),
+      sortBy: String(sortBy),
+      sortOrder: String(finalSortOrder)
+    });
+    return axios.get(`https://extapi.aistocklink.cn/api/cn/stocks/profit-forecast?${params.toString()}`, {
+      timeout: 8000
+    }).then(res => res.data);
+  },
 
-  // 获取业绩预测列表
-  getForecastList: (params) => {
-    const { page = 1, limit = 20, report_period = '', forecast_type = '', keyword = '' } = params;
-    let url = `/api/stocks/forecast/list?page=${page}&limit=${limit}`;
-    if (report_period) url += `&report_period=${encodeURIComponent(report_period)}`;
-    if (forecast_type) url += `&forecast_type=${encodeURIComponent(forecast_type)}`;
-    if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
-    return api.get(url);
+  // 盈利预测检索
+  searchProfitForecast: ({
+    keyword = '',
+    q = '',
+    page = 1,
+    pageSize = 50,
+    sortBy = 'forecast_netprofit_yoy',
+    sortOrder = ''
+  } = {}) => {
+    const queryKeyword = (keyword || q || '').trim();
+    const finalSortOrder = sortOrder || (sortBy === 'symbol' ? 'asc' : 'desc');
+    const params = new URLSearchParams({
+      keyword: queryKeyword,
+      page: String(page),
+      pageSize: String(pageSize),
+      sortBy: String(sortBy),
+      sortOrder: String(finalSortOrder)
+    });
+    return axios.get(`https://extapi.aistocklink.cn/api/cn/stocks/profit-forecast/search?${params.toString()}`, {
+      timeout: 8000
+    }).then(res => res.data);
   },
 
   // 获取个股新闻（财联社）
