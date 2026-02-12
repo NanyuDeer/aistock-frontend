@@ -21,13 +21,19 @@
             <div class="stock-metrics">
               <div class="metric">
                 <span class="label">最新价</span>
-                <span class="value">{{ formatPrice(getPrice(stock)) }}</span>
+                <transition name="number-flip">
+                  <span :key="getMetricDisplayKey(stock, 'price')" class="value">
+                    {{ formatPrice(getPrice(stock)) }}
+                  </span>
+                </transition>
               </div>
               <div class="metric">
                 <span class="label">涨跌幅</span>
-                <span class="value" :class="getChangeClass(stock)">
-                  {{ getChangeValue(stock) >= 0 ? '+' : '' }}{{ formatPercent(getChangeValue(stock)) }}%
-                </span>
+                <transition name="number-flip">
+                  <span :key="getMetricDisplayKey(stock, 'change')" class="value" :class="getChangeClass(stock)">
+                    {{ getChangeDisplayText(stock) }}
+                  </span>
+                </transition>
               </div>
               <slot name="extra-info" :stock="stock"></slot>
             </div>
@@ -112,6 +118,15 @@ export default {
       if (percent === undefined || percent === null) return '--';
       return Number(percent).toFixed(2);
     };
+
+    const getChangeDisplayText = (stock) => {
+      const changeValue = getChangeValue(stock);
+      const formattedPercent = formatPercent(changeValue);
+
+      if (formattedPercent === '--') return '--';
+
+      return `${Number(changeValue) >= 0 ? '+' : ''}${formattedPercent}%`;
+    };
     
     // 获取股票价格（支持不同的数据结构）
     const getPrice = (stock) => {
@@ -140,6 +155,14 @@ export default {
       }
       return '';
     };
+
+    const getMetricDisplayKey = (stock, metric) => {
+      const stockCode = stock.code || stock.name || 'unknown';
+      if (metric === 'price') {
+        return `${stockCode}-price-${formatPrice(getPrice(stock))}`;
+      }
+      return `${stockCode}-change-${getChangeDisplayText(stock)}`;
+    };
     
     // 检查是否已收藏
     const isFavorite = (code) => {
@@ -162,10 +185,12 @@ export default {
       loadingStates,
       formatPrice,
       formatPercent,
+      getChangeDisplayText,
       getPrice,
       getChangeValue,
       getChangeClass,
       getMarketCode,
+      getMetricDisplayKey,
       isFavorite,
       onViewDetail,
       onToggleFavorite
@@ -187,6 +212,24 @@ export default {
   
   .loading-container {
     margin-top: 20px;
+  }
+
+  .number-flip-enter-active,
+  .number-flip-leave-active {
+    transition: transform 0.32s ease, opacity 0.32s ease;
+    display: inline-block;
+    backface-visibility: hidden;
+    transform-style: preserve-3d;
+  }
+
+  .number-flip-enter-from {
+    opacity: 0;
+    transform: translateY(10px) rotateX(-65deg);
+  }
+
+  .number-flip-leave-to {
+    opacity: 0;
+    transform: translateY(-10px) rotateX(65deg);
   }
   
   .stock-cards {

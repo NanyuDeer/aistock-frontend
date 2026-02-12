@@ -214,6 +214,33 @@ export default {
     const headlineNews = ref([]);
     const favoriteStockNews = ref([]); // 添加自选股相关新闻
 
+    const isValidStockPrice = (value) => {
+      const price = Number(value);
+      return Number.isFinite(price) && price > 0;
+    };
+
+    const mergeStocksWithPrevious = (nextStocks, previousStocks) => {
+      const previousMap = new Map(
+        (previousStocks || []).map(stock => [stock.code, stock])
+      );
+
+      return nextStocks.map(stock => {
+        const previous = previousMap.get(stock.code);
+        const latestPrice = stock.latest_price ?? stock.price;
+        const hasValidPrice = isValidStockPrice(latestPrice);
+
+        return {
+          ...stock,
+          latest_price: hasValidPrice
+            ? Number(latestPrice)
+            : (previous?.latest_price ?? stock.latest_price ?? stock.price ?? null),
+          change_percent: hasValidPrice
+            ? (stock.change_percent ?? stock.change ?? 0)
+            : (previous?.change_percent ?? stock.change_percent ?? stock.change ?? 0)
+        };
+      });
+    };
+
     // 定时器引用，需要在 onUnmounted 中清除
     let domesticRefreshInterval = null;
     let foreignRefreshInterval = null;
@@ -237,7 +264,13 @@ export default {
     const fetchDomesticNews = async () => {
       try {
         const news = await store.dispatch('fetchCnNews');
-        domesticNews.value = news;
+        if (Array.isArray(news) && news.length > 0) {
+          domesticNews.value = news;
+        } else if (domesticNews.value.length === 0) {
+          domesticNews.value = Array.isArray(news) ? news : [];
+        } else {
+          console.warn('[HomeView] 国内资讯刷新为空，保留当前数据');
+        }
       } catch (error) {
         console.error('获取国内资讯失败:', error);
       }
@@ -247,7 +280,13 @@ export default {
     const fetchForeignNews = async () => {
       try {
         const news = await store.dispatch('fetchForeignNews');
-        foreignNews.value = news;
+        if (Array.isArray(news) && news.length > 0) {
+          foreignNews.value = news;
+        } else if (foreignNews.value.length === 0) {
+          foreignNews.value = Array.isArray(news) ? news : [];
+        } else {
+          console.warn('[HomeView] 外围资讯刷新为空，保留当前数据');
+        }
       } catch (error) {
         console.error('获取外围资讯失败:', error);
       }
@@ -279,16 +318,14 @@ export default {
           limit: 5
         });
         
-        if (response && response.news) {
+        if (response && Array.isArray(response.news)) {
           favoriteStockNews.value = response.news;
         } else {
-          console.log('未找到自选股相关新闻或接口返回为空');
-          favoriteStockNews.value = [];
+          console.log('未找到自选股相关新闻或接口返回为空，保留当前资讯');
         }
       } catch (error) {
         console.error('获取自选股相关新闻失败:', error);
-        ElMessage.error('获取自选股相关新闻失败');
-        favoriteStockNews.value = [];
+        console.warn('[HomeView] 自选股相关新闻刷新失败，已静默保留上一批资讯');
       }
     };
 
@@ -355,29 +392,63 @@ export default {
     });
 
     // 获取热门股票
-    const fetchHotStocks = async () => {
+    const fetchHotStocks = async ({ showLoading = false } = {}) => {
+      const hadData = hotStocks.value.length > 0;
+      const shouldShowLoading = showLoading && !hadData;
+
       try {
-        loadingHotStocks.value = true;
-        hotStocks.value = await store.dispatch('fetchHotStocks', '国内人气榜');
-        hotStocks.value = hotStocks.value.slice(0, 8); // 只显示前8个
+        if (shouldShowLoading) {
+          loadingHotStocks.value = true;
+        }
+
+        const latestStocks = await store.dispatch('fetchHotStocks', '国内人气榜');
+        const normalizedStocks = Array.isArray(latestStocks)
+          ? latestStocks.slice(0, 8).filter(stock => stock && stock.code)
+          : [];
+
+        if (normalizedStocks.length === 0) {
+          if (!hadData) {
+            hotStocks.value = [];
+          } else {
+            console.warn('[HomeView] 热门股票刷新为空，保留当前数据');
+          }
+          return;
+        }
+
+        hotStocks.value = mergeStocksWithPrevious(normalizedStocks, hotStocks.value);
       } catch (error) {
         console.error('获取热门股票失败:', error);
       } finally {
-        loadingHotStocks.value = false;
+        if (shouldShowLoading || !hadData) {
+          loadingHotStocks.value = false;
+        }
       }
     };
 
     // 获取自选股（使用缓存的价格）
-    const fetchMyFavoriteStocks = async () => {
+    const fetchMyFavoriteStocks = async ({ showLoading = false } = {}) => {
       if (!isLoggedIn.value) return;
+      const hadData = myFavoriteStocks.value.length > 0;
+      const shouldShowLoading = showLoading && !hadData;
+
       try {
-        loadingFavorites.value = true;
+        if (shouldShowLoading) {
+          loadingFavorites.value = true;
+        }
+
         const stocks = store.getters.favoriteStocks || [];
         
         // 使用新的批量获取价格方法（优先从缓存）
         if (stocks.length > 0) {
           const stocksWithPrices = await store.dispatch('fetchBatchStockPrices', stocks);
-          myFavoriteStocks.value = stocksWithPrices;
+
+          if (Array.isArray(stocksWithPrices) && stocksWithPrices.length > 0) {
+            myFavoriteStocks.value = mergeStocksWithPrevious(stocksWithPrices, myFavoriteStocks.value);
+          } else if (!hadData) {
+            myFavoriteStocks.value = stocks;
+          } else {
+            console.warn('[HomeView] 自选股价格刷新为空，保留当前数据');
+          }
           
           // 在获取自选股后，立即获取相关新闻
           fetchFavoriteStockNews();
@@ -387,7 +458,9 @@ export default {
       } catch (error) {
         console.error('获取自选股失败:', error);
       } finally {
-        loadingFavorites.value = false;
+        if (shouldShowLoading || !hadData) {
+          loadingFavorites.value = false;
+        }
       }
     };
 
@@ -502,7 +575,7 @@ export default {
       }, 10 * 60 * 1000);
 
       // 获取热门股票
-      fetchHotStocks();
+      fetchHotStocks({ showLoading: true });
       
       // 热门股票每 5 分钟刷新一次价格
       hotStocksRefreshInterval = setInterval(() => {
@@ -512,7 +585,7 @@ export default {
       
       // 如果登录，获取自选股资讯
       if (isLoggedIn.value) {
-        fetchMyFavoriteStocks();
+        fetchMyFavoriteStocks({ showLoading: true });
         fetchFavoriteStockNews(); // 直接获取推送新闻，不需要等待自选股加载
         
         // 自选股资讯每 10 分钟刷新一次
