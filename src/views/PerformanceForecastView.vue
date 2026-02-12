@@ -37,18 +37,30 @@
 
           <el-table
             :data="tableData"
+            table-layout="fixed"
             border
             stripe
             style="width: 100%"
             empty-text="暂无盈利预测数据"
             @sort-change="handleSortChange"
           >
-            <el-table-column prop="code" label="股票代码" min-width="110" sortable="custom">
+            <el-table-column
+              prop="code"
+              label="股票代码"
+              :min-width="columnMinWidth.code"
+              sortable="custom"
+              show-overflow-tooltip
+            >
               <template #default="{ row }">
                 <RouterLink :to="`/stock/${row.code}`" class="stock-link">{{ row.code }}</RouterLink>
               </template>
             </el-table-column>
-            <el-table-column prop="name" label="股票名称" min-width="130">
+            <el-table-column
+              prop="name"
+              label="股票名称"
+              :min-width="columnMinWidth.name"
+              show-overflow-tooltip
+            >
               <template #default="{ row }">
                 <RouterLink :to="`/stock/${row.code}`" class="stock-link">{{ row.name }}</RouterLink>
               </template>
@@ -56,15 +68,16 @@
             <el-table-column
               prop="forecastNetprofitYoy"
               label="净利润同比(%)"
-              min-width="140"
+              :min-width="columnMinWidth.yoy"
               align="right"
               sortable="custom"
+              show-overflow-tooltip
             >
               <template #default="{ row }">
                 <span class="growth-val" :class="row.growthClass">{{ row.forecastNetprofitYoyText }}</span>
               </template>
             </el-table-column>
-            <el-table-column prop="summary" label="盈利预测摘要" min-width="320">
+            <el-table-column prop="summary" label="盈利预测摘要" :min-width="columnMinWidth.summary">
               <template #default="{ row }">
                 <div
                   class="summary-text"
@@ -73,7 +86,13 @@
                 ></div>
               </template>
             </el-table-column>
-            <el-table-column prop="updateTime" label="更新时间" min-width="180" />
+            <el-table-column
+              v-if="showUpdateTimeColumn"
+              prop="updateTime"
+              label="更新时间"
+              :min-width="columnMinWidth.updateTime"
+              show-overflow-tooltip
+            />
           </el-table>
 
           <div class="pagination-container">
@@ -95,7 +114,7 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import TheNavbar from '@/components/TheNavbar.vue'
 import { stockApi } from '@/services/api'
@@ -114,10 +133,42 @@ export default {
     const total = ref(0)
     const currentPage = ref(1)
     const pageSize = ref(50)
+    const viewportWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
 
     const filters = ref({ keyword: '' })
     const sortBy = ref(DEFAULT_SORT.sortBy)
     const sortOrder = ref(DEFAULT_SORT.sortOrder)
+
+    const isNarrowScreen = computed(() => viewportWidth.value <= 480)
+    const showUpdateTimeColumn = computed(() => viewportWidth.value > 768)
+
+    const columnMinWidth = computed(() => {
+      if (viewportWidth.value <= 360) {
+        return {
+          code: 74,
+          name: 82,
+          yoy: 92,
+          summary: 96,
+          updateTime: 0
+        }
+      }
+      if (isNarrowScreen.value) {
+        return {
+          code: 82,
+          name: 96,
+          yoy: 108,
+          summary: 120,
+          updateTime: 0
+        }
+      }
+      return {
+        code: 110,
+        name: 130,
+        yoy: 140,
+        summary: 320,
+        updateTime: 180
+      }
+    })
 
     const toNumber = (value) => {
       if (value === null || value === undefined) return null
@@ -296,8 +347,18 @@ export default {
       return text.replace(/(\d+(?:\.\d+)?%)/g, `<span class="highlight-number ${tone}">$1</span>`)
     }
 
+    const handleResize = () => {
+      viewportWidth.value = window.innerWidth
+    }
+
     onMounted(() => {
+      handleResize()
+      window.addEventListener('resize', handleResize)
       fetchData()
+    })
+
+    onUnmounted(() => {
+      window.removeEventListener('resize', handleResize)
     })
 
     return {
@@ -309,6 +370,9 @@ export default {
       filters,
       sortBy,
       sortOrder,
+      isNarrowScreen,
+      showUpdateTimeColumn,
+      columnMinWidth,
       handleSearch,
       handleReset,
       handleSortFilterChange,
@@ -339,6 +403,25 @@ export default {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   }
 
+  :deep(.el-table .cell) {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  @media (max-width: 480px) {
+    :deep(.el-table .cell) {
+      padding-left: 4px;
+      padding-right: 4px;
+      font-size: 12px;
+    }
+
+    .pagination-container {
+      justify-content: center;
+      overflow-x: auto;
+      padding: 12px 0 4px;
+    }
+  }
+
   .pagination-container {
     padding: 20px 0;
     display: flex;
@@ -346,11 +429,10 @@ export default {
   }
 
   .summary-text {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    display: block;
+    white-space: normal;
+    word-break: break-word;
+    overflow: visible;
     line-height: 1.5;
     color: var(--text-secondary);
   }
