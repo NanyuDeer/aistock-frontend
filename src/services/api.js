@@ -345,10 +345,5 @@ async function fetchMonitorData(startTime, endTime) {
   }
 }
 
-// 聊天机器人 API
-export const chatApi = {
-  sendMessage: (message) => api.post('/api/chat/query', { query: message })
-};
-
 export { fetchMonitorData };
 export default api;

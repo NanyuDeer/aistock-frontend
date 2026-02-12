@@ -5,7 +5,6 @@
         <TheNavbar v-if="showHeader" />
         <router-view/>
         <TheFooter />
-        <ChatBot />
       </div>
     </Analytics>
   </el-config-provider>
@@ -19,7 +18,6 @@ import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import TheNavbar from '@/components/TheNavbar.vue'
 import TheFooter from '@/components/TheFooter.vue'
 import Analytics from '@/components/Analytics.vue'
-import ChatBot from '@/components/ChatBot.vue'
 
 export default {
   name: 'App',
@@ -27,8 +25,7 @@ export default {
     ElConfigProvider,
     TheNavbar,
     TheFooter,
-    Analytics,
-    ChatBot
+    Analytics
   },
   setup() {
     const route = useRoute()
