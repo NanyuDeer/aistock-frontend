@@ -5,25 +5,25 @@
       <div class="container">
         <el-card shadow="never" class="table-card" v-loading="loading">
           <div class="filter-bar">
-            <el-form inline label-width="76px">
+            <el-form :inline="!isMobileScreen" :label-width="isMobileScreen ? '72px' : '76px'" class="filter-form">
               <el-form-item label="关键词">
                 <el-input
                   v-model="filters.keyword"
                   placeholder="股票代码/简称/摘要"
                   clearable
-                  style="width: 240px"
+                  class="filter-input"
                   @keyup.enter="handleSearch"
                   @clear="handleSearch"
                 />
               </el-form-item>
               <el-form-item label="排序字段">
-                <el-select v-model="sortBy" style="width: 180px" @change="handleSortFilterChange">
+                <el-select v-model="sortBy" class="filter-select" @change="handleSortFilterChange">
                   <el-option label="净利润同比" value="forecast_netprofit_yoy" />
                   <el-option label="股票代码" value="symbol" />
                 </el-select>
               </el-form-item>
               <el-form-item label="排序方向">
-                <el-select v-model="sortOrder" style="width: 140px" @change="handleSortFilterChange">
+                <el-select v-model="sortOrder" class="filter-select" @change="handleSortFilterChange">
                   <el-option label="降序" value="desc" />
                   <el-option label="升序" value="asc" />
                 </el-select>
@@ -100,7 +100,7 @@
               @size-change="handleSizeChange"
               @current-change="handleCurrentChange"
               :current-page="currentPage"
-              :page-sizes="[20, 50, 100, 200, 500]"
+              :page-sizes="pageSizeOptions"
               :page-size="pageSize"
               layout="total, sizes, prev, pager, next, jumper"
               :total="total"
@@ -123,6 +123,7 @@ const DEFAULT_SORT = {
   sortBy: 'forecast_netprofit_yoy',
   sortOrder: 'desc'
 }
+const MOBILE_BREAKPOINT = 768
 
 export default {
   name: 'PerformanceForecastView',
@@ -132,15 +133,17 @@ export default {
     const tableData = ref([])
     const total = ref(0)
     const currentPage = ref(1)
-    const pageSize = ref(50)
     const viewportWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
+    const pageSize = ref(viewportWidth.value <= MOBILE_BREAKPOINT ? 10 : 50)
 
     const filters = ref({ keyword: '' })
     const sortBy = ref(DEFAULT_SORT.sortBy)
     const sortOrder = ref(DEFAULT_SORT.sortOrder)
 
+    const isMobileScreen = computed(() => viewportWidth.value <= MOBILE_BREAKPOINT)
     const isNarrowScreen = computed(() => viewportWidth.value <= 480)
     const showUpdateTimeColumn = computed(() => viewportWidth.value > 768)
+    const pageSizeOptions = computed(() => (isMobileScreen.value ? [10, 20, 50] : [10, 20, 50, 100, 200, 500]))
 
     const columnMinWidth = computed(() => {
       if (viewportWidth.value <= 360) {
@@ -252,9 +255,10 @@ export default {
     const fetchData = async () => {
       loading.value = true
       try {
+        const requestPageSize = isMobileScreen.value ? 10 : pageSize.value
         const params = {
           page: currentPage.value,
-          pageSize: pageSize.value,
+          pageSize: requestPageSize,
           sortBy: sortBy.value,
           sortOrder: sortOrder.value
         }
@@ -264,13 +268,14 @@ export default {
           : await stockApi.getProfitForecastList(params)
 
         const { list, totalCount, serverPage, serverPageSize } = resolveListPayload(response)
-        tableData.value = list.map(normalizeRow)
+        const visibleList = isMobileScreen.value ? list.slice(0, 10) : list
+        tableData.value = visibleList.map(normalizeRow)
         total.value = totalCount
 
         if (serverPage && serverPage !== currentPage.value) {
           currentPage.value = serverPage
         }
-        if (serverPageSize && serverPageSize !== pageSize.value) {
+        if (!isMobileScreen.value && serverPageSize && serverPageSize !== pageSize.value) {
           pageSize.value = serverPageSize
         }
       } catch (error) {
@@ -292,7 +297,7 @@ export default {
       sortBy.value = DEFAULT_SORT.sortBy
       sortOrder.value = DEFAULT_SORT.sortOrder
       currentPage.value = 1
-      pageSize.value = 50
+      pageSize.value = isMobileScreen.value ? 10 : 50
       fetchData()
     }
 
@@ -370,9 +375,11 @@ export default {
       filters,
       sortBy,
       sortOrder,
+      isMobileScreen,
       isNarrowScreen,
       showUpdateTimeColumn,
       columnMinWidth,
+      pageSizeOptions,
       handleSearch,
       handleReset,
       handleSortFilterChange,
@@ -396,6 +403,18 @@ export default {
 
   .filter-bar {
     margin-bottom: 12px;
+
+    .filter-form {
+      :deep(.el-form-item) {
+        margin-bottom: 10px;
+      }
+    }
+
+    .filter-input,
+    .filter-select {
+      width: 240px;
+      max-width: 100%;
+    }
   }
 
   .table-card {
@@ -425,6 +444,27 @@ export default {
       justify-content: center;
       overflow-x: auto;
       padding: 12px 0 4px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .filter-bar {
+      .filter-form {
+        :deep(.el-form-item) {
+          width: 100%;
+          margin-right: 0;
+        }
+
+        :deep(.el-form-item__content) {
+          width: 100%;
+          min-width: 0;
+        }
+      }
+
+      .filter-input,
+      .filter-select {
+        width: 100%;
+      }
     }
   }
 

@@ -147,21 +147,22 @@
                 <el-table
                   :data="forecastRanking"
                   :loading="loadingForecastRanking"
+                  table-layout="fixed"
                   stripe
                   size="small"
                   empty-text="暂无排行榜数据"
                   class="forecast-ranking-table"
                   @row-click="onForecastRowClick"
                 >
-                  <el-table-column prop="rankLabel" label="排名" width="72" align="center" />
-                  <el-table-column label="股票简称(股票代码)" min-width="170">
+                  <el-table-column prop="rankLabel" label="排名" align="center" show-overflow-tooltip />
+                  <el-table-column label="股票简称(股票代码)" show-overflow-tooltip>
                     <template #default="{ row }">
                       <span class="ranking-stock-link" @click.stop="goToStockDetailByCode(row.code)">
                         {{ row.name }}({{ row.code }})
                       </span>
                     </template>
                   </el-table-column>
-                  <el-table-column label="净利润同比" min-width="110" align="right">
+                  <el-table-column label="净利润同比" align="right" show-overflow-tooltip>
                     <template #default="{ row }">
                       <span class="ranking-yoy" :class="row.yoy === null ? '' : (row.yoy >= 0 ? 'up' : 'down')">
                         {{ row.yoyText }}
@@ -427,7 +428,7 @@ export default {
       return myFavoriteStocks.value.slice(0, 8);
     });
 
-    // 获取热门股票
+    // 获取热门股票（先显示人气榜，再逐步补齐信息与行情）
     const fetchHotStocks = async ({ showLoading = false } = {}) => {
       const hadData = hotStocks.value.length > 0;
       const shouldShowLoading = showLoading && !hadData;
@@ -437,21 +438,118 @@ export default {
           loadingHotStocks.value = true;
         }
 
-        const latestStocks = await store.dispatch('fetchHotStocks', '国内人气榜');
-        const normalizedStocks = Array.isArray(latestStocks)
-          ? latestStocks.slice(0, 6).filter(stock => stock && stock.code)
+        const rankResponse = await stockApi.getStockRank();
+        const rankList = rankResponse?.code === 200
+          ? (rankResponse?.data?.人气榜 || []).slice(0, 6)
           : [];
 
-        if (normalizedStocks.length === 0) {
+        if (!Array.isArray(rankList) || rankList.length === 0) {
           if (!hadData) {
             hotStocks.value = [];
           } else {
-            console.warn('[HomeView] 热门股票刷新为空，保留当前数据');
+            console.warn('[HomeView] 人气榜为空，保留当前热门股票');
           }
           return;
         }
 
-        hotStocks.value = mergeStocksWithPrevious(normalizedStocks, hotStocks.value);
+        const orderedCodes = [];
+        const stockMap = new Map();
+
+        rankList.forEach((item, index) => {
+          const code = item?.股票代码 || item?.code || item?.symbol || '';
+          if (!code) return;
+
+          orderedCodes.push(code);
+          stockMap.set(code, {
+            code,
+            name: item?.股票简称 || item?.name || code,
+            market: item?.市场代码 || item?.market || '',
+            rank: item?.当前排名 || item?.rank || (index + 1)
+          });
+        });
+
+        if (orderedCodes.length === 0) {
+          if (!hadData) {
+            hotStocks.value = [];
+          } else {
+            console.warn('[HomeView] 人气榜缺少有效股票代码，保留当前热门股票');
+          }
+          return;
+        }
+
+        const syncHotStocksView = () => {
+          const nextStocks = orderedCodes
+            .map(code => stockMap.get(code))
+            .filter(Boolean);
+          hotStocks.value = mergeStocksWithPrevious(nextStocks, hotStocks.value);
+        };
+
+        // 第一时间渲染“仅排名基础信息”
+        syncHotStocksView();
+
+        const groups = [];
+        const groupSize = 2;
+        for (let i = 0; i < orderedCodes.length; i += groupSize) {
+          groups.push(orderedCodes.slice(i, i + groupSize).join(','));
+        }
+
+        const enrichByInfos = (infos = []) => {
+          infos.forEach(info => {
+            const code = info?.股票代码;
+            if (!code || !stockMap.has(code)) return;
+            const previous = stockMap.get(code);
+            stockMap.set(code, {
+              ...previous,
+              name: info?.股票简称 || previous?.name,
+              market: info?.市场代码 || previous?.market,
+              industry: info?.所属行业 || previous?.industry
+            });
+          });
+          syncHotStocksView();
+        };
+
+        const enrichByQuotes = (quotes = []) => {
+          quotes.forEach(quote => {
+            const code = quote?.股票代码;
+            if (!code || !stockMap.has(code)) return;
+            const previous = stockMap.get(code);
+            stockMap.set(code, {
+              ...previous,
+              latest_price: quote?.最新价,
+              change_percent: quote?.涨跌幅
+            });
+          });
+          syncHotStocksView();
+        };
+
+        const detailRequests = [];
+        groups.forEach(group => {
+          detailRequests.push(
+            stockApi.getStockInfos(group)
+              .then((response) => {
+                if (response?.code === 200) {
+                  enrichByInfos(response?.data?.股票信息 || []);
+                }
+              })
+              .catch((error) => {
+                console.warn('[HomeView] 获取热门股票基础信息失败:', error);
+              })
+          );
+
+          detailRequests.push(
+            stockApi.getStockActivityQuotes(group)
+              .then((response) => {
+                if (response?.code === 200) {
+                  enrichByQuotes(response?.data?.行情 || []);
+                }
+              })
+              .catch((error) => {
+                console.warn('[HomeView] 获取热门股票行情失败:', error);
+              })
+          );
+        });
+
+        await Promise.allSettled(detailRequests);
       } catch (error) {
         console.error('获取热门股票失败:', error);
       } finally {
@@ -871,22 +969,42 @@ export default {
         margin-bottom: 15px;
       }
 
-      .forecast-ranking-card {
-        background: #fff;
-        border-radius: 12px;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-        padding: 10px;
+        .forecast-ranking-card {
+          background: #fff;
+          border-radius: 12px;
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+          padding: 10px;
 
-        .forecast-ranking-table {
-          :deep(.el-table__row) {
-            cursor: pointer;
+          .forecast-ranking-table {
+            :deep(.el-table__header colgroup col:nth-child(-n + 3)),
+            :deep(.el-table__body colgroup col:nth-child(-n + 3)) {
+              width: 33.333% !important;
+            }
+
+            :deep(.el-table__cell) {
+              padding: 8px 6px;
+            }
+
+            :deep(.cell) {
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+
+            :deep(.el-table__row) {
+              cursor: pointer;
+            }
           }
-        }
 
         .ranking-stock-link {
           color: var(--primary-color);
           font-weight: 500;
           cursor: pointer;
+          display: inline-block;
+          max-width: 100%;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
 
           &:hover {
             text-decoration: underline;
@@ -931,6 +1049,20 @@ export default {
       .hot-stocks-section :deep(.stock-card-list .stock-cards .stock-card) {
         flex: 1 1 100%;
         max-width: 100%;
+      }
+
+      .forecast-ranking-section .forecast-ranking-card {
+        padding: 6px;
+
+        .forecast-ranking-table {
+          :deep(.el-table__cell) {
+            padding: 6px 2px;
+          }
+
+          :deep(.cell) {
+            font-size: 12px;
+          }
+        }
       }
     }
   }
