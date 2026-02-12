@@ -162,7 +162,7 @@ export default {
 
     const resolveListPayload = (response) => {
       if (!response || response.code !== 200 || !response.data) {
-        return { list: [], totalCount: 0 }
+        return { list: [], totalCount: 0, serverPage: null, serverPageSize: null }
       }
       const data = response.data
       const list =
@@ -171,10 +171,30 @@ export default {
         data['列表'] ||
         data['盈利预测列表'] ||
         []
-      const totalCount = Number(data.total ?? data.totalCount ?? data['总数'] ?? list.length)
+      const parsedTotalCount = Number(
+        data.total ??
+        data.totalCount ??
+        data.count ??
+        data['总数'] ??
+        data['总数量']
+      )
+      const parsedTotalPages = Number(data.totalPages ?? data['总页数'])
+      const parsedServerPageSize = Number(data.pageSize ?? data['每页数量'])
+      const parsedServerPage = Number(data.page ?? data['当前页'])
+
+      let totalCount = Number.isFinite(parsedTotalCount) ? parsedTotalCount : 0
+      if (!totalCount && Number.isFinite(parsedTotalPages) && Number.isFinite(parsedServerPageSize)) {
+        totalCount = parsedTotalPages * parsedServerPageSize
+      }
+      if (!totalCount) {
+        totalCount = Array.isArray(list) ? list.length : 0
+      }
+
       return {
         list: Array.isArray(list) ? list : [],
-        totalCount: Number.isFinite(totalCount) ? totalCount : 0
+        totalCount: Number.isFinite(totalCount) ? totalCount : 0,
+        serverPage: Number.isFinite(parsedServerPage) ? parsedServerPage : null,
+        serverPageSize: Number.isFinite(parsedServerPageSize) ? parsedServerPageSize : null
       }
     }
 
@@ -192,9 +212,16 @@ export default {
           ? await stockApi.searchProfitForecast({ ...params, keyword })
           : await stockApi.getProfitForecastList(params)
 
-        const { list, totalCount } = resolveListPayload(response)
+        const { list, totalCount, serverPage, serverPageSize } = resolveListPayload(response)
         tableData.value = list.map(normalizeRow)
         total.value = totalCount
+
+        if (serverPage && serverPage !== currentPage.value) {
+          currentPage.value = serverPage
+        }
+        if (serverPageSize && serverPageSize !== pageSize.value) {
+          pageSize.value = serverPageSize
+        }
       } catch (error) {
         console.error('Failed to fetch profit forecast:', error)
         tableData.value = []
