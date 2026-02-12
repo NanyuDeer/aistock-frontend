@@ -71,6 +71,8 @@
               prop="forecastNetprofitYoy"
               label="净利润同比(%)"
               :min-width="columnMinWidth.yoy"
+              align="center"
+              header-align="center"
               sortable="custom"
               show-overflow-tooltip
             >
@@ -78,7 +80,13 @@
                 <span class="growth-val" :class="row.growthClass">{{ row.forecastNetprofitYoyText }}</span>
               </template>
             </el-table-column>
-            <el-table-column prop="summary" label="盈利预测摘要" :min-width="columnMinWidth.summary">
+            <el-table-column
+              prop="summary"
+              label="盈利预测摘要"
+              :min-width="columnMinWidth.summary"
+              align="left"
+              header-align="left"
+            >
               <template #default="{ row }">
                 <div
                   class="summary-text"
@@ -355,14 +363,20 @@ export default {
 
     const getHeaderCellStyle = ({ column }) => {
       if (column?.property === 'forecastNetprofitYoy') {
-        return { textAlign: 'right' }
+        return { textAlign: 'center' }
+      }
+      if (column?.property === 'summary') {
+        return { textAlign: 'left' }
       }
       return { textAlign: 'center' }
     }
 
     const getCellStyle = ({ column }) => {
       if (column?.property === 'forecastNetprofitYoy') {
-        return { textAlign: 'right' }
+        return { textAlign: 'center' }
+      }
+      if (column?.property === 'summary') {
+        return { textAlign: 'left' }
       }
       return { textAlign: 'center' }
     }
@@ -493,6 +507,7 @@ export default {
 
   .summary-text {
     display: block;
+    text-align: left;
     white-space: normal;
     word-break: break-word;
     overflow: visible;
