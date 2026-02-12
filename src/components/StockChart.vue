@@ -304,12 +304,12 @@ export default {
                   show: true,
                   fontSize: 11,
                   color: '#111827',
-                  backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.78)',
                   borderColor: '#d1d5db',
                   borderWidth: 1,
                   borderRadius: 4,
                   padding: [2, 5],
-                  distance: 8,
+                  distance: 14,
                   formatter: (params) => {
                     const value = toNumber(params.value);
                     return `${params.name}：${formatPrice(value)}`;
@@ -322,8 +322,9 @@ export default {
                     value: highestValue,
                     itemStyle: { color: '#dc2626' },
                     label: {
-                      position: highestIndex > categories.length - 4 ? 'left' : 'right',
-                      verticalAlign: 'top'
+                      position: 'top',
+                      align: highestIndex < 2 ? 'left' : (highestIndex > categories.length - 3 ? 'right' : 'center'),
+                      verticalAlign: 'bottom'
                     }
                   },
                   {
@@ -332,8 +333,9 @@ export default {
                     value: lowestValue,
                     itemStyle: { color: '#16a34a' },
                     label: {
-                      position: lowestIndex > categories.length - 4 ? 'left' : 'right',
-                      verticalAlign: 'bottom'
+                      position: 'bottom',
+                      align: lowestIndex < 2 ? 'left' : (lowestIndex > categories.length - 3 ? 'right' : 'center'),
+                      verticalAlign: 'top'
                     }
                   }
                 ]
