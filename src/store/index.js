@@ -903,9 +903,22 @@ export default createStore({
         console.log('[DEBUG] 发起获取推送设置请求:', userId);
         const response = await stockApi.getUserPushSettings(userId);
         console.log('[DEBUG] 获取推送设置响应:', response);
-        
-        if (response.code === 0 && response.data) {
-          return response.data;
+
+        if (response?.code === 200) {
+          // 新版接口: data.settings 为数组；空/缺失表示全部关闭
+          const settingsList = Array.isArray(response?.data?.settings)
+            ? response.data.settings
+            : [];
+
+          const isEnabled = (type) =>
+            settingsList.some(item => item?.setting_type === type && item?.enabled === true);
+
+          return {
+            settings: {
+              stock_push: isEnabled('stock_push'),
+              morning_report: isEnabled('daily_news_push')
+            }
+          };
         }
         return { settings: {} };
       } catch (error) {

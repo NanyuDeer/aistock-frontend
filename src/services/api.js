@@ -276,8 +276,8 @@ export const stockApi = {
   },
 
   // 获取用户推送设置
-  getUserPushSettings: (userId) => {
-    return api.get(`/api/wechat/push/settings?user_id=${userId}`);
+  getUserPushSettings: (_userId) => {
+    return api.get('/api/users/me/settings');
   },
   
   // 更新用户推送设置
