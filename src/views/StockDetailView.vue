@@ -67,9 +67,6 @@
             </div>
             <div class="analysis-meta">
               <span class="analysis-date">分析日期：{{ analysisResult.date }}</span>
-              <span class="analysis-source" v-if="analysisResult.source">
-                来源：{{ analysisResult.source }}<template v-if="analysisResult.model"> · 模型：{{ analysisResult.model }}</template>
-              </span>
               <el-button 
                 size="small" 
                 type="primary" 
@@ -91,24 +88,6 @@
           <div class="analysis-detail">
             <h4>风险提示</h4>
             <div class="markdown-content" v-html="analysisResult.riskWarning"></div>
-          </div>
-
-          <div class="analysis-detail" v-if="analysisResult.inputSummary">
-            <h4>输入摘要</h4>
-            <div class="input-summary-grid">
-              <div class="input-item">
-                <span class="input-label">新闻数量</span>
-                <span class="input-value">{{ analysisResult.inputSummary.newsCount }}</span>
-              </div>
-              <div class="input-item input-item-wide">
-                <span class="input-label">业绩预测摘要</span>
-                <span class="input-value">{{ analysisResult.inputSummary.forecastSummary }}</span>
-              </div>
-              <div class="input-item input-item-wide" v-if="analysisResult.inputSummary.tradingDataText">
-                <span class="input-label">交易数据</span>
-                <span class="input-value">{{ analysisResult.inputSummary.tradingDataText }}</span>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -428,11 +407,7 @@ export default {
       conclusion: '',
       date: '',
       coreLogic: '',
-      riskWarning: '',
-      source: '',
-      model: '',
-      analysisId: '',
-      inputSummary: null
+      riskWarning: ''
     });
 
     const currentNewsDetail = ref(null);
@@ -854,41 +829,18 @@ export default {
         });
 
         if (evaluation) {
-          const tradingData = evaluation.inputSummary?.交易数据 || {};
-          const tradingParts = [];
-          if (tradingData['股票代码']) {
-            tradingParts.push(`股票代码 ${tradingData['股票代码']}`);
-          }
-          if (tradingData['最新价'] !== undefined && tradingData['最新价'] !== null) {
-            tradingParts.push(`最新价 ${tradingData['最新价']}`);
-          }
-
           analysisResult.value = {
             conclusion: evaluation.conclusion || '未知',
             date: evaluation.analysisTime || '--',
             coreLogic: md.render(evaluation.coreLogic || '暂无核心逻辑'),
-            riskWarning: md.render(evaluation.riskWarning || '暂无风险提示'),
-            source: evaluation.source || '',
-            model: evaluation.model || '',
-            analysisId: evaluation.analysisId || '',
-            inputSummary: evaluation.inputSummary
-              ? {
-                  newsCount: evaluation.inputSummary['新闻数量'] ?? '--',
-                  forecastSummary: evaluation.inputSummary['业绩预测摘要'] || '--',
-                  tradingDataText: tradingParts.join('，')
-                }
-              : null
+            riskWarning: md.render(evaluation.riskWarning || '暂无风险提示')
           };
         } else {
           analysisResult.value = {
             conclusion: '未知',
             date: '--',
             coreLogic: '暂无AI评估数据',
-            riskWarning: '无法获取AI评估结果，请稍后再试。',
-            source: '',
-            model: '',
-            analysisId: '',
-            inputSummary: null
+            riskWarning: '无法获取AI评估结果，请稍后再试。'
           };
         }
       } catch (error) {
@@ -897,11 +849,7 @@ export default {
           conclusion: '获取失败',
           date: '--',
           coreLogic: 'AI评估数据获取失败',
-          riskWarning: '获取AI评估结果时发生错误，请稍后再试。',
-          source: '',
-          model: '',
-          analysisId: '',
-          inputSummary: null
+          riskWarning: '获取AI评估结果时发生错误，请稍后再试。'
         };
       } finally {
         loadingEvaluation.value = false;
@@ -1695,10 +1643,6 @@ export default {
           color: var(--text-tertiary);
         }
 
-        .analysis-source {
-          color: var(--text-tertiary);
-          font-size: 0.9rem;
-        }
       }
 
       .analysis-detail {
@@ -1752,45 +1696,6 @@ export default {
             word-break: break-word;
           }
         }
-      }
-
-      .input-summary-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-
-        @media (max-width: 576px) {
-          grid-template-columns: 1fr;
-        }
-      }
-
-      .input-item {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        padding: 10px 12px;
-        border: 1px solid #edf1f5;
-        border-radius: 8px;
-        background: #fafcff;
-      }
-
-      .input-item-wide {
-        grid-column: span 2;
-
-        @media (max-width: 576px) {
-          grid-column: span 1;
-        }
-      }
-
-      .input-label {
-        color: var(--text-tertiary);
-        font-size: 0.85rem;
-      }
-
-      .input-value {
-        color: var(--text-primary);
-        line-height: 1.5;
-        overflow-wrap: anywhere;
       }
 
       .reference-news {
