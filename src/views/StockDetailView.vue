@@ -93,6 +93,19 @@
             <h4>风险提示</h4>
             <div class="markdown-content" v-html="analysisResult.riskWarning"></div>
           </div>
+
+          <a
+            href="https://pollinations.ai/"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="analysis-powered-by"
+          >
+            <span>Power By</span>
+            <span class="analysis-powered-logo" aria-hidden="true">
+              <img class="analysis-powered-logo-icon" src="/pollinations.svg" alt="" />
+              <img class="analysis-powered-logo-text" src="/pollinations-text.svg" alt="" />
+            </span>
+          </a>
         </div>
       </div>
 
@@ -1613,6 +1626,9 @@ export default {
     }
 
     .analysis-content {
+      position: relative;
+      padding-bottom: 34px;
+
       .analysis-header {
         display: flex;
         justify-content: space-between;
@@ -1741,6 +1757,74 @@ export default {
         line-height: 1.5;
         white-space: pre-wrap;
         word-break: break-word;
+      }
+
+      .analysis-powered-by {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 8px;
+        border-radius: 999px;
+        border: 1px solid #d1d5db;
+        background: #ffffff;
+        color: #374151;
+        font-size: 11px;
+        line-height: 1;
+        text-decoration: none;
+        transition: all 0.2s ease;
+
+        .analysis-powered-logo {
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+        }
+
+        .analysis-powered-logo-icon {
+          height: 10px;
+          width: 10px;
+          display: block;
+          filter: none;
+        }
+
+        .analysis-powered-logo-text {
+          height: 9px;
+          width: auto;
+          display: block;
+          filter: none;
+        }
+
+        &:hover {
+          color: #111827;
+          background: #f9fafb;
+          border-color: #9ca3af;
+          box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+        }
+      }
+
+      @media (max-width: 576px) {
+        padding-bottom: 30px;
+
+        .analysis-powered-by {
+          font-size: 10px;
+          padding: 3px 7px;
+          gap: 3px;
+
+          .analysis-powered-logo {
+            gap: 2px;
+          }
+
+          .analysis-powered-logo-icon {
+            height: 9px;
+            width: 9px;
+          }
+
+          .analysis-powered-logo-text {
+            height: 9px;
+          }
+        }
       }
 
       .reference-news {

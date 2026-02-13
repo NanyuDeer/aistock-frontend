@@ -4,6 +4,7 @@ import axiosRetry from 'axios-retry';
 const RETRY_TIMES = 4;
 const DEFAULT_KLINE_LIMIT = 100;
 const MAX_KLINE_LIMIT = 100;
+const AI_ANALYSIS_TIMEOUT = 30000;
 const retryConfig = {
   retries: RETRY_TIMES,
   shouldResetTimeout: true,
@@ -31,7 +32,7 @@ axiosRetry(axios, retryConfig);
 // 开发模式下使用相对路径，生产模式下使用完整URL
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
   ? 'https://extapi.aistocklink.cn' 
-  : 'http://localhost:18000';
+  : 'http://localhost:8000';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -101,7 +102,7 @@ export const stockApi = {
   // 根据关键词搜索股票（新版extapi）
   searchStocks: (keyword, pageSize = 20) => {
     return axios.get(`https://extapi.aistocklink.cn/api/cn/stocks?keyword=${encodeURIComponent(keyword)}&pageSize=${pageSize}`, {
-      timeout: 18000
+      timeout: 8000
     }).then(res => res.data);
   },
 
@@ -112,28 +113,28 @@ export const stockApi = {
   // 获取股票人气榜
   getStockRank: () => {
     return axios.get('https://extapi.aistocklink.cn/api/cn/market/stockrank/', {
-      timeout: 18000
+      timeout: 8000
     }).then(res => res.data);
   },
 
   // 批量获取股票基本信息
   getStockInfos: (symbols) => {
     return axios.get(`https://extapi.aistocklink.cn/api/cn/stock/infos?symbols=${symbols}`, {
-      timeout: 18000
+      timeout: 8000
     }).then(res => res.data);
   },
 
   // 批量获取股票成交活跃行情（含价格与交易数据）
   getStockActivityQuotes: (symbols) => {
     return axios.get(`https://extapi.aistocklink.cn/api/cn/stock/quotes/activity?symbols=${symbols}`, {
-      timeout: 18000
+      timeout: 8000
     }).then(res => res.data);
   },
 
   // 批量获取股票核心行情（首页榜单用）
   getStockCoreQuotes: (symbols) => {
     return axios.get(`https://extapi.aistocklink.cn/api/cn/stock/quotes/core?symbols=${symbols}`, {
-      timeout: 18000
+      timeout: 8000
     }).then(res => res.data);
   },
 
@@ -152,7 +153,7 @@ export const stockApi = {
     if (startDate) params.append('startDate', String(startDate));
     if (endDate) params.append('endDate', String(endDate));
     return axios.get(`https://extapi.aistocklink.cn/api/cn/stock/quotes/kline?${params.toString()}`, {
-      timeout: 18000
+      timeout: 8000
     }).then(res => res.data);
   },
 
@@ -160,7 +161,7 @@ export const stockApi = {
   getForecast: (code, { forceRefresh = false } = {}) => {
     const query = forceRefresh ? '?forceRefresh=1' : '';
     return axios.get(`https://extapi.aistocklink.cn/api/cn/stock/${code}/profit-forecast${query}`, {
-      timeout: 18000
+      timeout: 8000
     }).then(res => res.data);
   },
 
@@ -179,7 +180,7 @@ export const stockApi = {
       sortOrder: String(finalSortOrder)
     });
     return axios.get(`https://extapi.aistocklink.cn/api/cn/stocks/profit-forecast?${params.toString()}`, {
-      timeout: 18000
+      timeout: 8000
     }).then(res => res.data);
   },
 
@@ -202,7 +203,7 @@ export const stockApi = {
       sortOrder: String(finalSortOrder)
     });
     return axios.get(`https://extapi.aistocklink.cn/api/cn/stocks/profit-forecast/search?${params.toString()}`, {
-      timeout: 18000
+      timeout: 8000
     }).then(res => res.data);
   },
 
@@ -221,28 +222,28 @@ export const stockApi = {
   // 头条新闻
   getHeadlineNews: () => {
     return axios.get('https://extapi.aistocklink.cn/api/news/headlines', {
-      timeout: 18000
+      timeout: 8000
     }).then(res => res.data);
   },
 
   // 国内资讯
   getCnNews: () => {
     return axios.get('https://extapi.aistocklink.cn/api/news/cn', {
-      timeout: 18000
+      timeout: 8000
     }).then(res => res.data);
   },
 
   // 港股资讯
   getHkNews: () => {
     return axios.get('https://extapi.aistocklink.cn/api/news/hk', {
-      timeout: 18000
+      timeout: 8000
     }).then(res => res.data);
   },
 
   // 美股资讯
   getGbNews: () => {
     return axios.get('https://extapi.aistocklink.cn/api/news/gb', {
-      timeout: 18000
+      timeout: 8000
     }).then(res => res.data);
   },
 
@@ -261,13 +262,19 @@ export const stockApi = {
   // 获取个股最近一次AI评价
   getStockAnalysis: (symbol, { forceRefresh = false } = {}) => {
     const query = forceRefresh ? '?forceRefresh=1' : '';
-    return api.get(`/api/cn/stocks/${encodeURIComponent(symbol)}/analysis${query}`);
+    return api.get(`/api/cn/stocks/${encodeURIComponent(symbol)}/analysis${query}`, {
+      timeout: AI_ANALYSIS_TIMEOUT,
+      'axios-retry': { retries: 0 }
+    });
   },
 
   // 触发一次新的个股AI评价
   createStockAnalysis: (symbol, { forceRefresh = false } = {}) => {
     const query = forceRefresh ? '?forceRefresh=1' : '';
-    return api.post(`/api/cn/stocks/${encodeURIComponent(symbol)}/analysis${query}`);
+    return api.post(`/api/cn/stocks/${encodeURIComponent(symbol)}/analysis${query}`, null, {
+      timeout: AI_ANALYSIS_TIMEOUT,
+      'axios-retry': { retries: 0 }
+    });
   },
 
   // 获取市场概览数据
@@ -276,14 +283,14 @@ export const stockApi = {
   // 获取国内指数行情（新API）
   getCnIndexQuotes: (symbols = '000001,399001,399006') => {
     return axios.get(`https://extapi.aistocklink.cn/api/cn/index/quotes?symbols=${symbols}`, {
-      timeout: 18000
+      timeout: 8000
     }).then(res => res.data);
   },
 
   // 获取全球指数行情（新API）
   getGbIndexQuotes: (symbols = 'HXC,XIN9,HSTECH') => {
     return axios.get(`https://extapi.aistocklink.cn/api/gb/index/quotes?symbols=${symbols}`, {
-      timeout: 18000
+      timeout: 8000
     }).then(res => res.data);
   },
 
