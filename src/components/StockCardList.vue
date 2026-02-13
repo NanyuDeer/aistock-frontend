@@ -106,43 +106,52 @@ export default {
   setup(props, { emit }) {
     const store = useStore();
     const loadingStates = reactive({});
+
+    const toFiniteNumber = (value) => {
+      if (value === undefined || value === null) return null;
+      if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+      const text = String(value).replace(/,/g, '').replace('%', '').trim();
+      if (!text || text === '-' || text === '--' || text === '—') return null;
+      const parsed = Number(text);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
     
     // 格式化价格
     const formatPrice = (price) => {
-      if (price === undefined || price === null) return '--';
-      return Number(price).toFixed(2);
+      const numericPrice = toFiniteNumber(price);
+      if (numericPrice === null) return '--';
+      return numericPrice.toFixed(2);
     };
     
     // 格式化百分比
     const formatPercent = (percent) => {
-      if (percent === undefined || percent === null) return '--';
-      return Number(percent).toFixed(2);
+      const numericPercent = toFiniteNumber(percent);
+      if (numericPercent === null) return '--';
+      return numericPercent.toFixed(2);
     };
 
     const getChangeDisplayText = (stock) => {
-      const changeValue = getChangeValue(stock);
-      const formattedPercent = formatPercent(changeValue);
-
-      if (formattedPercent === '--') return '--';
-
-      return `${Number(changeValue) >= 0 ? '+' : ''}${formattedPercent}%`;
+      const changeValue = toFiniteNumber(getChangeValue(stock));
+      if (changeValue === null) return '--';
+      return `${changeValue >= 0 ? '+' : ''}${changeValue.toFixed(2)}%`;
     };
     
     // 获取股票价格（支持不同的数据结构）
     const getPrice = (stock) => {
       return stock.price !== undefined ? stock.price : 
-             stock.latest_price !== undefined ? stock.latest_price : 0;
+             stock.latest_price !== undefined ? stock.latest_price : null;
     };
     
     // 获取变化值（支持不同的数据结构）
     const getChangeValue = (stock) => {
       return stock.change !== undefined ? stock.change : 
-             stock.change_percent !== undefined ? stock.change_percent : 0;
+             stock.change_percent !== undefined ? stock.change_percent : null;
     };
     
     // 获取涨跌样式类
     const getChangeClass = (stock) => {
-      const changeValue = getChangeValue(stock);
+      const changeValue = toFiniteNumber(getChangeValue(stock));
+      if (changeValue === null) return '';
       return changeValue >= 0 ? 'stock-up' : 'stock-down';
     };
     

@@ -254,9 +254,18 @@ export default {
     const headlineNews = ref([]);
     const favoriteStockNews = ref([]); // 添加自选股相关新闻
 
+    const toFiniteNumber = (value) => {
+      if (value === null || value === undefined) return null;
+      if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+      const text = String(value).replace(/,/g, '').replace('%', '').trim();
+      if (!text || text === '-' || text === '--' || text === '—') return null;
+      const parsed = Number(text);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
     const isValidStockPrice = (value) => {
-      const price = Number(value);
-      return Number.isFinite(price) && price > 0;
+      const price = toFiniteNumber(value);
+      return price !== null && price > 0;
     };
 
     const mergeStocksWithPrevious = (nextStocks, previousStocks) => {
@@ -266,17 +275,18 @@ export default {
 
       return nextStocks.map(stock => {
         const previous = previousMap.get(stock.code);
-        const latestPrice = stock.latest_price ?? stock.price;
+        const latestPrice = toFiniteNumber(stock.latest_price ?? stock.price);
+        const previousPrice = toFiniteNumber(previous?.latest_price ?? previous?.price);
         const hasValidPrice = isValidStockPrice(latestPrice);
+        const latestChange = toFiniteNumber(stock.change_percent ?? stock.change);
+        const previousChange = toFiniteNumber(previous?.change_percent ?? previous?.change);
 
         return {
           ...stock,
           latest_price: hasValidPrice
-            ? Number(latestPrice)
-            : (previous?.latest_price ?? stock.latest_price ?? stock.price ?? null),
-          change_percent: hasValidPrice
-            ? (stock.change_percent ?? stock.change ?? 0)
-            : (previous?.change_percent ?? stock.change_percent ?? stock.change ?? 0)
+            ? latestPrice
+            : previousPrice,
+          change_percent: latestChange ?? previousChange
         };
       });
     };
@@ -577,10 +587,12 @@ export default {
             const code = quote?.股票代码;
             if (!code || !stockMap.has(code)) return;
             const previous = stockMap.get(code);
+            const latestPrice = toFiniteNumber(quote?.最新价);
+            const changePercent = toFiniteNumber(quote?.涨跌幅);
             stockMap.set(code, {
               ...previous,
-              latest_price: quote?.最新价,
-              change_percent: quote?.涨跌幅
+              latest_price: latestPrice ?? previous?.latest_price ?? null,
+              change_percent: changePercent ?? previous?.change_percent ?? null
             });
           });
           syncHotStocksView();
@@ -601,14 +613,14 @@ export default {
           );
 
           detailRequests.push(
-            stockApi.getStockActivityQuotes(group)
+            stockApi.getStockCoreQuotes(group)
               .then((response) => {
                 if (response?.code === 200) {
                   enrichByQuotes(response?.data?.行情 || []);
                 }
               })
               .catch((error) => {
-                console.warn('[HomeView] 获取热门股票行情失败:', error);
+                console.warn('[HomeView] 获取热门股票核心行情失败:', error);
               })
           );
         });

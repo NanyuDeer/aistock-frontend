@@ -125,6 +125,13 @@ export const stockApi = {
     }).then(res => res.data);
   },
 
+  // 批量获取股票核心行情（首页榜单用）
+  getStockCoreQuotes: (symbols) => {
+    return axios.get(`https://extapi.aistocklink.cn/api/cn/stock/quotes/core?symbols=${symbols}`, {
+      timeout: 18000
+    }).then(res => res.data);
+  },
+
   // 获取历史K线
   getStockKline: ({ symbol, klt = 101, fqt = 1, limit = DEFAULT_KLINE_LIMIT, startDate, endDate }) => {
     const parsedLimit = Number(limit);
