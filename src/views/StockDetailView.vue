@@ -79,6 +79,10 @@
               </el-button>
             </div>
           </div>
+
+          <div v-if="evaluationErrorMessage" class="analysis-error-message">
+            {{ evaluationErrorMessage }}
+          </div>
           
           <div class="analysis-detail">
             <h4>核心逻辑</h4>
@@ -441,6 +445,7 @@ export default {
     });
 
     const loadingEvaluation = ref(false);
+    const evaluationErrorMessage = ref('');
 
     const refreshAIEvaluation = async () => {
       if (!isLoggedIn.value) {
@@ -845,6 +850,7 @@ export default {
     };
     
     const loadAIEvaluation = async (refresh = false) => {
+      evaluationErrorMessage.value = '';
       try {
         const evaluation = await store.dispatch('fetchStockEvaluation', {
           stockCode: stockInfo.value.code,
@@ -868,6 +874,7 @@ export default {
         }
       } catch (error) {
         console.error('获取股票AI评估失败:', error);
+        evaluationErrorMessage.value = error?.message || '获取AI评估结果时发生错误，请稍后再试。';
         analysisResult.value = {
           conclusion: '获取失败',
           date: '--',
@@ -1246,6 +1253,7 @@ export default {
       priceTrendClass,
       refreshAIEvaluation,
       loadingEvaluation,
+      evaluationErrorMessage,
       viewNewsDetail,
       lastPriceUpdate,
       lastNewsUpdate,
@@ -1720,6 +1728,19 @@ export default {
             word-break: break-word;
           }
         }
+      }
+
+      .analysis-error-message {
+        margin-bottom: 16px;
+        padding: 10px 12px;
+        border-radius: 6px;
+        background: #fff2f0;
+        border: 1px solid #ffccc7;
+        color: #cf1322;
+        font-size: 0.92rem;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-word;
       }
 
       .reference-news {

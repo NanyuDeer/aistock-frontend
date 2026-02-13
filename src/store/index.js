@@ -792,10 +792,12 @@ export default createStore({
             inputSummary: data['输入摘要'] || null
           };
         }
-        return null;
+        throw new Error(response?.message || '获取AI评估失败');
       } catch (error) {
         console.error('获取股票AI评估失败:', error);
-        return null;
+        const serverMessage = error?.response?.data?.message;
+        const message = serverMessage || error?.message || '获取AI评估结果时发生错误，请稍后再试。';
+        throw new Error(message);
       }
     },
     async fetchMarketOverview({ commit }) {
