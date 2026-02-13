@@ -9,7 +9,7 @@
               <el-form-item label="关键词">
                 <el-input
                   v-model="filters.keyword"
-                  placeholder="股票代码/简称/摘要"
+                  placeholder="股票代码/简称/拼音首字母"
                   clearable
                   class="filter-input"
                   @keyup.enter="handleSearch"
