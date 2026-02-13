@@ -10,8 +10,8 @@
             {{ getIndexDisplayName(index) }}
           </a>
         </div>
-        <div class="index-value" :class="data.change >= 0 ? 'change-up' : 'change-down'">{{ formatValue(data.value) }}</div>
-        <div class="change-row" :class="data.change >= 0 ? 'change-up' : 'change-down'">
+        <div class="index-value" :class="getChangeTone(data.change)">{{ formatValue(data.value) }}</div>
+        <div class="change-row" :class="getChangeTone(data.change)">
           <span>{{ formatChangeAmount(data.changeAmount) }}</span>
           <span>{{ formatChange(data.change) }}</span>
         </div>
@@ -61,20 +61,39 @@ export default {
       return `https://quote.eastmoney.com/gb/zs${indexCode}.html`;
     };
 
+    const toFiniteNumber = (value) => {
+      if (value === null || value === undefined) return null;
+      if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+      const text = String(value).replace(/,/g, '').replace('%', '').trim();
+      if (!text || text === '-' || text === '--' || text === '—') return null;
+      const parsed = Number(text);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
     const formatValue = (value) => {
-      return Number(value).toFixed(2);
+      const num = toFiniteNumber(value);
+      if (num === null) return '--';
+      return num.toFixed(2);
     };
 
     const formatChange = (change) => {
-      const sign = change >= 0 ? '+' : '';
-      return `${sign}${Number(change).toFixed(2)}%`;
+      const num = toFiniteNumber(change);
+      if (num === null) return '--';
+      const sign = num >= 0 ? '+' : '';
+      return `${sign}${num.toFixed(2)}%`;
     };
 
     const formatChangeAmount = (amount) => {
-      const num = Number(amount);
-      if (isNaN(num)) return '--';
+      const num = toFiniteNumber(amount);
+      if (num === null) return '--';
       const sign = num >= 0 ? '+' : '';
       return `${sign}${num.toFixed(2)}`;
+    };
+
+    const getChangeTone = (change) => {
+      const num = toFiniteNumber(change);
+      if (num === null) return '';
+      return num >= 0 ? 'change-up' : 'change-down';
     };
 
     onMounted(() => {
@@ -100,7 +119,8 @@ export default {
       getIndexUrl,
       formatValue,
       formatChange,
-      formatChangeAmount
+      formatChangeAmount,
+      getChangeTone
     };
   }
 };

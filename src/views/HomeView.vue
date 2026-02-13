@@ -159,7 +159,7 @@
                   class="forecast-ranking-table"
                   @row-click="onForecastRowClick"
                 >
-                  <el-table-column prop="rankLabel" label="排名" align="center" width="76" show-overflow-tooltip />
+                  <el-table-column prop="rankLabel" label="排名" align="center" show-overflow-tooltip />
                   <el-table-column label="股票简称(股票代码)" show-overflow-tooltip>
                     <template #default="{ row }">
                       <span class="ranking-stock-link" @click.stop="goToStockDetailByCode(row.code)">
@@ -167,7 +167,7 @@
                       </span>
                     </template>
                   </el-table-column>
-                  <el-table-column label="净利润同比" align="center" width="120" show-overflow-tooltip>
+                  <el-table-column label="净利润同比" align="center" show-overflow-tooltip>
                     <template #default="{ row }">
                       <span class="ranking-yoy" :class="row.yoy === null ? '' : (row.yoy >= 0 ? 'up' : 'down')">
                         {{ row.yoyText }}
@@ -1120,6 +1120,11 @@ export default {
         width: 100%;
         flex: 1;
         min-height: 0;
+
+        :deep(.el-table__header colgroup col:nth-child(-n + 3)),
+        :deep(.el-table__body colgroup col:nth-child(-n + 3)) {
+          width: 33.333% !important;
+        }
 
         :deep(.el-table__cell) {
           padding: 8px 6px;

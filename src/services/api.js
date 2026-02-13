@@ -10,13 +10,18 @@ const retryConfig = {
   retryDelay: (retryCount) => retryCount * 1000,
   retryCondition: (error) => {
     const status = error?.response?.status;
-    // 失败、超时、网络错误或任意非200状态都进行重试
-    return (
-      error.code === 'ECONNABORTED' ||
-      !error.response ||
-      (typeof status === 'number' && status !== 200) ||
-      axiosRetry.isNetworkError(error)
-    );
+    // 仅在网络抖动、超时、限流或服务端错误时重试
+    // 401/403/404 等客户端错误不重试，避免页面被重试阻塞
+    if (error.code === 'ECONNABORTED' || axiosRetry.isNetworkError(error)) {
+      return true;
+    }
+    if (typeof status !== 'number') {
+      return !error.response;
+    }
+    if (status === 408 || status === 429) {
+      return true;
+    }
+    return status >= 500;
   }
 };
 
