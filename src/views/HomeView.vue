@@ -760,6 +760,44 @@ export default {
       { deep: true }
     );
 
+    const stopFavoriteAutoRefresh = () => {
+      clearInterval(favoriteNewsRefreshInterval);
+      clearInterval(favoriteStocksPriceRefreshInterval);
+      favoriteNewsRefreshInterval = null;
+      favoriteStocksPriceRefreshInterval = null;
+    };
+
+    const startFavoriteAutoRefresh = ({ showLoading = false } = {}) => {
+      if (!isLoggedIn.value) return;
+
+      fetchMyFavoriteStocks({ showLoading });
+      fetchFavoriteStockNews();
+
+      stopFavoriteAutoRefresh();
+
+      // 自选股资讯每 10 分钟刷新一次
+      favoriteNewsRefreshInterval = setInterval(() => {
+        fetchFavoriteStockNews();
+      }, 10 * 60 * 1000);
+
+      // 自选股价格每 3 分钟刷新一次
+      favoriteStocksPriceRefreshInterval = setInterval(() => {
+        console.log('[HomeView] 定时刷新自选股价格');
+        fetchMyFavoriteStocks();
+      }, 3 * 60 * 1000);
+    };
+
+    watch(isLoggedIn, (loggedIn) => {
+      if (loggedIn) {
+        startFavoriteAutoRefresh({ showLoading: true });
+        return;
+      }
+      stopFavoriteAutoRefresh();
+      myFavoriteStocks.value = [];
+      favoriteStockNews.value = [];
+      loadingFavorites.value = false;
+    });
+
     // 查看股票详情
     const viewStockDetail = (stock) => {
       router.push(`/stock/${stock.code}`);
@@ -900,21 +938,9 @@ export default {
         fetchHotStocks();
       }, 5 * 60 * 1000);
       
-      // 如果登录，获取自选股资讯
+      // 登录态可能在挂载后才恢复（Cookie 认证异步），所以这里仅处理当前已登录场景
       if (isLoggedIn.value) {
-        fetchMyFavoriteStocks({ showLoading: true });
-        fetchFavoriteStockNews(); // 直接获取推送新闻，不需要等待自选股加载
-        
-        // 自选股资讯每 10 分钟刷新一次
-        favoriteNewsRefreshInterval = setInterval(() => {
-          fetchFavoriteStockNews();
-        }, 10 * 60 * 1000);
-        
-        // 自选股价格每 3 分钟刷新一次
-        favoriteStocksPriceRefreshInterval = setInterval(() => {
-          console.log('[HomeView] 定时刷新自选股价格');
-          fetchMyFavoriteStocks();
-        }, 3 * 60 * 1000);
+        startFavoriteAutoRefresh({ showLoading: true });
       }
     });
 
@@ -923,9 +949,8 @@ export default {
       clearInterval(domesticRefreshInterval);
       clearInterval(foreignRefreshInterval);
       clearInterval(headlineRefreshInterval);
-      clearInterval(favoriteNewsRefreshInterval); // 清除自选股资讯刷新定时器
       clearInterval(hotStocksRefreshInterval); // 清除热门股票刷新定时器
-      clearInterval(favoriteStocksPriceRefreshInterval); // 清除自选股价格刷新定时器
+      stopFavoriteAutoRefresh();
 
       window.removeEventListener('resize', updateForecastLayout);
       if (rankingLayoutObserver) {
