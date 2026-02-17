@@ -496,8 +496,7 @@ export default {
 
         const result = await store.dispatch('addStocksFromImage', {
           images: compressedImages,
-          hint: '自选股列表截图',
-          detail: 'low'
+          hint: '自选股列表截图'
         });
 
         if (result?.error) {

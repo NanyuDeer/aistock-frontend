@@ -122,7 +122,6 @@ export const stockApi = {
   } = {}) => {
     const payload = {
       images,
-      detail,
       batchConcurrency,
       maxImagesPerRequest,
       timeoutMs

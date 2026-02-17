@@ -292,11 +292,6 @@ export default createStore({
           throw new Error('未获取到有效图片数据');
         }
 
-        const allowedDetail = ['low', 'high', 'auto'];
-        const detail = allowedDetail.includes(requestPayload.detail)
-          ? requestPayload.detail
-          : 'low';
-
         const hint = typeof requestPayload.hint === 'string' ? requestPayload.hint.trim() : '';
         const ocrHint = typeof requestPayload.ocrHint === 'string' ? requestPayload.ocrHint.trim() : '';
         const batchConcurrency = clampInteger(requestPayload.batchConcurrency, 1, 4, 2);
@@ -307,7 +302,6 @@ export default createStore({
           images: normalizedImages,
           hint,
           ocrHint,
-          detail,
           batchConcurrency,
           maxImagesPerRequest,
           timeoutMs
