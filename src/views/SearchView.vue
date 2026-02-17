@@ -422,10 +422,23 @@ export default {
       img.src = dataUrl;
     });
 
-    const compressImageToBase64 = async (file) => {
+    const parseDataUrl = (dataUrl) => {
+      const text = String(dataUrl || '');
+      const matched = text.match(/^data:([^;]+);base64,(.+)$/);
+      if (!matched) {
+        return { mime: '', base64: '' };
+      }
+      return {
+        mime: matched[1] || '',
+        base64: matched[2] || ''
+      };
+    };
+
+    const compressImageToPayload = async (file) => {
       const originalDataUrl = await readFileAsDataUrl(file);
       if (file.size <= COMPRESS_THRESHOLD_BYTES) {
-        return originalDataUrl.split(',')[1];
+        const { mime, base64 } = parseDataUrl(originalDataUrl);
+        return { data: base64, mime: mime || (file.type || 'image/jpeg') };
       }
 
       try {
@@ -440,7 +453,8 @@ export default {
 
         const ctx = canvas.getContext('2d');
         if (!ctx) {
-          return originalDataUrl.split(',')[1];
+          const { mime, base64 } = parseDataUrl(originalDataUrl);
+          return { data: base64, mime: mime || (file.type || 'image/jpeg') };
         }
 
         ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
@@ -448,11 +462,12 @@ export default {
         const finalDataUrl = compressedDataUrl.length < originalDataUrl.length
           ? compressedDataUrl
           : originalDataUrl;
-
-        return finalDataUrl.split(',')[1];
+        const { mime, base64 } = parseDataUrl(finalDataUrl);
+        return { data: base64, mime: mime || 'image/jpeg' };
       } catch (error) {
         console.warn('图片压缩失败，回退原图:', error);
-        return originalDataUrl.split(',')[1];
+        const { mime, base64 } = parseDataUrl(originalDataUrl);
+        return { data: base64, mime: mime || (file.type || 'image/jpeg') };
       }
     };
     
@@ -476,7 +491,7 @@ export default {
         selectedStocks.value = [];
 
         const compressedImages = await Promise.all(
-          imageFiles.value.map((file) => compressImageToBase64(file))
+          imageFiles.value.map((file) => compressImageToPayload(file))
         );
 
         const result = await store.dispatch('addStocksFromImage', {
@@ -485,7 +500,13 @@ export default {
           detail: 'low'
         });
 
-        if (result && result.stocks) {
+        if (result?.error) {
+          ElMessage.error(result.message || '识别失败，请重试');
+          imageResultVisible.value = false;
+          return;
+        }
+
+        if (result && Array.isArray(result.stocks)) {
           recognizedStocks.value = result.stocks;
           if (recognizedStocks.value.length === 0) {
             ElMessage.info('未从图片中识别到股票信息');

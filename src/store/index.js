@@ -289,7 +289,7 @@ export default createStore({
 
         const normalizedImages = normalizeOcrImages(requestPayload.images);
         if (normalizedImages.length === 0) {
-          return { stocks: [] };
+          throw new Error('未获取到有效图片数据');
         }
 
         const allowedDetail = ['low', 'high', 'auto'];
@@ -313,8 +313,11 @@ export default createStore({
           timeoutMs
         });
 
-        if (response?.code !== 200 || !Array.isArray(response.data)) {
-          return { stocks: [] };
+        if (response?.code !== 200) {
+          throw new Error(response?.message || 'OCR 接口返回失败');
+        }
+        if (!Array.isArray(response.data)) {
+          throw new Error('OCR 响应格式异常');
         }
 
         const merged = [];
@@ -344,7 +347,12 @@ export default createStore({
         return { stocks: Array.from(stockMap.values()) };
       } catch (error) {
         console.error('图片识别失败:', error);
-        return { stocks: [] };
+        const serverMessage = error?.response?.data?.message;
+        return {
+          stocks: [],
+          error: true,
+          message: serverMessage || error?.message || '图片识别失败'
+        };
       }
     },
     async searchStocks(_, { keyword, limit }) {
