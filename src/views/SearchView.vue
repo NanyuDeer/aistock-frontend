@@ -58,30 +58,48 @@
                 action=""
                 :auto-upload="false"
                 :show-file-list="false"
+                multiple
+                :limit="8"
                 accept="image/*"
                 :on-change="handleImageChange"
+                :on-exceed="handleImageExceed"
               >
                 <div class="upload-area">
-                  <template v-if="imageFile">
-                    <img :src="imagePreview" class="preview-image" />
-                    <div class="image-actions">
-                      <el-button size="small" type="danger" @click.stop="removeImage">
-                        删除图片
-                      </el-button>
-                      <el-button 
-                        size="small" 
-                        type="primary" 
-                        @click.stop="processImage"
-                        :loading="imageUploading"
-                      >
-                        开始识别
-                      </el-button>
+                  <template v-if="imageFiles.length > 0">
+                    <div class="upload-content">
+                      <div class="image-toolbar">
+                        <span class="image-count">已选择 {{ imageFiles.length }}/8 张</span>
+                        <div class="image-actions">
+                          <el-button size="small" type="danger" plain @click.stop="removeImage()">
+                            清空
+                          </el-button>
+                          <el-button
+                            size="small"
+                            type="primary"
+                            @click.stop="processImage"
+                            :loading="imageUploading"
+                          >
+                            开始识别
+                          </el-button>
+                        </div>
+                      </div>
+                      <div class="preview-grid">
+                        <div
+                          v-for="(preview, index) in imagePreviews"
+                          :key="preview.uid"
+                          class="preview-card"
+                        >
+                          <img :src="preview.previewUrl" class="preview-image" />
+                          <button class="remove-preview" @click.stop="removeImage(index)">移除</button>
+                        </div>
+                      </div>
+                      <p class="compress-hint">识别前会自动压缩图片，降低传输压力</p>
                     </div>
                   </template>
                   <div v-else class="upload-placeholder">
                     <img src="@/assets/upload.svg" class="upload-icon" />
-                    <p>点击或拖拽图片到此区域</p>
-                    <p class="upload-hint">支持识别图片中的股票代码，如截图、照片等</p>
+                    <p>点击或拖拽图片到此区域（最多 8 张）</p>
+                    <p class="upload-hint">支持识别图片中的股票代码，识别前自动压缩</p>
                   </div>
                 </div>
               </el-upload>
@@ -200,7 +218,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
@@ -209,6 +227,12 @@ import 'element-plus/es/components/message/style/css';
 export default {
   name: 'SearchView',
   setup() {
+    const MAX_IMAGE_COUNT = 8;
+    const MAX_SINGLE_IMAGE_MB = 10;
+    const COMPRESS_THRESHOLD_BYTES = 500 * 1024;
+    const MAX_IMAGE_EDGE = 1800;
+    const COMPRESS_QUALITY = 0.82;
+
     const store = useStore();
     const router = useRouter();
     
@@ -232,8 +256,8 @@ export default {
     const recognizedStocks = ref([]);
     const selectedStocks = ref([]);
     const addingStocks = ref(false);
-    const imageFile = ref(null);
-    const imagePreview = ref('');
+    const imageFiles = ref([]);
+    const imagePreviews = ref([]);
     
     // 执行搜索
     const handleSearch = async () => {
@@ -307,45 +331,129 @@ export default {
       return favoriteStocks.some(stock => stock.code === code);
     };
     
-    // 处理图片上传
-    const handleImageChange = async (file) => {
-      if (!file || !file.raw) {
-        console.error('上传文件无效或格式错误');
-        ElMessage.error('上传文件无效');
-        return;
-      }
-      
-      // 安全地访问file.type属性
-      const fileType = file.raw.type || '';
-      
-      // 验证文件类型
-      const isImage = fileType.indexOf('image/') !== -1;
-      if (!isImage) {
-        ElMessage.error('只能上传图片文件!');
-        return;
-      }
-      
-      // 验证文件大小
-      const isLt5M = file.raw.size / 1024 / 1024 < 5;
-      if (!isLt5M) {
-        ElMessage.error('图片大小不能超过5MB!');
-        return;
-      }
-      
-      imageFile.value = file.raw;
-      
-      // 创建预览
-      const reader = new FileReader();
-      reader.readAsDataURL(file.raw);
-      reader.onload = (e) => {
-        imagePreview.value = e.target.result;
-      };
+    const revokePreviewUrls = () => {
+      imagePreviews.value.forEach((item) => {
+        if (item?.previewUrl) {
+          URL.revokeObjectURL(item.previewUrl);
+        }
+      });
     };
-    
-    // 移除已选图片
-    const removeImage = () => {
-      imageFile.value = null;
-      imagePreview.value = '';
+
+    const updateSelectedImages = (files) => {
+      revokePreviewUrls();
+
+      imageFiles.value = files;
+      imagePreviews.value = files.map((rawFile) => ({
+        uid: `${rawFile.name}-${rawFile.size}-${rawFile.lastModified}`,
+        name: rawFile.name,
+        size: rawFile.size,
+        previewUrl: URL.createObjectURL(rawFile)
+      }));
+    };
+
+    // 处理图片上传（多图）
+    const handleImageChange = (_file, uploadFiles = []) => {
+      const nextFiles = [];
+      let hasInvalidType = false;
+      let hasOversize = false;
+
+      uploadFiles.forEach((item) => {
+        const raw = item?.raw;
+        if (!raw) return;
+        if (!String(raw.type || '').startsWith('image/')) {
+          hasInvalidType = true;
+          return;
+        }
+        if (raw.size / 1024 / 1024 > MAX_SINGLE_IMAGE_MB) {
+          hasOversize = true;
+          return;
+        }
+        nextFiles.push(raw);
+      });
+
+      const uniqueFiles = [];
+      const seen = new Set();
+      nextFiles.forEach((file) => {
+        const key = `${file.name}-${file.size}-${file.lastModified}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        uniqueFiles.push(file);
+      });
+
+      const limitedFiles = uniqueFiles.slice(0, MAX_IMAGE_COUNT);
+      if (uniqueFiles.length > MAX_IMAGE_COUNT) {
+        ElMessage.warning(`最多上传 ${MAX_IMAGE_COUNT} 张图片`);
+      }
+      if (hasInvalidType) {
+        ElMessage.warning('仅支持图片文件');
+      }
+      if (hasOversize) {
+        ElMessage.warning(`单张图片不能超过 ${MAX_SINGLE_IMAGE_MB}MB`);
+      }
+
+      updateSelectedImages(limitedFiles);
+    };
+
+    const handleImageExceed = () => {
+      ElMessage.warning(`最多上传 ${MAX_IMAGE_COUNT} 张图片`);
+    };
+
+    // 移除已选图片（可单张或全部）
+    const removeImage = (index) => {
+      if (typeof index !== 'number') {
+        updateSelectedImages([]);
+        return;
+      }
+      const next = imageFiles.value.filter((_, i) => i !== index);
+      updateSelectedImages(next);
+    };
+
+    const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    const loadImageElement = (dataUrl) => new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+
+    const compressImageToBase64 = async (file) => {
+      const originalDataUrl = await readFileAsDataUrl(file);
+      if (file.size <= COMPRESS_THRESHOLD_BYTES) {
+        return originalDataUrl.split(',')[1];
+      }
+
+      try {
+        const image = await loadImageElement(originalDataUrl);
+        const ratio = Math.min(1, MAX_IMAGE_EDGE / Math.max(image.width, image.height));
+        const targetWidth = Math.max(1, Math.round(image.width * ratio));
+        const targetHeight = Math.max(1, Math.round(image.height * ratio));
+
+        const canvas = document.createElement('canvas');
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          return originalDataUrl.split(',')[1];
+        }
+
+        ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', COMPRESS_QUALITY);
+        const finalDataUrl = compressedDataUrl.length < originalDataUrl.length
+          ? compressedDataUrl
+          : originalDataUrl;
+
+        return finalDataUrl.split(',')[1];
+      } catch (error) {
+        console.warn('图片压缩失败，回退原图:', error);
+        return originalDataUrl.split(',')[1];
+      }
     };
     
     // 处理图片识别
@@ -356,7 +464,7 @@ export default {
         return;
       }
       
-      if (!imageFile.value) {
+      if (imageFiles.value.length === 0) {
         ElMessage.warning('请先选择图片');
         return;
       }
@@ -364,31 +472,34 @@ export default {
       try {
         imageUploading.value = true;
         imageResultVisible.value = true;
-        
-        const reader = new FileReader();
-        reader.readAsDataURL(imageFile.value);
-        reader.onload = async (e) => {
-          const base64 = e.target.result.split(',')[1];
-          
-          const result = await store.dispatch('addStocksFromImage', base64);
-          
-          if (result && result.stocks) {
-            recognizedStocks.value = result.stocks;
-            if (recognizedStocks.value.length === 0) {
-              ElMessage.info('未从图片中识别到股票信息');
-            } else {
-              ElMessage.success(`成功识别出${recognizedStocks.value.length}支股票`);
-            }
+        recognizedStocks.value = [];
+        selectedStocks.value = [];
+
+        const compressedImages = await Promise.all(
+          imageFiles.value.map((file) => compressImageToBase64(file))
+        );
+
+        const result = await store.dispatch('addStocksFromImage', {
+          images: compressedImages,
+          hint: '自选股列表截图',
+          detail: 'low'
+        });
+
+        if (result && result.stocks) {
+          recognizedStocks.value = result.stocks;
+          if (recognizedStocks.value.length === 0) {
+            ElMessage.info('未从图片中识别到股票信息');
           } else {
-            ElMessage.error('识别失败，请重试');
-            imageResultVisible.value = false;
+            ElMessage.success(`成功识别出${recognizedStocks.value.length}支股票`);
           }
-          
-          imageUploading.value = false;
-        };
+        } else {
+          ElMessage.error('识别失败，请重试');
+          imageResultVisible.value = false;
+        }
       } catch (error) {
         console.error('图片识别失败:', error);
         ElMessage.error('图片识别失败，请重试');
+      } finally {
         imageUploading.value = false;
       }
     };
@@ -425,6 +536,10 @@ export default {
       // 重置滚动位置到顶部
       window.scrollTo(0, 0);
     });
+
+    onBeforeUnmount(() => {
+      revokePreviewUrls();
+    });
     
     return {
       isLoggedIn,
@@ -443,9 +558,10 @@ export default {
       recognizedStocks,
       selectedStocks,
       addingStocks,
-      imageFile,
-      imagePreview,
+      imageFiles,
+      imagePreviews,
       handleImageChange,
+      handleImageExceed,
       handleSelectionChange,
       addRecognizedStocks,
       removeImage,
@@ -593,7 +709,7 @@ export default {
             
             .upload-area {
               width: 100%;
-              height: 200px;
+              min-height: 220px;
               border: 2px dashed #dcdfe6;
               border-radius: 8px;
               cursor: pointer;
@@ -603,29 +719,77 @@ export default {
               display: flex;
               align-items: center;
               justify-content: center;
+              padding: 14px;
               
               &:hover {
                 border-color: var(--primary-color);
               }
               
-              .preview-image {
+              .upload-content {
                 width: 100%;
-                height: 100%;
-                object-fit: contain;
-              }
-              
-              .image-actions {
-                position: absolute;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                background: rgba(0, 0, 0, 0.6);
-                padding: 10px;
                 display: flex;
-                justify-content: center;
+                flex-direction: column;
                 gap: 10px;
+
+                .image-toolbar {
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  gap: 10px;
+
+                  .image-count {
+                    font-size: 13px;
+                    color: #606266;
+                    font-weight: 500;
+                  }
+                }
+
+                .image-actions {
+                  display: flex;
+                  gap: 8px;
+                }
+
+                .preview-grid {
+                  display: grid;
+                  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+                  gap: 8px;
+                }
+
+                .preview-card {
+                  position: relative;
+                  border-radius: 6px;
+                  overflow: hidden;
+                  border: 1px solid #ebeef5;
+                  background: #fafafa;
+                  aspect-ratio: 1 / 1;
+                }
+
+                .preview-image {
+                  width: 100%;
+                  height: 100%;
+                  object-fit: cover;
+                }
+
+                .remove-preview {
+                  position: absolute;
+                  right: 4px;
+                  bottom: 4px;
+                  border: none;
+                  border-radius: 4px;
+                  background: rgba(0, 0, 0, 0.65);
+                  color: #fff;
+                  font-size: 11px;
+                  padding: 2px 6px;
+                  cursor: pointer;
+                }
+
+                .compress-hint {
+                  margin: 0;
+                  font-size: 12px;
+                  color: #909399;
+                }
               }
-              
+
               .upload-placeholder {
                 display: flex;
                 flex-direction: column;

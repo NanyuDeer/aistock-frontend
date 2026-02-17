@@ -53,6 +53,42 @@ function buildKlineEndCursor(rawTime, klt) {
   return `${y}${m}${d}`;
 }
 
+function clampInteger(value, min, max, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
+}
+
+function normalizeOcrImages(images) {
+  if (!Array.isArray(images)) return [];
+
+  return images
+    .map((item) => {
+      if (typeof item === 'string') {
+        const content = item.trim();
+        return content ? content : null;
+      }
+      if (!item || typeof item !== 'object') {
+        return null;
+      }
+
+      const url = typeof item.url === 'string' ? item.url.trim() : '';
+      if (url) {
+        return { url };
+      }
+
+      const data = typeof item.data === 'string' ? item.data.trim() : '';
+      if (!data) return null;
+
+      const normalized = { data };
+      const mime = typeof item.mime === 'string' ? item.mime.trim() : '';
+      if (mime) normalized.mime = mime;
+      return normalized;
+    })
+    .filter(Boolean)
+    .slice(0, 8);
+}
+
 export default createStore({
   state: {
     user: JSON.parse(localStorage.getItem('user')) || null, // 从 localStorage 恢复用户信息
@@ -243,6 +279,72 @@ export default createStore({
       } catch (error) {
         console.error('删除自选股失败:', error);
         return false;
+      }
+    },
+    async addStocksFromImage(_, payload) {
+      try {
+        const requestPayload = typeof payload === 'string'
+          ? { images: [payload] }
+          : (payload || {});
+
+        const normalizedImages = normalizeOcrImages(requestPayload.images);
+        if (normalizedImages.length === 0) {
+          return { stocks: [] };
+        }
+
+        const allowedDetail = ['low', 'high', 'auto'];
+        const detail = allowedDetail.includes(requestPayload.detail)
+          ? requestPayload.detail
+          : 'low';
+
+        const hint = typeof requestPayload.hint === 'string' ? requestPayload.hint.trim() : '';
+        const ocrHint = typeof requestPayload.ocrHint === 'string' ? requestPayload.ocrHint.trim() : '';
+        const batchConcurrency = clampInteger(requestPayload.batchConcurrency, 1, 4, 2);
+        const maxImagesPerRequest = clampInteger(requestPayload.maxImagesPerRequest, 1, 4, 4);
+        const timeoutMs = clampInteger(requestPayload.timeoutMs, 10000, 120000, 45000);
+
+        const response = await stockApi.ocrStocksFromImages({
+          images: normalizedImages,
+          hint,
+          ocrHint,
+          detail,
+          batchConcurrency,
+          maxImagesPerRequest,
+          timeoutMs
+        });
+
+        if (response?.code !== 200 || !Array.isArray(response.data)) {
+          return { stocks: [] };
+        }
+
+        const merged = [];
+        response.data.forEach(batch => {
+          if (Array.isArray(batch)) {
+            merged.push(...batch);
+          } else if (batch && typeof batch === 'object') {
+            merged.push(batch);
+          }
+        });
+
+        const stockMap = new Map();
+        merged.forEach((item) => {
+          if (!item || typeof item !== 'object') return;
+          const code = String(item['股票代码'] || '').trim();
+          const name = String(item['股票简称'] || '').trim();
+          if (!code) return;
+          if (!stockMap.has(code)) {
+            stockMap.set(code, { code, name: name || code });
+            return;
+          }
+          if (name && !stockMap.get(code).name) {
+            stockMap.set(code, { code, name });
+          }
+        });
+
+        return { stocks: Array.from(stockMap.values()) };
+      } catch (error) {
+        console.error('图片识别失败:', error);
+        return { stocks: [] };
       }
     },
     async searchStocks(_, { keyword, limit }) {

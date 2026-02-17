@@ -96,8 +96,45 @@ export const stockApi = {
   // 批量添加自选股票（新版 API）
   addStocks: (symbols) => api.post('/api/users/me/favorites', { symbols }),
 
-  // 批量删除自选股票（新版 API）
-  removeStocks: (symbols) => api.post('/api/users/me/favorites/delete', { symbols }),
+  // 批量删除自选股票（用户态 API；优先 DELETE，失败回退兼容 POST）
+  removeStocks: async (symbols) => {
+    try {
+      return await api.delete('/api/users/me/favorites', {
+        data: { symbols }
+      });
+    } catch (error) {
+      const status = error?.response?.status;
+      if (status === 404 || status === 405) {
+        return api.post('/api/users/me/favorites/delete', { symbols });
+      }
+      throw error;
+    }
+  },
+
+  // 自选股图片 OCR（VLM 批量识别）
+  ocrStocksFromImages: ({
+    images = [],
+    hint = '',
+    ocrHint = '',
+    batchConcurrency = 2,
+    maxImagesPerRequest = 4,
+    timeoutMs = 45000
+  } = {}) => {
+    const payload = {
+      images,
+      detail,
+      batchConcurrency,
+      maxImagesPerRequest,
+      timeoutMs
+    };
+    if (hint) payload.hint = hint;
+    if (ocrHint) payload.ocrHint = ocrHint;
+
+    return api.post('/api/cn/stocks/ocr', payload, {
+      timeout: timeoutMs + 3000,
+      'axios-retry': { retries: 0 }
+    });
+  },
 
   // 根据关键词搜索股票（新版extapi）
   searchStocks: (keyword, pageSize = 20) => {
