@@ -229,9 +229,9 @@ export default {
   setup() {
     const MAX_IMAGE_COUNT = 8;
     const MAX_SINGLE_IMAGE_MB = 10;
-    const COMPRESS_THRESHOLD_BYTES = 500 * 1024;
-    const MAX_IMAGE_EDGE = 1800;
-    const COMPRESS_QUALITY = 0.82;
+    const COMPRESS_THRESHOLD_BYTES = 200 * 1024;
+    const PRIMARY_MAX_IMAGE_EDGE = 1400;
+    const SECONDARY_MAX_IMAGE_EDGE = 1100;
 
     const store = useStore();
     const router = useRouter();
@@ -434,6 +434,37 @@ export default {
       };
     };
 
+    const estimateBase64Bytes = (base64) => {
+      const text = String(base64 || '');
+      if (!text) return 0;
+      const padding = text.endsWith('==') ? 2 : (text.endsWith('=') ? 1 : 0);
+      return Math.floor((text.length * 3) / 4) - padding;
+    };
+
+    const getPrimaryQualityByFileSize = (sizeBytes) => {
+      if (sizeBytes > 8 * 1024 * 1024) return 0.5;
+      if (sizeBytes > 5 * 1024 * 1024) return 0.56;
+      if (sizeBytes > 2 * 1024 * 1024) return 0.62;
+      if (sizeBytes > 1 * 1024 * 1024) return 0.68;
+      return 0.74;
+    };
+
+    const renderCompressedJpeg = (image, maxEdge, quality) => {
+      const ratio = Math.min(1, maxEdge / Math.max(image.width, image.height));
+      const targetWidth = Math.max(1, Math.round(image.width * ratio));
+      const targetHeight = Math.max(1, Math.round(image.height * ratio));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return '';
+
+      ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
+      return canvas.toDataURL('image/jpeg', quality);
+    };
+
     const compressImageToPayload = async (file) => {
       const originalDataUrl = await readFileAsDataUrl(file);
       if (file.size <= COMPRESS_THRESHOLD_BYTES) {
@@ -443,25 +474,35 @@ export default {
 
       try {
         const image = await loadImageElement(originalDataUrl);
-        const ratio = Math.min(1, MAX_IMAGE_EDGE / Math.max(image.width, image.height));
-        const targetWidth = Math.max(1, Math.round(image.width * ratio));
-        const targetHeight = Math.max(1, Math.round(image.height * ratio));
 
-        const canvas = document.createElement('canvas');
-        canvas.width = targetWidth;
-        canvas.height = targetHeight;
-
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
+        const firstPass = renderCompressedJpeg(
+          image,
+          PRIMARY_MAX_IMAGE_EDGE,
+          getPrimaryQualityByFileSize(file.size)
+        );
+        if (!firstPass) {
           const { mime, base64 } = parseDataUrl(originalDataUrl);
           return { data: base64, mime: mime || (file.type || 'image/jpeg') };
         }
 
-        ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', COMPRESS_QUALITY);
-        const finalDataUrl = compressedDataUrl.length < originalDataUrl.length
-          ? compressedDataUrl
-          : originalDataUrl;
+        const secondPass = renderCompressedJpeg(image, SECONDARY_MAX_IMAGE_EDGE, 0.5);
+
+        const originalSize = estimateBase64Bytes(parseDataUrl(originalDataUrl).base64);
+        const firstPassSize = estimateBase64Bytes(parseDataUrl(firstPass).base64);
+        const secondPassSize = secondPass
+          ? estimateBase64Bytes(parseDataUrl(secondPass).base64)
+          : Number.MAX_SAFE_INTEGER;
+        const sizeTarget = Math.max(120 * 1024, Math.floor(originalSize * 0.45));
+
+        let finalDataUrl = firstPass;
+        if (firstPassSize > sizeTarget && secondPassSize < firstPassSize) {
+          finalDataUrl = secondPass;
+        }
+
+        if (estimateBase64Bytes(parseDataUrl(finalDataUrl).base64) >= originalSize) {
+          finalDataUrl = originalDataUrl;
+        }
+
         const { mime, base64 } = parseDataUrl(finalDataUrl);
         return { data: base64, mime: mime || 'image/jpeg' };
       } catch (error) {

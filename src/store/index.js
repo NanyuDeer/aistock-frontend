@@ -292,11 +292,18 @@ export default createStore({
           throw new Error('未获取到有效图片数据');
         }
 
+        const imageCount = normalizedImages.length;
+        const defaultTimeoutMs = Math.min(120000, Math.max(45000, 30000 + imageCount * 15000));
+        const defaultBatchConcurrency = imageCount >= 6 ? 3 : 2;
+        const defaultMaxImagesPerRequest = imageCount >= 4
+          ? 2
+          : Math.max(1, Math.min(4, imageCount));
+
         const hint = typeof requestPayload.hint === 'string' ? requestPayload.hint.trim() : '';
         const ocrHint = typeof requestPayload.ocrHint === 'string' ? requestPayload.ocrHint.trim() : '';
-        const batchConcurrency = clampInteger(requestPayload.batchConcurrency, 1, 4, 2);
-        const maxImagesPerRequest = clampInteger(requestPayload.maxImagesPerRequest, 1, 4, 4);
-        const timeoutMs = clampInteger(requestPayload.timeoutMs, 10000, 120000, 45000);
+        const batchConcurrency = clampInteger(requestPayload.batchConcurrency, 1, 4, defaultBatchConcurrency);
+        const maxImagesPerRequest = clampInteger(requestPayload.maxImagesPerRequest, 1, 4, defaultMaxImagesPerRequest);
+        const timeoutMs = clampInteger(requestPayload.timeoutMs, 10000, 120000, defaultTimeoutMs);
 
         const response = await stockApi.ocrStocksFromImages({
           images: normalizedImages,

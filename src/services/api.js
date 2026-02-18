@@ -118,7 +118,7 @@ export const stockApi = {
     ocrHint = '',
     batchConcurrency = 2,
     maxImagesPerRequest = 4,
-    timeoutMs = 45000
+    timeoutMs = 90000
   } = {}) => {
     const payload = {
       images,
@@ -130,7 +130,7 @@ export const stockApi = {
     if (ocrHint) payload.ocrHint = ocrHint;
 
     return api.post('/api/cn/stocks/ocr', payload, {
-      timeout: timeoutMs + 3000,
+      timeout: timeoutMs + 10000,
       'axios-retry': { retries: 0 }
     });
   },
