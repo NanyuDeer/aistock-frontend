@@ -54,9 +54,11 @@
             <!-- 图片搜索模式 -->
             <div v-show="activeSearchMode === 'image'" class="image-search-box">
               <el-upload
+                ref="uploadRef"
                 class="image-uploader"
                 action=""
                 :auto-upload="false"
+                v-model:file-list="uploadUiFiles"
                 :show-file-list="false"
                 multiple
                 :limit="8"
@@ -256,6 +258,8 @@ export default {
     const recognizedStocks = ref([]);
     const selectedStocks = ref([]);
     const addingStocks = ref(false);
+    const uploadRef = ref(null);
+    const uploadUiFiles = ref([]);
     const imageFiles = ref([]);
     const imagePreviews = ref([]);
     
@@ -339,10 +343,21 @@ export default {
       });
     };
 
-    const updateSelectedImages = (files) => {
+    const toUploadUiEntry = (rawFile, uid = '') => ({
+      name: rawFile.name,
+      size: rawFile.size,
+      status: 'ready',
+      uid: uid || `${rawFile.name}-${rawFile.size}-${rawFile.lastModified}`,
+      raw: rawFile
+    });
+
+    const updateSelectedImages = (files, uiEntries = null) => {
       revokePreviewUrls();
 
       imageFiles.value = files;
+      uploadUiFiles.value = Array.isArray(uiEntries)
+        ? uiEntries
+        : files.map(file => toUploadUiEntry(file));
       imagePreviews.value = files.map((rawFile) => ({
         uid: `${rawFile.name}-${rawFile.size}-${rawFile.lastModified}`,
         name: rawFile.name,
@@ -353,7 +368,7 @@ export default {
 
     // 处理图片上传（多图）
     const handleImageChange = (_file, uploadFiles = []) => {
-      const nextFiles = [];
+      const nextEntries = [];
       let hasInvalidType = false;
       let hasOversize = false;
 
@@ -368,20 +383,22 @@ export default {
           hasOversize = true;
           return;
         }
-        nextFiles.push(raw);
+        nextEntries.push(toUploadUiEntry(raw, item.uid));
       });
 
-      const uniqueFiles = [];
+      const uniqueEntries = [];
       const seen = new Set();
-      nextFiles.forEach((file) => {
+      nextEntries.forEach((entry) => {
+        const file = entry.raw;
         const key = `${file.name}-${file.size}-${file.lastModified}`;
         if (seen.has(key)) return;
         seen.add(key);
-        uniqueFiles.push(file);
+        uniqueEntries.push(entry);
       });
 
-      const limitedFiles = uniqueFiles.slice(0, MAX_IMAGE_COUNT);
-      if (uniqueFiles.length > MAX_IMAGE_COUNT) {
+      const limitedEntries = uniqueEntries.slice(0, MAX_IMAGE_COUNT);
+      const limitedFiles = limitedEntries.map(item => item.raw);
+      if (uniqueEntries.length > MAX_IMAGE_COUNT) {
         ElMessage.warning(`最多上传 ${MAX_IMAGE_COUNT} 张图片`);
       }
       if (hasInvalidType) {
@@ -391,7 +408,7 @@ export default {
         ElMessage.warning(`单张图片不能超过 ${MAX_SINGLE_IMAGE_MB}MB`);
       }
 
-      updateSelectedImages(limitedFiles);
+      updateSelectedImages(limitedFiles, limitedEntries);
     };
 
     const handleImageExceed = () => {
@@ -401,11 +418,13 @@ export default {
     // 移除已选图片（可单张或全部）
     const removeImage = (index) => {
       if (typeof index !== 'number') {
-        updateSelectedImages([]);
+        updateSelectedImages([], []);
+        uploadRef.value?.clearFiles();
         return;
       }
       const next = imageFiles.value.filter((_, i) => i !== index);
-      updateSelectedImages(next);
+      const nextUi = uploadUiFiles.value.filter((_, i) => i !== index);
+      updateSelectedImages(next, nextUi);
     };
 
     const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
@@ -619,6 +638,8 @@ export default {
       recognizedStocks,
       selectedStocks,
       addingStocks,
+      uploadRef,
+      uploadUiFiles,
       imageFiles,
       imagePreviews,
       handleImageChange,
