@@ -34,22 +34,45 @@
           <el-tag size="small" type="info">上市日期：{{ stockInfo.listingDate }}</el-tag>
           <el-tag size="small" type="info">信息更新时间：{{ stockInfo.infoUpdatedAt }}</el-tag>
         </div>
-        <div class="stock-meta-grid">
-          <div class="meta-item">
-            <span class="meta-label">总股本</span>
-            <span class="meta-value">{{ stockInfo.totalShares }}</span>
-          </div>
-          <div class="meta-item">
-            <span class="meta-label">流通股</span>
-            <span class="meta-value">{{ stockInfo.floatShares }}</span>
-          </div>
-          <div class="meta-item">
-            <span class="meta-label">总市值</span>
-            <span class="meta-value">{{ stockInfo.marketCap }}</span>
-          </div>
-          <div class="meta-item">
-            <span class="meta-label">流通市值</span>
-            <span class="meta-value">{{ stockInfo.floatMarketCap }}</span>
+        <div class="stock-capital-charts">
+          <div
+            v-for="chart in capitalStructureCharts"
+            :key="chart.key"
+            class="capital-chart-card"
+            :class="chart.themeClass"
+          >
+            <div class="capital-chart-head">
+              <div class="capital-chart-title-wrap">
+                <p class="capital-chart-title">{{ chart.title }}</p>
+                <p class="capital-chart-total">{{ chart.totalLabel }}：{{ chart.totalText }}</p>
+              </div>
+              <div class="capital-chart-badge">
+                <span class="badge-label">流通占比</span>
+                <transition name="number-flip" mode="out-in">
+                  <span :key="`${chart.key}-${formatRatioText(chart.flowPercent)}`" class="badge-value">
+                    {{ formatRatioText(chart.flowPercent) }}
+                  </span>
+                </transition>
+              </div>
+            </div>
+
+            <div class="capital-stacked-track" role="img" :aria-label="`${chart.title}流通占比${formatRatioText(chart.flowPercent)}`">
+              <div class="capital-stacked-segment is-flow" :style="{ width: `${chart.animatedFlowPercent}%` }"></div>
+              <div class="capital-stacked-segment is-rest" :style="{ width: `${100 - chart.animatedFlowPercent}%` }"></div>
+            </div>
+
+            <div class="capital-chart-legend">
+              <div class="legend-item">
+                <span class="legend-dot is-flow"></span>
+                <span class="legend-label">{{ chart.flowLabel }}</span>
+                <span class="legend-value">{{ chart.flowText }}</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot is-rest"></span>
+                <span class="legend-label">{{ chart.restLabel }}</span>
+                <span class="legend-value">{{ chart.restText }}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -411,6 +434,8 @@ export default {
       listingDate: '--',
       totalShares: '--',
       floatShares: '--',
+      totalSharesValue: null,
+      floatSharesValue: null,
       open: '--',
       prevClose: '--',
       high: '--',
@@ -425,6 +450,8 @@ export default {
       innerVolume: '--',
       marketCap: '--',
       floatMarketCap: '--',
+      marketCapValue: null,
+      floatMarketCapValue: null,
       infoUpdatedAt: '--',
       lastUpdated: '--'
     });
@@ -904,7 +931,16 @@ export default {
       if (typeof value === 'number') return Number.isFinite(value) ? value : null;
       const normalized = String(value).replace(/,/g, '').trim();
       if (!normalized) return null;
-      const parsed = Number(normalized);
+      const unitMatch = normalized.match(/^(-?\d+(?:\.\d+)?)(?:\s*)(亿|万)?(?:股|元|%)?$/);
+      if (unitMatch) {
+        const base = Number(unitMatch[1]);
+        if (!Number.isFinite(base)) return null;
+        const unit = unitMatch[2];
+        if (unit === '亿') return base * 1e8;
+        if (unit === '万') return base * 1e4;
+        return base;
+      }
+      const parsed = Number(normalized.replace(/[^\d.-]/g, ''));
       return Number.isFinite(parsed) ? parsed : null;
     };
 
@@ -955,6 +991,124 @@ export default {
       return `${num > 0 ? '+' : ''}${num.toFixed(2)}`;
     };
 
+    const clampPercent = (value) => {
+      if (!Number.isFinite(value)) return 0;
+      return Math.min(100, Math.max(0, value));
+    };
+
+    const calcFlowPercent = (flowValue, totalValue) => {
+      const total = toNumber(totalValue);
+      const flow = toNumber(flowValue);
+      if (total === null || total <= 0 || flow === null || flow < 0) return 0;
+      return clampPercent((Math.min(flow, total) / total) * 100);
+    };
+
+    const formatRatioText = (value) => `${clampPercent(value).toFixed(2)}%`;
+
+    const shareFlowPercent = computed(() => (
+      calcFlowPercent(stockInfo.value.floatSharesValue, stockInfo.value.totalSharesValue)
+    ));
+
+    const marketCapFlowPercent = computed(() => (
+      calcFlowPercent(stockInfo.value.floatMarketCapValue, stockInfo.value.marketCapValue)
+    ));
+
+    const animatedFlowRatios = ref({
+      shares: 0,
+      marketCap: 0
+    });
+    const hasPlayedFlowAnimation = ref(false);
+    let flowAnimationFrameA = null;
+    let flowAnimationFrameB = null;
+
+    const cancelFlowAnimationFrames = () => {
+      if (typeof window === 'undefined' || typeof window.cancelAnimationFrame !== 'function') return;
+      if (flowAnimationFrameA !== null) {
+        window.cancelAnimationFrame(flowAnimationFrameA);
+        flowAnimationFrameA = null;
+      }
+      if (flowAnimationFrameB !== null) {
+        window.cancelAnimationFrame(flowAnimationFrameB);
+        flowAnimationFrameB = null;
+      }
+    };
+
+    const updateFlowAnimation = (sharesPercent, capPercent) => {
+      const nextShares = clampPercent(sharesPercent);
+      const nextCap = clampPercent(capPercent);
+      cancelFlowAnimationFrames();
+
+      if (!hasPlayedFlowAnimation.value) {
+        animatedFlowRatios.value = { shares: 0, marketCap: 0 };
+        const applyTarget = () => {
+          animatedFlowRatios.value = {
+            shares: nextShares,
+            marketCap: nextCap
+          };
+          hasPlayedFlowAnimation.value = true;
+        };
+
+        if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+          flowAnimationFrameA = window.requestAnimationFrame(() => {
+            flowAnimationFrameB = window.requestAnimationFrame(applyTarget);
+          });
+        } else {
+          setTimeout(applyTarget, 16);
+        }
+        return;
+      }
+
+      animatedFlowRatios.value = {
+        shares: nextShares,
+        marketCap: nextCap
+      };
+    };
+
+    watch([shareFlowPercent, marketCapFlowPercent], ([sharesPercent, capPercent]) => {
+      updateFlowAnimation(sharesPercent, capPercent);
+    }, { immediate: true });
+
+    const buildRestValue = (totalValue, flowValue) => {
+      const total = toNumber(totalValue);
+      const flow = toNumber(flowValue);
+      if (total === null || total <= 0 || flow === null) return null;
+      return Math.max(total - Math.min(Math.max(flow, 0), total), 0);
+    };
+
+    const capitalStructureCharts = computed(() => {
+      const nonFloatSharesValue = buildRestValue(stockInfo.value.totalSharesValue, stockInfo.value.floatSharesValue);
+      const nonFloatMarketCapValue = buildRestValue(stockInfo.value.marketCapValue, stockInfo.value.floatMarketCapValue);
+
+      return [
+        {
+          key: 'shares',
+          title: '股本结构',
+          totalLabel: '总股本',
+          totalText: stockInfo.value.totalShares,
+          flowLabel: '流通股',
+          flowText: stockInfo.value.floatShares,
+          restLabel: '非流通股',
+          restText: nonFloatSharesValue === null ? '--' : formatScaledValue(nonFloatSharesValue, '股'),
+          flowPercent: shareFlowPercent.value,
+          animatedFlowPercent: animatedFlowRatios.value.shares,
+          themeClass: 'is-shares'
+        },
+        {
+          key: 'market-cap',
+          title: '市值结构',
+          totalLabel: '总市值',
+          totalText: stockInfo.value.marketCap,
+          flowLabel: '流通市值',
+          flowText: stockInfo.value.floatMarketCap,
+          restLabel: '非流通市值',
+          restText: nonFloatMarketCapValue === null ? '--' : formatScaledValue(nonFloatMarketCapValue, '元'),
+          flowPercent: marketCapFlowPercent.value,
+          animatedFlowPercent: animatedFlowRatios.value.marketCap,
+          themeClass: 'is-market-cap'
+        }
+      ];
+    });
+
     const priceTrendClass = computed(() => {
       if (stockInfo.value.change > 0) return 'trend-up';
       if (stockInfo.value.change < 0) return 'trend-down';
@@ -992,6 +1146,8 @@ export default {
             listingDate: formatListingDate(info.上市时间),
             totalShares: formatScaledValue(info.总股本, '股'),
             floatShares: formatScaledValue(info.流通股, '股'),
+            totalSharesValue: toNumber(info.总股本),
+            floatSharesValue: toNumber(info.流通股),
             open: formatPrice(quote.今开价 ?? quote.今开 ?? quote.开盘价 ?? quote.open),
             prevClose: formatPrice(quote.昨收价 ?? quote.昨收 ?? quote.prev_close),
             high: formatPrice(quote.最高价 ?? quote.最高 ?? quote.high),
@@ -1006,6 +1162,8 @@ export default {
             innerVolume: formatScaledValue(quote.内盘 ?? quote.inner_volume),
             marketCap: formatScaledValue(info.总市值, '元'),
             floatMarketCap: formatScaledValue(info.流通市值, '元'),
+            marketCapValue: toNumber(info.总市值),
+            floatMarketCapValue: toNumber(info.流通市值),
             infoUpdatedAt: snapshot.infoUpdatedAt || '--',
             lastUpdated: quote.更新时间 || quote.时间 || quote.update_time || snapshot.quoteUpdatedAt || '--'
           };
@@ -1202,6 +1360,8 @@ export default {
           listingDate: '--',
           totalShares: '--',
           floatShares: '--',
+          totalSharesValue: null,
+          floatSharesValue: null,
           open: '--',
           prevClose: '--',
           high: '--',
@@ -1216,6 +1376,8 @@ export default {
           innerVolume: '--',
           marketCap: '--',
           floatMarketCap: '--',
+          marketCapValue: null,
+          floatMarketCapValue: null,
           infoUpdatedAt: '--',
           lastUpdated: '--'
         };
@@ -1240,6 +1402,7 @@ export default {
     onBeforeUnmount(() => {
       // 使用新的清除所有定时器函数
       clearAllTimers();
+      cancelFlowAnimationFrames();
     });
 
     return {
@@ -1263,7 +1426,9 @@ export default {
       formatDate,
       formatSignedPercent,
       formatSignedPrice,
+      formatRatioText,
       priceTrendClass,
+      capitalStructureCharts,
       refreshAIEvaluation,
       loadingEvaluation,
       evaluationErrorMessage,
@@ -1392,53 +1557,228 @@ export default {
       margin-bottom: 12px;
     }
 
-    .stock-meta-grid {
+    .number-flip-enter-active,
+    .number-flip-leave-active {
+      transition: transform 0.3s ease, opacity 0.3s ease;
+      display: inline-block;
+    }
+
+    .number-flip-enter-from {
+      opacity: 0;
+      transform: translateY(8px) rotateX(-50deg);
+    }
+
+    .number-flip-leave-to {
+      opacity: 0;
+      transform: translateY(-8px) rotateX(50deg);
+    }
+
+    .stock-capital-charts {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 12px;
 
-      @media (max-width: 992px) {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+      @media (max-width: 768px) {
+        grid-template-columns: 1fr;
       }
 
-      @media (max-width: 576px) {
+      .capital-chart-card {
+        --flow-start: #2563eb;
+        --flow-end: #60a5fa;
+        --rest-start: #dbeafe;
+        --rest-end: #bfdbfe;
+        position: relative;
+        overflow: hidden;
+        border-radius: 12px;
+        border: 1px solid #dbeafe;
+        padding: 14px;
+        background: linear-gradient(145deg, #f8fbff 0%, #eef6ff 100%);
+        box-shadow: 0 10px 18px rgba(37, 99, 235, 0.08);
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+
+        &::before {
+          content: '';
+          position: absolute;
+          top: -36px;
+          right: -36px;
+          width: 96px;
+          height: 96px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(96, 165, 250, 0.28) 0%, rgba(96, 165, 250, 0) 72%);
+          pointer-events: none;
+        }
+
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 14px 22px rgba(37, 99, 235, 0.12);
+        }
+
+        &.is-market-cap {
+          --flow-start: #0f766e;
+          --flow-end: #14b8a6;
+          --rest-start: #c9f2ed;
+          --rest-end: #99e8df;
+          border-color: #c7f0eb;
+          background: linear-gradient(145deg, #f7fdfa 0%, #e8f8f5 100%);
+          box-shadow: 0 10px 18px rgba(15, 118, 110, 0.09);
+
+          &:hover {
+            box-shadow: 0 14px 22px rgba(15, 118, 110, 0.13);
+          }
+        }
+      }
+
+      .capital-chart-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      .capital-chart-title-wrap {
+        min-width: 0;
+      }
+
+      .capital-chart-title {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 700;
+        color: #111827;
+        line-height: 1.3;
+      }
+
+      .capital-chart-total {
+        margin: 4px 0 0;
+        font-size: 0.84rem;
+        color: #64748b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .capital-chart-badge {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 2px;
+        padding: 5px 8px;
+        border-radius: 8px;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        background: rgba(255, 255, 255, 0.75);
+      }
+
+      .badge-label {
+        font-size: 0.68rem;
+        color: #64748b;
+      }
+
+      .badge-value {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #1e293b;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .capital-stacked-track {
+        position: relative;
+        display: flex;
+        width: 100%;
+        height: 14px;
+        margin-bottom: 10px;
+        border-radius: 999px;
+        overflow: hidden;
+        background: rgba(148, 163, 184, 0.18);
+      }
+
+      .capital-stacked-segment {
+        height: 100%;
+        transition: width 0.92s cubic-bezier(0.2, 0.78, 0.24, 1);
+      }
+
+      .capital-stacked-segment.is-flow {
+        position: relative;
+        background: linear-gradient(90deg, var(--flow-start) 0%, var(--flow-end) 100%);
+
+        &::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -35%;
+          width: 35%;
+          height: 100%;
+          background: linear-gradient(100deg, transparent 0%, rgba(255, 255, 255, 0.38) 50%, transparent 100%);
+          animation: flow-sheen 2.3s ease-in-out infinite;
+        }
+      }
+
+      .capital-stacked-segment.is-rest {
+        background: linear-gradient(90deg, var(--rest-start) 0%, var(--rest-end) 100%);
+      }
+
+      .capital-chart-legend {
+        display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 8px;
 
-        .meta-item {
-          padding: 8px 10px;
-          gap: 4px;
-        }
-
-        .meta-label {
-          font-size: 0.8rem;
-        }
-
-        .meta-value {
-          font-size: 0.92rem;
+        @media (max-width: 576px) {
+          grid-template-columns: 1fr;
         }
       }
 
-      .meta-item {
-        background: #f7f9fc;
-        border: 1px solid #edf0f5;
-        border-radius: 8px;
-        padding: 10px 12px;
+      .legend-item {
         display: flex;
-        flex-direction: column;
+        align-items: center;
         gap: 6px;
+        min-width: 0;
+        padding: 6px 8px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid rgba(226, 232, 240, 0.9);
       }
 
-      .meta-label {
-        font-size: 0.85rem;
-        color: var(--text-tertiary);
+      .legend-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+
+        &.is-flow {
+          background: linear-gradient(90deg, var(--flow-start) 0%, var(--flow-end) 100%);
+        }
+
+        &.is-rest {
+          background: linear-gradient(90deg, var(--rest-start) 0%, var(--rest-end) 100%);
+        }
       }
 
-      .meta-value {
-        font-size: 1rem;
-        font-weight: 600;
-        color: var(--text-primary);
+      .legend-label {
+        font-size: 0.76rem;
+        color: #64748b;
+        white-space: nowrap;
+        flex-shrink: 0;
       }
+
+      .legend-value {
+        margin-left: auto;
+        font-size: 0.84rem;
+        font-weight: 700;
+        color: #1f2937;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+  }
+
+  @keyframes flow-sheen {
+    from {
+      transform: translateX(0);
+    }
+
+    to {
+      transform: translateX(380%);
     }
   }
 
