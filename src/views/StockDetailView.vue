@@ -116,7 +116,7 @@
                   type="primary" 
                   @click="refreshAIEvaluation" 
                   :loading="loadingEvaluation"
-                  :disabled="!isLoggedIn"
+                  :disabled="loadingEvaluation"
                   class="refresh-btn">
                   <img v-if="!loadingEvaluation" src="@/assets/refresh.svg" alt="刷新" class="button-icon" />
                   刷新评测
@@ -392,7 +392,7 @@
     <el-dialog
       v-model="historyDialogVisible"
       :title="`${stockInfo.name || stockInfo.code} 历史AI评价`"
-      width="860px"
+      width="min(860px, 96vw)"
       class="analysis-history-dialog"
     >
       <div class="analysis-history-content" v-loading="loadingHistory">
@@ -444,6 +444,7 @@
               </div>
             </article>
           </div>
+
           <el-empty v-else description="暂无历史评价记录" />
 
           <div
@@ -466,7 +467,7 @@
     <el-dialog
       v-model="historyDetailDialogVisible"
       title="历史AI评价详情"
-      width="620px"
+      width="min(620px, 96vw)"
       class="analysis-history-detail-dialog"
     >
       <div v-if="selectedHistoryRecord" class="history-detail-content">
@@ -766,6 +767,8 @@ export default {
 
     const refreshAIEvaluation = async () => {
       if (!isLoggedIn.value) {
+        ElMessage.warning('请先登录后刷新评测');
+        router.push('/login');
         return;
       }
       loadingEvaluation.value = true;
