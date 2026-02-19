@@ -35,44 +35,56 @@
           <el-tag size="small" type="info">信息更新时间：{{ stockInfo.infoUpdatedAt }}</el-tag>
         </div>
         <div class="stock-capital-charts">
-          <div
-            v-for="chart in capitalStructureCharts"
-            :key="chart.key"
-            class="capital-chart-card"
-            :class="chart.themeClass"
-          >
+          <div class="capital-chart-card is-merged">
             <div class="capital-chart-head">
               <div class="capital-chart-title-wrap">
-                <p class="capital-chart-title">{{ chart.title }}</p>
-                <p class="capital-chart-total">{{ chart.totalLabel }}：{{ chart.totalText }}</p>
+                <p class="capital-chart-title">流通结构（合并展示）</p>
+                <p class="capital-chart-total">股本与市值通常同占比，统一展示主图</p>
               </div>
               <div class="capital-chart-badge">
-                <span class="badge-label">流通占比</span>
+                <span class="badge-label">合并流通占比</span>
                 <transition name="number-flip" mode="out-in">
-                  <span :key="`${chart.key}-${formatRatioText(chart.flowPercent)}`" class="badge-value">
-                    {{ formatRatioText(chart.flowPercent) }}
+                  <span :key="`merged-${formatRatioText(mergedStructureChart.flowPercent)}`" class="badge-value">
+                    {{ formatRatioText(mergedStructureChart.flowPercent) }}
                   </span>
                 </transition>
               </div>
             </div>
 
-            <div class="capital-stacked-track" role="img" :aria-label="`${chart.title}流通占比${formatRatioText(chart.flowPercent)}`">
-              <div class="capital-stacked-segment is-flow" :style="{ width: `${chart.animatedFlowPercent}%` }"></div>
-              <div class="capital-stacked-segment is-rest" :style="{ width: `${100 - chart.animatedFlowPercent}%` }"></div>
+            <div class="capital-stacked-track" role="img" :aria-label="`流通占比${formatRatioText(mergedStructureChart.flowPercent)}`">
+              <div class="capital-stacked-segment is-flow" :style="{ width: `${mergedStructureChart.animatedFlowPercent}%` }"></div>
+              <div class="capital-stacked-segment is-rest" :style="{ width: `${100 - mergedStructureChart.animatedFlowPercent}%` }"></div>
             </div>
 
             <div class="capital-chart-legend">
               <div class="legend-item">
                 <span class="legend-dot is-flow"></span>
-                <span class="legend-label">{{ chart.flowLabel }}</span>
-                <span class="legend-value">{{ chart.flowText }}</span>
+                <span class="legend-label">流通部分</span>
+                <span class="legend-value">{{ formatRatioText(mergedStructureChart.flowPercent) }}</span>
               </div>
               <div class="legend-item">
                 <span class="legend-dot is-rest"></span>
-                <span class="legend-label">{{ chart.restLabel }}</span>
-                <span class="legend-value">{{ chart.restText }}</span>
+                <span class="legend-label">非流通部分</span>
+                <span class="legend-value">{{ formatRatioText(mergedStructureChart.restPercent) }}</span>
               </div>
             </div>
+
+            <div class="capital-chart-metrics">
+              <div class="metric-row">
+                <span class="metric-kind">股本</span>
+                <span class="metric-desc">{{ stockInfo.floatShares }} / {{ stockInfo.totalShares }}</span>
+                <span class="metric-ratio">{{ formatRatioText(mergedStructureChart.shareFlowPercent) }}</span>
+              </div>
+              <div class="metric-row">
+                <span class="metric-kind">市值</span>
+                <span class="metric-desc">{{ stockInfo.floatMarketCap }} / {{ stockInfo.marketCap }}</span>
+                <span class="metric-ratio">{{ formatRatioText(mergedStructureChart.marketCapFlowPercent) }}</span>
+              </div>
+            </div>
+
+            <p v-if="mergedStructureChart.ratioDiffText" class="capital-chart-note">
+              {{ mergedStructureChart.ratioDiffText }}
+            </p>
           </div>
         </div>
       </div>
@@ -999,11 +1011,14 @@ export default {
     const calcFlowPercent = (flowValue, totalValue) => {
       const total = toNumber(totalValue);
       const flow = toNumber(flowValue);
-      if (total === null || total <= 0 || flow === null || flow < 0) return 0;
+      if (total === null || total <= 0 || flow === null || flow < 0) return null;
       return clampPercent((Math.min(flow, total) / total) * 100);
     };
 
-    const formatRatioText = (value) => `${clampPercent(value).toFixed(2)}%`;
+    const formatRatioText = (value) => {
+      if (!Number.isFinite(value)) return '--';
+      return `${clampPercent(value).toFixed(2)}%`;
+    };
 
     const shareFlowPercent = computed(() => (
       calcFlowPercent(stockInfo.value.floatSharesValue, stockInfo.value.totalSharesValue)
@@ -1013,10 +1028,22 @@ export default {
       calcFlowPercent(stockInfo.value.floatMarketCapValue, stockInfo.value.marketCapValue)
     ));
 
-    const animatedFlowRatios = ref({
-      shares: 0,
-      marketCap: 0
+    const mergedFlowPercent = computed(() => {
+      const ratios = [shareFlowPercent.value, marketCapFlowPercent.value]
+        .filter(value => Number.isFinite(value));
+      if (ratios.length === 0) return null;
+      if (ratios.length === 1) return ratios[0];
+      return ratios.reduce((sum, value) => sum + value, 0) / ratios.length;
     });
+
+    const ratioDiffPercent = computed(() => {
+      if (!Number.isFinite(shareFlowPercent.value) || !Number.isFinite(marketCapFlowPercent.value)) {
+        return null;
+      }
+      return Math.abs(shareFlowPercent.value - marketCapFlowPercent.value);
+    });
+
+    const animatedFlowRatio = ref(0);
     const hasPlayedFlowAnimation = ref(false);
     let flowAnimationFrameA = null;
     let flowAnimationFrameB = null;
@@ -1033,18 +1060,14 @@ export default {
       }
     };
 
-    const updateFlowAnimation = (sharesPercent, capPercent) => {
-      const nextShares = clampPercent(sharesPercent);
-      const nextCap = clampPercent(capPercent);
+    const updateFlowAnimation = (percentValue) => {
+      const nextValue = clampPercent(percentValue);
       cancelFlowAnimationFrames();
 
       if (!hasPlayedFlowAnimation.value) {
-        animatedFlowRatios.value = { shares: 0, marketCap: 0 };
+        animatedFlowRatio.value = 0;
         const applyTarget = () => {
-          animatedFlowRatios.value = {
-            shares: nextShares,
-            marketCap: nextCap
-          };
+          animatedFlowRatio.value = nextValue;
           hasPlayedFlowAnimation.value = true;
         };
 
@@ -1058,55 +1081,28 @@ export default {
         return;
       }
 
-      animatedFlowRatios.value = {
-        shares: nextShares,
-        marketCap: nextCap
-      };
+      animatedFlowRatio.value = nextValue;
     };
 
-    watch([shareFlowPercent, marketCapFlowPercent], ([sharesPercent, capPercent]) => {
-      updateFlowAnimation(sharesPercent, capPercent);
+    watch(mergedFlowPercent, (nextPercent) => {
+      updateFlowAnimation(Number.isFinite(nextPercent) ? nextPercent : 0);
     }, { immediate: true });
 
-    const buildRestValue = (totalValue, flowValue) => {
-      const total = toNumber(totalValue);
-      const flow = toNumber(flowValue);
-      if (total === null || total <= 0 || flow === null) return null;
-      return Math.max(total - Math.min(Math.max(flow, 0), total), 0);
-    };
+    const mergedStructureChart = computed(() => {
+      const flowPercent = mergedFlowPercent.value;
+      const restPercent = Number.isFinite(flowPercent) ? clampPercent(100 - flowPercent) : null;
+      const diff = ratioDiffPercent.value;
 
-    const capitalStructureCharts = computed(() => {
-      const nonFloatSharesValue = buildRestValue(stockInfo.value.totalSharesValue, stockInfo.value.floatSharesValue);
-      const nonFloatMarketCapValue = buildRestValue(stockInfo.value.marketCapValue, stockInfo.value.floatMarketCapValue);
-
-      return [
-        {
-          key: 'shares',
-          title: '股本结构',
-          totalLabel: '总股本',
-          totalText: stockInfo.value.totalShares,
-          flowLabel: '流通股',
-          flowText: stockInfo.value.floatShares,
-          restLabel: '非流通股',
-          restText: nonFloatSharesValue === null ? '--' : formatScaledValue(nonFloatSharesValue, '股'),
-          flowPercent: shareFlowPercent.value,
-          animatedFlowPercent: animatedFlowRatios.value.shares,
-          themeClass: 'is-shares'
-        },
-        {
-          key: 'market-cap',
-          title: '市值结构',
-          totalLabel: '总市值',
-          totalText: stockInfo.value.marketCap,
-          flowLabel: '流通市值',
-          flowText: stockInfo.value.floatMarketCap,
-          restLabel: '非流通市值',
-          restText: nonFloatMarketCapValue === null ? '--' : formatScaledValue(nonFloatMarketCapValue, '元'),
-          flowPercent: marketCapFlowPercent.value,
-          animatedFlowPercent: animatedFlowRatios.value.marketCap,
-          themeClass: 'is-market-cap'
-        }
-      ];
+      return {
+        flowPercent,
+        restPercent,
+        animatedFlowPercent: animatedFlowRatio.value,
+        shareFlowPercent: shareFlowPercent.value,
+        marketCapFlowPercent: marketCapFlowPercent.value,
+        ratioDiffText: Number.isFinite(diff) && diff >= 0.3
+          ? `股本口径与市值口径占比偏差 ${diff.toFixed(2)}%，已按均值展示`
+          : ''
+      };
     });
 
     const priceTrendClass = computed(() => {
@@ -1428,7 +1424,7 @@ export default {
       formatSignedPrice,
       formatRatioText,
       priceTrendClass,
-      capitalStructureCharts,
+      mergedStructureChart,
       refreshAIEvaluation,
       loadingEvaluation,
       evaluationErrorMessage,
@@ -1559,72 +1555,38 @@ export default {
 
     .number-flip-enter-active,
     .number-flip-leave-active {
-      transition: transform 0.3s ease, opacity 0.3s ease;
+      transition: transform 0.22s ease, opacity 0.22s ease;
       display: inline-block;
     }
 
     .number-flip-enter-from {
       opacity: 0;
-      transform: translateY(8px) rotateX(-50deg);
+      transform: translateY(3px);
     }
 
     .number-flip-leave-to {
       opacity: 0;
-      transform: translateY(-8px) rotateX(50deg);
+      transform: translateY(-3px);
     }
 
     .stock-capital-charts {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-
-      @media (max-width: 768px) {
-        grid-template-columns: 1fr;
-      }
+      display: block;
 
       .capital-chart-card {
-        --flow-start: #2563eb;
-        --flow-end: #60a5fa;
-        --rest-start: #dbeafe;
-        --rest-end: #bfdbfe;
-        position: relative;
-        overflow: hidden;
+        --flow-start: #1f4f8f;
+        --flow-end: #2f6fb6;
+        --rest-start: #e8edf5;
+        --rest-end: #dbe4f1;
         border-radius: 12px;
-        border: 1px solid #dbeafe;
-        padding: 14px;
-        background: linear-gradient(145deg, #f8fbff 0%, #eef6ff 100%);
-        box-shadow: 0 10px 18px rgba(37, 99, 235, 0.08);
-        transition: transform 0.25s ease, box-shadow 0.25s ease;
-
-        &::before {
-          content: '';
-          position: absolute;
-          top: -36px;
-          right: -36px;
-          width: 96px;
-          height: 96px;
-          border-radius: 50%;
-          background: radial-gradient(circle, rgba(96, 165, 250, 0.28) 0%, rgba(96, 165, 250, 0) 72%);
-          pointer-events: none;
-        }
+        border: 1px solid #d7dee9;
+        padding: 12px;
+        background: #fff;
+        box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
 
         &:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 14px 22px rgba(37, 99, 235, 0.12);
-        }
-
-        &.is-market-cap {
-          --flow-start: #0f766e;
-          --flow-end: #14b8a6;
-          --rest-start: #c9f2ed;
-          --rest-end: #99e8df;
-          border-color: #c7f0eb;
-          background: linear-gradient(145deg, #f7fdfa 0%, #e8f8f5 100%);
-          box-shadow: 0 10px 18px rgba(15, 118, 110, 0.09);
-
-          &:hover {
-            box-shadow: 0 14px 22px rgba(15, 118, 110, 0.13);
-          }
+          border-color: #b9c6d7;
+          box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
         }
       }
 
@@ -1642,19 +1604,16 @@ export default {
 
       .capital-chart-title {
         margin: 0;
-        font-size: 1rem;
-        font-weight: 700;
+        font-size: 0.96rem;
+        font-weight: 600;
         color: #111827;
         line-height: 1.3;
       }
 
       .capital-chart-total {
         margin: 4px 0 0;
-        font-size: 0.84rem;
-        color: #64748b;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        font-size: 0.82rem;
+        color: #6b7280;
       }
 
       .capital-chart-badge {
@@ -1662,21 +1621,21 @@ export default {
         flex-direction: column;
         align-items: flex-end;
         gap: 2px;
-        padding: 5px 8px;
-        border-radius: 8px;
-        border: 1px solid rgba(148, 163, 184, 0.35);
-        background: rgba(255, 255, 255, 0.75);
+        padding: 4px 8px;
+        border-radius: 6px;
+        border: 1px solid #d8e0ea;
+        background: #f8fafc;
       }
 
       .badge-label {
-        font-size: 0.68rem;
-        color: #64748b;
+        font-size: 0.66rem;
+        color: #6b7280;
       }
 
       .badge-value {
-        font-size: 0.9rem;
-        font-weight: 700;
-        color: #1e293b;
+        font-size: 0.86rem;
+        font-weight: 600;
+        color: #0f172a;
         font-variant-numeric: tabular-nums;
       }
 
@@ -1684,32 +1643,21 @@ export default {
         position: relative;
         display: flex;
         width: 100%;
-        height: 14px;
+        height: 12px;
         margin-bottom: 10px;
         border-radius: 999px;
         overflow: hidden;
-        background: rgba(148, 163, 184, 0.18);
+        background: #eff3f8;
+        border: 1px solid #e2e8f0;
       }
 
       .capital-stacked-segment {
         height: 100%;
-        transition: width 0.92s cubic-bezier(0.2, 0.78, 0.24, 1);
+        transition: width 0.68s ease;
       }
 
       .capital-stacked-segment.is-flow {
-        position: relative;
         background: linear-gradient(90deg, var(--flow-start) 0%, var(--flow-end) 100%);
-
-        &::after {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: -35%;
-          width: 35%;
-          height: 100%;
-          background: linear-gradient(100deg, transparent 0%, rgba(255, 255, 255, 0.38) 50%, transparent 100%);
-          animation: flow-sheen 2.3s ease-in-out infinite;
-        }
       }
 
       .capital-stacked-segment.is-rest {
@@ -1732,15 +1680,15 @@ export default {
         gap: 6px;
         min-width: 0;
         padding: 6px 8px;
-        border-radius: 8px;
-        background: rgba(255, 255, 255, 0.72);
-        border: 1px solid rgba(226, 232, 240, 0.9);
+        border-radius: 6px;
+        background: #fafbfc;
+        border: 1px solid #e5e9f0;
       }
 
       .legend-dot {
         width: 8px;
         height: 8px;
-        border-radius: 50%;
+        border-radius: 2px;
         flex-shrink: 0;
 
         &.is-flow {
@@ -1753,32 +1701,64 @@ export default {
       }
 
       .legend-label {
-        font-size: 0.76rem;
-        color: #64748b;
+        font-size: 0.74rem;
+        color: #6b7280;
         white-space: nowrap;
         flex-shrink: 0;
       }
 
       .legend-value {
         margin-left: auto;
-        font-size: 0.84rem;
-        font-weight: 700;
-        color: #1f2937;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #111827;
         font-variant-numeric: tabular-nums;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
       }
-    }
-  }
 
-  @keyframes flow-sheen {
-    from {
-      transform: translateX(0);
-    }
+      .capital-chart-metrics {
+        margin-top: 8px;
+        border-top: 1px dashed #e2e8f0;
+        padding-top: 8px;
+      }
 
-    to {
-      transform: translateX(380%);
+      .metric-row {
+        display: grid;
+        grid-template-columns: 56px 1fr auto;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 0;
+        min-width: 0;
+      }
+
+      .metric-kind {
+        font-size: 0.74rem;
+        color: #6b7280;
+      }
+
+      .metric-desc {
+        font-size: 0.8rem;
+        color: #334155;
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .metric-ratio {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #0f172a;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .capital-chart-note {
+        margin: 8px 0 0;
+        font-size: 0.74rem;
+        color: #64748b;
+      }
     }
   }
 
