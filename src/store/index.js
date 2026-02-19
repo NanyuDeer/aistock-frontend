@@ -867,10 +867,12 @@ export default createStore({
     
     async fetchStockForecast(_, payload) {
       const stockCode = typeof payload === 'string' ? payload : payload?.stockCode;
-      const forceRefresh = typeof payload === 'object' ? !!payload.forceRefresh : false;
+      const refresh = typeof payload === 'object' ? !!payload.refresh : false;
       if (!stockCode) return [];
       try {
-        const response = await stockApi.getForecast(stockCode, { forceRefresh });
+        const response = refresh
+          ? await stockApi.createForecast(stockCode)
+          : await stockApi.getForecast(stockCode);
         if (response.code === 200) {
           return response.data;
         }
@@ -886,7 +888,7 @@ export default createStore({
       try {
         let response;
         if (refresh) {
-          response = await stockApi.createStockAnalysis(stockCode, { forceRefresh: true });
+          response = await stockApi.createStockAnalysis(stockCode);
         } else {
           try {
             response = await stockApi.getStockAnalysis(stockCode);
@@ -894,7 +896,7 @@ export default createStore({
             const status = error?.response?.status;
             if (status === 404) {
               console.warn(`[Store] 股票 ${stockCode} 暂无历史AI评估，自动触发创建`);
-              response = await stockApi.createStockAnalysis(stockCode, { forceRefresh: true });
+              response = await stockApi.createStockAnalysis(stockCode);
             } else {
               throw error;
             }

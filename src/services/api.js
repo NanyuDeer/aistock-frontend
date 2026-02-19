@@ -193,11 +193,17 @@ export const stockApi = {
     }).then(res => res.data);
   },
 
-  // 获取单只股票业绩预测（摘要 + 详细指标）
-  getForecast: (code, { forceRefresh = false } = {}) => {
-    const query = forceRefresh ? '?forceRefresh=1' : '';
-    return axios.get(`https://extapi.aistocklink.cn/api/cn/stock/${code}/profit-forecast${query}`, {
+  // 获取单只股票业绩预测（只读，不触发抓取）
+  getForecast: (code) => {
+    return axios.get(`https://extapi.aistocklink.cn/api/cn/stock/${code}/profit-forecast`, {
       timeout: 8000
+    }).then(res => res.data);
+  },
+
+  // 触发更新单只股票业绩预测并写入 D1
+  createForecast: (code) => {
+    return axios.post(`https://extapi.aistocklink.cn/api/cn/stock/${code}/profit-forecast`, null, {
+      timeout: 30000
     }).then(res => res.data);
   },
 
@@ -295,19 +301,17 @@ export const stockApi = {
     return api.get(`/api/tags/leaders?tag=${encodeURIComponent(tagName)}`);
   },
 
-  // 获取个股最近一次AI评价
-  getStockAnalysis: (symbol, { forceRefresh = false } = {}) => {
-    const query = forceRefresh ? '?forceRefresh=1' : '';
-    return api.get(`/api/cn/stocks/${encodeURIComponent(symbol)}/analysis${query}`, {
+  // 获取个股最近一次AI评价（只读，不触发新评价）
+  getStockAnalysis: (symbol) => {
+    return api.get(`/api/cn/stocks/${encodeURIComponent(symbol)}/analysis`, {
       timeout: AI_ANALYSIS_TIMEOUT,
       'axios-retry': { retries: 0 }
     });
   },
 
   // 触发一次新的个股AI评价
-  createStockAnalysis: (symbol, { forceRefresh = false } = {}) => {
-    const query = forceRefresh ? '?forceRefresh=1' : '';
-    return api.post(`/api/cn/stocks/${encodeURIComponent(symbol)}/analysis${query}`, null, {
+  createStockAnalysis: (symbol) => {
+    return api.post(`/api/cn/stocks/${encodeURIComponent(symbol)}/analysis`, null, {
       timeout: AI_ANALYSIS_TIMEOUT,
       'axios-retry': { retries: 0 }
     });

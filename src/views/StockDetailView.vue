@@ -820,13 +820,13 @@ export default {
       });
     };
 
-    const loadForecast = async (forceRefresh = false) => {
+    const loadForecast = async (refresh = false) => {
       if (loadingForecast.value) return;
       loadingForecast.value = true;
       try {
         const responseList = await store.dispatch('fetchStockForecast', {
           stockCode: stockInfo.value.code,
-          forceRefresh
+          refresh
         });
         
         if (responseList && (responseList.symbol || responseList['股票代码'])) { 
