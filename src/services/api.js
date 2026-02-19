@@ -4,7 +4,7 @@ import axiosRetry from 'axios-retry';
 const RETRY_TIMES = 4;
 const DEFAULT_KLINE_LIMIT = 100;
 const MAX_KLINE_LIMIT = 100;
-const AI_ANALYSIS_TIMEOUT = 30000;
+const AI_ANALYSIS_TIMEOUT = 120000;
 const retryConfig = {
   retries: RETRY_TIMES,
   shouldResetTimeout: true,

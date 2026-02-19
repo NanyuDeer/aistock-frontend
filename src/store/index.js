@@ -884,9 +884,22 @@ export default createStore({
     async fetchStockEvaluation(_, { stockCode, refresh = false }) {
       if (!stockCode) return null;
       try {
-        const response = refresh
-          ? await stockApi.createStockAnalysis(stockCode, { forceRefresh: true })
-          : await stockApi.getStockAnalysis(stockCode);
+        let response;
+        if (refresh) {
+          response = await stockApi.createStockAnalysis(stockCode, { forceRefresh: true });
+        } else {
+          try {
+            response = await stockApi.getStockAnalysis(stockCode);
+          } catch (error) {
+            const status = error?.response?.status;
+            if (status === 404) {
+              console.warn(`[Store] 股票 ${stockCode} 暂无历史AI评估，自动触发创建`);
+              response = await stockApi.createStockAnalysis(stockCode, { forceRefresh: true });
+            } else {
+              throw error;
+            }
+          }
+        }
 
         if (response.code === 200 && response.data) {
           const data = response.data;
