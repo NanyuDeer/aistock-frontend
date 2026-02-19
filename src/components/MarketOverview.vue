@@ -1,28 +1,47 @@
 <template>
   <div class="market-overview">
-    <div v-if="loading" class="loading-container">
+    <div v-if="loading && !hasMarketData" class="loading-container">
       <el-skeleton :rows="1" animated />
     </div>
-    <div v-else class="market-cards">
-      <div class="market-card" v-for="(data, index) in marketData" :key="index">
+    <div v-else-if="displayIndexes.length > 0" class="market-cards">
+      <div class="market-card" v-for="data in displayIndexes" :key="data.indexKey">
         <div class="index-name">
-          <a :href="getIndexUrl(index)" target="_blank" class="index-link">
-            {{ getIndexDisplayName(index) }}
+          <a :href="getIndexUrl(data)" target="_blank" class="index-link">
+            {{ getIndexDisplayName(data) }}
           </a>
         </div>
-        <div class="index-value" :class="getChangeTone(data.change)">{{ formatValue(data.value) }}</div>
+        <transition name="number-flip" mode="out-in">
+          <div
+            :key="getMetricDisplayKey(data.indexKey, 'value')"
+            class="index-value"
+            :class="getChangeTone(data.change)"
+          >
+            {{ formatValue(data.value) }}
+          </div>
+        </transition>
         <div class="change-row" :class="getChangeTone(data.change)">
-          <span>{{ formatChangeAmount(data.changeAmount) }}</span>
-          <span>{{ formatChange(data.change) }}</span>
+          <transition name="number-flip" mode="out-in">
+            <span :key="getMetricDisplayKey(data.indexKey, 'changeAmount')" class="metric-number">
+              {{ formatChangeAmount(data.changeAmount) }}
+            </span>
+          </transition>
+          <transition name="number-flip" mode="out-in">
+            <span :key="getMetricDisplayKey(data.indexKey, 'change')" class="metric-number">
+              {{ formatChange(data.change) }}
+            </span>
+          </transition>
         </div>
         <span class="index-code">{{ data.indexCode }}</span>
       </div>
+    </div>
+    <div v-else class="empty-container">
+      <el-empty description="暂无市场指数数据" />
     </div>
   </div>
 </template>
 
 <script>
-import { ref, onMounted, onBeforeUnmount } from 'vue'; // ✅ 加入 onBeforeUnmount
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useStore } from 'vuex';
 
 export default {
@@ -31,28 +50,64 @@ export default {
     const store = useStore();
     const marketData = ref({});
     const loading = ref(true);
-    let timer = null; // ✅ 声明定时器变量
+    let timer = null;
 
-    const fetchMarketData = async () => {
+    const INDEX_ORDER = ['000001', '399001', '399006', 'HXC', 'XIN9', 'HSTECH'];
+    const hasMarketData = computed(() => Object.keys(marketData.value).length > 0);
+    const displayIndexes = computed(() => {
+      const ordered = INDEX_ORDER
+        .filter(code => marketData.value[code])
+        .map(code => ({
+          indexKey: code,
+          ...marketData.value[code]
+        }));
+
+      if (ordered.length > 0) return ordered;
+
+      return Object.entries(marketData.value).map(([code, data]) => ({
+        indexKey: code,
+        ...(data || {})
+      }));
+    });
+
+    const fetchMarketData = async ({ showLoading = false } = {}) => {
+      const hadData = hasMarketData.value;
+      const shouldShowLoading = showLoading && !hadData;
       try {
-        loading.value = true;
+        if (shouldShowLoading) {
+          loading.value = true;
+        }
+
         const data = await store.dispatch('fetchMarketOverview');
-        if (data) {
-          marketData.value = data;
+        const hasIncomingData = data && typeof data === 'object' && Object.keys(data).length > 0;
+
+        if (hasIncomingData) {
+          // 静默刷新：保留已有卡片，只更新变化的字段
+          marketData.value = {
+            ...marketData.value,
+            ...data
+          };
+        } else if (!hadData) {
+          marketData.value = {};
+        } else {
+          console.warn('[MarketOverview] 市场数据刷新为空，保留当前数据');
         }
       } catch (error) {
         console.error('获取市场概览失败:', error);
       } finally {
-        loading.value = false;
+        if (shouldShowLoading || !hadData) {
+          loading.value = false;
+        }
       }
     };
 
-    const getIndexDisplayName = (code) => {
-      return marketData.value[code]?.name || code;
+    const getIndexDisplayName = (item) => {
+      if (!item) return '--';
+      return item.name || item.indexCode || item.indexKey || '--';
     };
 
-    const getIndexUrl = (code) => {
-      const indexCode = marketData.value[code]?.indexCode;
+    const getIndexUrl = (item) => {
+      const indexCode = item?.indexCode;
       if (!indexCode) return '#';
       // 国内指数为纯数字代码，全球指数为字母代码
       if (/^\d+$/.test(indexCode)) {
@@ -96,12 +151,22 @@ export default {
       return num >= 0 ? 'change-up' : 'change-down';
     };
 
-    onMounted(() => {
-      fetchMarketData();
+    const getMetricDisplayKey = (indexKey, metric) => {
+      const item = marketData.value[indexKey] || {};
+      if (metric === 'value') {
+        return `${indexKey}-value-${formatValue(item.value)}`;
+      }
+      if (metric === 'changeAmount') {
+        return `${indexKey}-changeAmount-${formatChangeAmount(item.changeAmount)}`;
+      }
+      return `${indexKey}-change-${formatChange(item.change)}`;
+    };
 
-      // ✅ 每 60 秒刷新一次
+    onMounted(() => {
+      fetchMarketData({ showLoading: true });
+
+      // 每 60 秒静默刷新一次
       timer = setInterval(() => {
-        console.log('刷新市场数据...');
         fetchMarketData();
       }, 60000);
     });
@@ -115,12 +180,15 @@ export default {
     return {
       marketData,
       loading,
+      hasMarketData,
+      displayIndexes,
       getIndexDisplayName,
       getIndexUrl,
       formatValue,
       formatChange,
       formatChangeAmount,
-      getChangeTone
+      getChangeTone,
+      getMetricDisplayKey
     };
   }
 };
@@ -131,6 +199,28 @@ export default {
 .market-overview {
   .loading-container {
     margin: 10px 0;
+  }
+
+  .empty-container {
+    margin: 10px 0;
+  }
+
+  .number-flip-enter-active,
+  .number-flip-leave-active {
+    transition: transform 0.32s ease, opacity 0.32s ease;
+    display: inline-block;
+    backface-visibility: hidden;
+    transform-style: preserve-3d;
+  }
+
+  .number-flip-enter-from {
+    opacity: 0;
+    transform: translateY(10px) rotateX(-65deg);
+  }
+
+  .number-flip-leave-to {
+    opacity: 0;
+    transform: translateY(-10px) rotateX(65deg);
   }
   
   .market-cards {
@@ -190,6 +280,10 @@ export default {
         gap: 6px;
         font-size: 0.9rem;
         font-weight: 500;
+
+        .metric-number {
+          display: inline-block;
+        }
       }
 
       .change-up {
