@@ -410,6 +410,15 @@
             </el-button>
           </div>
 
+          <div class="analysis-history-timeline">
+            <div class="history-timeline-head">
+              <h4>评价强度时间轴</h4>
+              <p>中性为 0，利好在上方，利空在下方，重大级别距离更远。</p>
+            </div>
+            <div v-if="historyRecords.length > 0" ref="historyTimelineChartRef" class="history-timeline-chart"></div>
+            <el-empty v-else description="暂无时间轴数据" />
+          </div>
+
           <div v-if="historyRecords.length > 0" class="analysis-history-list">
             <article
               v-for="(item, index) in historyRecords"
@@ -418,12 +427,21 @@
             >
               <div class="history-record-head">
                 <span class="history-record-time">{{ item.analysisTime || '--' }}</span>
-                <span class="history-record-conclusion" :class="getHistoryConclusionClass(item.conclusion)">
-                  {{ item.conclusion || '未知' }}
-                </span>
+                <div class="history-record-actions">
+                  <span class="history-record-conclusion" :class="getHistoryConclusionClass(item.conclusion)">
+                    {{ item.conclusion || '未知' }}
+                  </span>
+                  <el-button
+                    size="small"
+                    text
+                    type="primary"
+                    class="history-detail-btn"
+                    @click="openHistoryDetail(item)"
+                  >
+                    查看详细
+                  </el-button>
+                </div>
               </div>
-              <p class="history-record-logic">{{ item.coreLogic || '暂无核心逻辑' }}</p>
-              <p class="history-record-risk">风险提示：{{ item.riskWarning || '暂无风险提示' }}</p>
             </article>
           </div>
           <el-empty v-else description="暂无历史评价记录" />
@@ -441,17 +459,36 @@
               @current-change="handleHistoryPageChange"
             />
           </div>
-
-          <div class="analysis-history-timeline">
-            <div class="history-timeline-head">
-              <h4>评价强度时间轴</h4>
-              <p>中性为 0，利好在上方，利空在下方，重大级别距离更远。</p>
-            </div>
-            <div v-if="historyRecords.length > 0" ref="historyTimelineChartRef" class="history-timeline-chart"></div>
-            <el-empty v-else description="暂无时间轴数据" />
-          </div>
         </template>
       </div>
+    </el-dialog>
+
+    <el-dialog
+      v-model="historyDetailDialogVisible"
+      title="历史AI评价详情"
+      width="620px"
+      class="analysis-history-detail-dialog"
+    >
+      <div v-if="selectedHistoryRecord" class="history-detail-content">
+        <div class="history-detail-meta">
+          <span class="history-detail-time">{{ selectedHistoryRecord.analysisTime || '--' }}</span>
+          <span
+            class="history-record-conclusion"
+            :class="getHistoryConclusionClass(selectedHistoryRecord.conclusion)"
+          >
+            {{ selectedHistoryRecord.conclusion || '未知' }}
+          </span>
+        </div>
+        <section class="history-detail-block">
+          <h4>核心逻辑</h4>
+          <p>{{ selectedHistoryRecord.coreLogic || '暂无核心逻辑' }}</p>
+        </section>
+        <section class="history-detail-block">
+          <h4>风险提示</h4>
+          <p>{{ selectedHistoryRecord.riskWarning || '暂无风险提示' }}</p>
+        </section>
+      </div>
+      <el-empty v-else description="暂无评价详情" />
     </el-dialog>
 
     <el-dialog
@@ -757,10 +794,12 @@ export default {
     const forecastChartRef = ref(null);
     const historyTimelineChartRef = ref(null);
     const historyDialogVisible = ref(false);
+    const historyDetailDialogVisible = ref(false);
     const openingHistoryDialog = ref(false);
     const loadingHistory = ref(false);
     const historyErrorMessage = ref('');
     const historyRecords = ref([]);
+    const selectedHistoryRecord = ref(null);
     const historyPagination = ref({
       page: 1,
       pageSize: 10,
@@ -988,9 +1027,23 @@ export default {
 
     const openHistoryDialog = async () => {
       historyDialogVisible.value = true;
+      historyDetailDialogVisible.value = false;
+      selectedHistoryRecord.value = null;
       openingHistoryDialog.value = true;
       await loadEvaluationHistory(1);
       openingHistoryDialog.value = false;
+    };
+
+    const openHistoryDetail = (record) => {
+      selectedHistoryRecord.value = record
+        ? {
+            analysisTime: record.analysisTime || '',
+            conclusion: record.conclusion || '',
+            coreLogic: record.coreLogic || '',
+            riskWarning: record.riskWarning || ''
+          }
+        : null;
+      historyDetailDialogVisible.value = !!record;
     };
 
     const reloadHistoryPage = async () => {
@@ -1785,8 +1838,10 @@ export default {
         totalNews.value = 0;
         newsCursor.value = 0;
         historyDialogVisible.value = false;
+        historyDetailDialogVisible.value = false;
         historyErrorMessage.value = '';
         historyRecords.value = [];
+        selectedHistoryRecord.value = null;
         historyPagination.value = {
           page: 1,
           pageSize: historyPagination.value.pageSize,
@@ -1824,6 +1879,8 @@ export default {
 
     watch(historyDialogVisible, async (visible) => {
       if (!visible) {
+        historyDetailDialogVisible.value = false;
+        selectedHistoryRecord.value = null;
         disposeHistoryTimelineChart();
         return;
       }
@@ -1945,11 +2002,14 @@ export default {
       displayedCoreLogic,
       displayedRiskWarning,
       historyDialogVisible,
+      historyDetailDialogVisible,
       loadingHistory,
       historyErrorMessage,
       historyRecords,
+      selectedHistoryRecord,
       historyPagination,
       historyTimelineChartRef,
+      openHistoryDetail,
       reloadHistoryPage,
       handleHistoryPageChange,
       getHistoryConclusionClass,
@@ -2919,7 +2979,17 @@ export default {
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    margin-bottom: 8px;
+  }
+
+  .history-record-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .history-detail-btn {
+    padding: 0 6px;
+    font-size: 0.82rem;
   }
 
   .history-record-time {
@@ -2972,9 +3042,40 @@ export default {
     }
   }
 
-  .history-record-logic,
-  .history-record-risk {
+  .history-detail-content {
+    display: grid;
+    gap: 12px;
+  }
+
+  .history-detail-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .history-detail-time {
+    font-size: 0.9rem;
+    color: #475569;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .history-detail-block {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: #ffffff;
+  }
+
+  .history-detail-block h4 {
     margin: 0;
+    font-size: 0.9rem;
+    color: #0f172a;
+    font-weight: 600;
+  }
+
+  .history-detail-block p {
+    margin: 6px 0 0;
     font-size: 0.88rem;
     line-height: 1.6;
     color: #334155;
@@ -2982,20 +3083,18 @@ export default {
     word-break: break-word;
   }
 
-  .history-record-risk {
-    margin-top: 6px;
-    color: #64748b;
-  }
-
   .analysis-history-pagination {
     display: flex;
     justify-content: flex-end;
-    margin-bottom: 14px;
+    margin-top: 6px;
   }
 
   .analysis-history-timeline {
-    border-top: 1px solid #e2e8f0;
-    padding-top: 12px;
+    margin-bottom: 14px;
+    border: 1px solid #dbe3ef;
+    border-radius: 10px;
+    padding: 12px;
+    background: #f8fbff;
   }
 
   .history-timeline-head {
@@ -3016,7 +3115,7 @@ export default {
   }
 
   .history-timeline-chart {
-    height: 280px;
+    height: 320px;
     width: 100%;
   }
 
@@ -3027,8 +3126,19 @@ export default {
       gap: 6px;
     }
 
+    .history-record-actions {
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .history-detail-meta {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
     .history-timeline-chart {
-      height: 240px;
+      height: 260px;
     }
   }
 
