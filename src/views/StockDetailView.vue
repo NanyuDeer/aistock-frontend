@@ -90,7 +90,7 @@
 
       <div class="stock-analysis-section stock-tabs-section">
         <h3 class="section-title">AI投资建议</h3>
-        <div class="analysis-content" :class="{ 'is-loading': loadingEvaluation }">
+        <div class="analysis-content" :class="{ 'is-loading': showEvaluationOverlay }">
           <div class="analysis-header">
             <div class="analysis-title">
               <div class="rating-display">
@@ -128,7 +128,7 @@
             <div class="markdown-content" v-html="analysisResult.riskWarning"></div>
           </div>
 
-          <div v-if="loadingEvaluation" class="analysis-loading-overlay" role="status" aria-live="polite" aria-label="AI投资建议生成中">
+          <div v-if="showEvaluationOverlay" class="analysis-loading-overlay" role="status" aria-live="polite" aria-label="AI投资建议生成中">
             <div class="star-loader" aria-hidden="true">
               <span class="star-core"></span>
               <span class="star-ring"></span>
@@ -138,7 +138,11 @@
               <span class="star-spark spark-four"></span>
             </div>
             <p class="analysis-loading-text">{{ evaluationProgressText || 'AI 正在生成投资建议...' }}</p>
-            <p v-if="evaluationStreamPreview" class="analysis-loading-preview">{{ evaluationStreamPreview }}</p>
+          </div>
+
+          <div v-if="loadingEvaluation && hasStreamDelta" class="analysis-stream-live" role="status" aria-live="polite">
+            <p class="stream-live-title">{{ evaluationProgressText || 'AI 正在生成投资建议...' }}</p>
+            <p class="stream-live-body">{{ evaluationStreamPreview }}</p>
           </div>
 
           <a
@@ -512,18 +516,22 @@ export default {
     const evaluationErrorMessage = ref('');
     const evaluationProgressText = ref('');
     const evaluationStreamPreview = ref('');
+    const hasStreamDelta = ref(false);
+    const showEvaluationOverlay = computed(() => loadingEvaluation.value && !hasStreamDelta.value);
 
     const resetEvaluationStreamState = () => {
       evaluationProgressText.value = '';
       evaluationStreamPreview.value = '';
+      hasStreamDelta.value = false;
     };
 
     const appendStreamPreview = (text) => {
       if (!text || typeof text !== 'string') return;
-      const merged = `${evaluationStreamPreview.value}${text}`
-        .replace(/\s+/g, ' ')
-        .trim();
-      const maxLength = 200;
+      const normalized = text
+        .replace(/\\n/g, '\n')
+        .replace(/\\"/g, '"');
+      const merged = `${evaluationStreamPreview.value}${normalized}`;
+      const maxLength = 1200;
       evaluationStreamPreview.value = merged.length > maxLength
         ? `...${merged.slice(-maxLength)}`
         : merged;
@@ -539,6 +547,8 @@ export default {
         return;
       }
       if (event === 'model.delta') {
+        hasStreamDelta.value = true;
+        evaluationProgressText.value = 'AI 正在生成投资建议...';
         const deltaText = typeof data === 'string' ? data : data?.content;
         appendStreamPreview(deltaText);
         return;
@@ -960,18 +970,16 @@ export default {
     
     const loadAIEvaluation = async (refresh = false) => {
       evaluationErrorMessage.value = '';
-      if (refresh) {
-        evaluationProgressText.value = '正在连接流式评估服务...';
-        evaluationStreamPreview.value = '';
-      } else {
-        resetEvaluationStreamState();
-      }
+      resetEvaluationStreamState();
+      evaluationProgressText.value = refresh
+        ? '正在连接流式评估服务...'
+        : '正在获取AI评估结果...';
       try {
         const evaluation = await store.dispatch('fetchStockEvaluation', {
           stockCode: stockInfo.value.code,
           refresh,
-          stream: refresh,
-          onStreamEvent: refresh ? handleEvaluationStreamEvent : null
+          stream: true,
+          onStreamEvent: handleEvaluationStreamEvent
         });
 
         if (evaluation) {
@@ -1496,6 +1504,8 @@ export default {
       evaluationErrorMessage,
       evaluationProgressText,
       evaluationStreamPreview,
+      hasStreamDelta,
+      showEvaluationOverlay,
       viewNewsDetail,
       lastPriceUpdate,
       lastNewsUpdate,
@@ -2105,16 +2115,30 @@ export default {
         letter-spacing: 0.02em;
       }
 
-      .analysis-loading-preview {
+      .analysis-stream-live {
+        margin-bottom: 16px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid #d8e1eb;
+        background: #f8fafc;
+      }
+
+      .stream-live-title {
+        margin: 0 0 6px;
+        font-size: 0.8rem;
+        color: #475569;
+        font-weight: 500;
+      }
+
+      .stream-live-body {
         margin: 0;
-        max-width: min(560px, 90%);
-        font-size: 0.74rem;
+        font-size: 0.78rem;
         color: #64748b;
-        text-align: center;
-        line-height: 1.45;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-word;
+        max-height: 180px;
+        overflow: auto;
       }
 
       .analysis-header {
