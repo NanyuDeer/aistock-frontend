@@ -70,6 +70,159 @@ api.interceptors.response.use(
   }
 );
 
+const parseMaybeJson = (text) => {
+  if (!text || typeof text !== 'string') return text;
+  try {
+    return JSON.parse(text);
+  } catch (_) {
+    return text;
+  }
+};
+
+const parseSseLine = (line) => {
+  if (!line) return { field: '', value: '' };
+  const index = line.indexOf(':');
+  if (index === -1) return { field: line, value: '' };
+  const field = line.slice(0, index);
+  let value = line.slice(index + 1);
+  if (value.startsWith(' ')) value = value.slice(1);
+  return { field, value };
+};
+
+const readSseStream = async (stream, onEvent) => {
+  const reader = stream.getReader();
+  const decoder = new TextDecoder('utf-8');
+  let buffer = '';
+  let currentEvent = 'message';
+  let dataLines = [];
+  let finalResult = null;
+  let streamError = null;
+
+  const emitEvent = () => {
+    if (!currentEvent && dataLines.length === 0) return;
+    const raw = dataLines.join('\n');
+    const data = parseMaybeJson(raw);
+    const payload = {
+      event: currentEvent || 'message',
+      data,
+      raw
+    };
+    if (typeof onEvent === 'function') {
+      onEvent(payload);
+    }
+    if (payload.event === 'result' && data && typeof data === 'object') {
+      finalResult = data;
+    }
+    if (payload.event === 'error') {
+      streamError = data || { message: raw || '流式处理失败' };
+    }
+    currentEvent = 'message';
+    dataLines = [];
+  };
+
+  while (true) {
+    const { value, done } = await reader.read();
+    buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+
+    let lineEnd = buffer.indexOf('\n');
+    while (lineEnd !== -1) {
+      let line = buffer.slice(0, lineEnd);
+      buffer = buffer.slice(lineEnd + 1);
+      if (line.endsWith('\r')) line = line.slice(0, -1);
+
+      if (line === '') {
+        emitEvent();
+      } else if (!line.startsWith(':')) {
+        const { field, value: parsedValue } = parseSseLine(line);
+        if (field === 'event') {
+          currentEvent = parsedValue || 'message';
+        } else if (field === 'data') {
+          dataLines.push(parsedValue);
+        }
+      }
+
+      lineEnd = buffer.indexOf('\n');
+    }
+
+    if (done) break;
+  }
+
+  if (buffer.trim()) {
+    const { field, value } = parseSseLine(buffer.trim());
+    if (field === 'event') currentEvent = value || currentEvent;
+    if (field === 'data') dataLines.push(value);
+  }
+  emitEvent();
+
+  return { finalResult, streamError };
+};
+
+const requestStockAnalysisStream = async (symbol, { onEvent } = {}) => {
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timeoutId = setTimeout(() => {
+    controller?.abort();
+  }, AI_ANALYSIS_TIMEOUT);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/cn/stocks/${encodeURIComponent(symbol)}/analysis`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        Accept: 'text/event-stream'
+      },
+      signal: controller?.signal
+    });
+
+    const contentType = response.headers.get('content-type') || '';
+
+    if (!response.ok) {
+      let message = `请求失败(${response.status})`;
+      try {
+        if (contentType.includes('application/json')) {
+          const body = await response.json();
+          message = body?.message || message;
+        } else {
+          const text = await response.text();
+          if (text) message = text;
+        }
+      } catch (_) {
+        // ignore parse errors
+      }
+      throw new Error(message);
+    }
+
+    if (contentType.includes('application/json')) {
+      return await response.json();
+    }
+
+    if (!response.body) {
+      throw new Error('未接收到流式响应内容');
+    }
+
+    const { finalResult, streamError } = await readSseStream(response.body, onEvent);
+    if (streamError) {
+      const message = streamError?.message || '流式生成失败';
+      throw new Error(message);
+    }
+    if (!finalResult) {
+      throw new Error('流式任务未返回最终结果');
+    }
+
+    return {
+      code: 200,
+      message: 'success',
+      data: finalResult
+    };
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error('AI评估流式请求超时，请稍后重试');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
 // 扫码登录相关API
 export const authApi = {
   // 获取扫码登录二维码
@@ -315,6 +468,11 @@ export const stockApi = {
       timeout: AI_ANALYSIS_TIMEOUT,
       'axios-retry': { retries: 0 }
     });
+  },
+
+  // 触发一次新的个股AI评价（SSE 流式）
+  createStockAnalysisStream: (symbol, options = {}) => {
+    return requestStockAnalysisStream(symbol, options);
   },
 
   // 获取市场概览数据

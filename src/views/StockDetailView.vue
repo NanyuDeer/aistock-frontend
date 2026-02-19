@@ -137,7 +137,8 @@
               <span class="star-spark spark-three"></span>
               <span class="star-spark spark-four"></span>
             </div>
-            <p class="analysis-loading-text">AI 正在生成投资建议...</p>
+            <p class="analysis-loading-text">{{ evaluationProgressText || 'AI 正在生成投资建议...' }}</p>
+            <p v-if="evaluationStreamPreview" class="analysis-loading-preview">{{ evaluationStreamPreview }}</p>
           </div>
 
           <a
@@ -509,6 +510,51 @@ export default {
 
     const loadingEvaluation = ref(false);
     const evaluationErrorMessage = ref('');
+    const evaluationProgressText = ref('');
+    const evaluationStreamPreview = ref('');
+
+    const resetEvaluationStreamState = () => {
+      evaluationProgressText.value = '';
+      evaluationStreamPreview.value = '';
+    };
+
+    const appendStreamPreview = (text) => {
+      if (!text || typeof text !== 'string') return;
+      const merged = `${evaluationStreamPreview.value}${text}`
+        .replace(/\s+/g, ' ')
+        .trim();
+      const maxLength = 200;
+      evaluationStreamPreview.value = merged.length > maxLength
+        ? `...${merged.slice(-maxLength)}`
+        : merged;
+    };
+
+    const handleEvaluationStreamEvent = ({ event, data }) => {
+      if (event === 'start') {
+        evaluationProgressText.value = data?.message || '开始刷新个股评价...';
+        return;
+      }
+      if (event === 'progress') {
+        evaluationProgressText.value = data?.message || '正在生成投资建议...';
+        return;
+      }
+      if (event === 'model.delta') {
+        const deltaText = typeof data === 'string' ? data : data?.content;
+        appendStreamPreview(deltaText);
+        return;
+      }
+      if (event === 'result') {
+        evaluationProgressText.value = '正在整理评估结果...';
+        return;
+      }
+      if (event === 'done') {
+        evaluationProgressText.value = data?.message || '评估完成';
+        return;
+      }
+      if (event === 'error') {
+        evaluationProgressText.value = data?.message || '评估失败';
+      }
+    };
 
     const refreshAIEvaluation = async () => {
       if (!isLoggedIn.value) {
@@ -914,10 +960,18 @@ export default {
     
     const loadAIEvaluation = async (refresh = false) => {
       evaluationErrorMessage.value = '';
+      if (refresh) {
+        evaluationProgressText.value = '正在连接流式评估服务...';
+        evaluationStreamPreview.value = '';
+      } else {
+        resetEvaluationStreamState();
+      }
       try {
         const evaluation = await store.dispatch('fetchStockEvaluation', {
           stockCode: stockInfo.value.code,
-          refresh: refresh
+          refresh,
+          stream: refresh,
+          onStreamEvent: refresh ? handleEvaluationStreamEvent : null
         });
 
         if (evaluation) {
@@ -946,6 +1000,7 @@ export default {
         };
       } finally {
         loadingEvaluation.value = false;
+        resetEvaluationStreamState();
       }
     };
 
@@ -1439,6 +1494,8 @@ export default {
       refreshAIEvaluation,
       loadingEvaluation,
       evaluationErrorMessage,
+      evaluationProgressText,
+      evaluationStreamPreview,
       viewNewsDetail,
       lastPriceUpdate,
       lastNewsUpdate,
@@ -2046,6 +2103,18 @@ export default {
         font-size: 0.88rem;
         color: #475569;
         letter-spacing: 0.02em;
+      }
+
+      .analysis-loading-preview {
+        margin: 0;
+        max-width: min(560px, 90%);
+        font-size: 0.74rem;
+        color: #64748b;
+        text-align: center;
+        line-height: 1.45;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .analysis-header {
