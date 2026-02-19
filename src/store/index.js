@@ -936,6 +936,60 @@ export default createStore({
         throw new Error(message);
       }
     },
+
+    async fetchStockEvaluationHistory(_, payload = {}) {
+      const stockCode = typeof payload === 'string' ? payload : payload?.stockCode;
+      const page = typeof payload === 'object' ? Number(payload.page) || 1 : 1;
+      const pageSize = typeof payload === 'object' ? Number(payload.pageSize) || 20 : 20;
+      if (!stockCode) return null;
+
+      try {
+        const response = await stockApi.getStockAnalysisHistory(stockCode, { page, pageSize });
+        if (response.code !== 200 || !response.data) {
+          throw new Error(response?.message || '获取历史评价失败');
+        }
+
+        const data = response.data;
+        const historyList = Array.isArray(data['历史评价']) ? data['历史评价'] : [];
+
+        return {
+          source: data['来源'] || '',
+          stockCode: data['股票代码'] || stockCode,
+          stockName: data['股票简称'] || '',
+          page: Number(data['当前页']) || page,
+          pageSize: Number(data['每页数量']) || pageSize,
+          total: Number(data['总数量']) || historyList.length,
+          totalPages: Number(data['总页数']) || 1,
+          history: historyList.map(item => ({
+            stockCode: item['股票代码'] || stockCode,
+            stockName: item['股票简称'] || '',
+            analysisTime: item['分析时间'] || '',
+            conclusion: item['结论'] || '未知',
+            coreLogic: item['核心逻辑'] || '',
+            riskWarning: item['风险提示'] || ''
+          }))
+        };
+      } catch (error) {
+        const status = error?.response?.status;
+        if (status === 404) {
+          return {
+            source: 'D1 历史分析',
+            stockCode,
+            stockName: '',
+            page,
+            pageSize,
+            total: 0,
+            totalPages: 1,
+            history: []
+          };
+        }
+        console.error('获取股票历史AI评估失败:', error);
+        const serverMessage = error?.response?.data?.message;
+        const message = serverMessage || error?.message || '获取历史评价失败，请稍后再试。';
+        throw new Error(message);
+      }
+    },
+
     async fetchMarketOverview({ commit }) {
       try {
         // 并行请求国内和全球指数行情

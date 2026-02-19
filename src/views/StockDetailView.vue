@@ -101,16 +101,27 @@
             </div>
             <div class="analysis-meta">
               <span class="analysis-date">分析日期：{{ analysisResult.date }}</span>
-              <el-button 
-                size="small" 
-                type="primary" 
-                @click="refreshAIEvaluation" 
-                :loading="loadingEvaluation"
-                :disabled="!isLoggedIn"
-                class="refresh-btn">
-                <img v-if="!loadingEvaluation" src="@/assets/refresh.svg" alt="刷新" class="button-icon" />
-                刷新评测
-              </el-button>
+              <div class="analysis-actions">
+                <el-button
+                  size="small"
+                  plain
+                  class="history-capsule-btn"
+                  @click="openHistoryDialog"
+                  :loading="openingHistoryDialog"
+                >
+                  查看历史评价
+                </el-button>
+                <el-button 
+                  size="small" 
+                  type="primary" 
+                  @click="refreshAIEvaluation" 
+                  :loading="loadingEvaluation"
+                  :disabled="!isLoggedIn"
+                  class="refresh-btn">
+                  <img v-if="!loadingEvaluation" src="@/assets/refresh.svg" alt="刷新" class="button-icon" />
+                  刷新评测
+                </el-button>
+              </div>
             </div>
           </div>
 
@@ -377,6 +388,72 @@
         <div class="update-badge">最后更新：{{ stockInfo.lastUpdated }}</div>
       </div>
     </div>
+
+    <el-dialog
+      v-model="historyDialogVisible"
+      :title="`${stockInfo.name || stockInfo.code} 历史AI评价`"
+      width="860px"
+      class="analysis-history-dialog"
+    >
+      <div class="analysis-history-content" v-loading="loadingHistory">
+        <div v-if="historyErrorMessage" class="analysis-history-error">
+          {{ historyErrorMessage }}
+        </div>
+
+        <template v-else>
+          <div class="analysis-history-toolbar">
+            <div class="analysis-history-summary">
+              共 {{ historyPagination.total }} 条历史记录
+            </div>
+            <el-button size="small" plain @click="reloadHistoryPage" :loading="loadingHistory">
+              重新加载
+            </el-button>
+          </div>
+
+          <div v-if="historyRecords.length > 0" class="analysis-history-list">
+            <article
+              v-for="(item, index) in historyRecords"
+              :key="`${item.analysisTime}-${index}`"
+              class="history-record-item"
+            >
+              <div class="history-record-head">
+                <span class="history-record-time">{{ item.analysisTime || '--' }}</span>
+                <span class="history-record-conclusion" :class="getHistoryConclusionClass(item.conclusion)">
+                  {{ item.conclusion || '未知' }}
+                </span>
+              </div>
+              <p class="history-record-logic">{{ item.coreLogic || '暂无核心逻辑' }}</p>
+              <p class="history-record-risk">风险提示：{{ item.riskWarning || '暂无风险提示' }}</p>
+            </article>
+          </div>
+          <el-empty v-else description="暂无历史评价记录" />
+
+          <div
+            v-if="historyPagination.total > historyPagination.pageSize"
+            class="analysis-history-pagination"
+          >
+            <el-pagination
+              background
+              layout="prev, pager, next"
+              :current-page="historyPagination.page"
+              :page-size="historyPagination.pageSize"
+              :total="historyPagination.total"
+              @current-change="handleHistoryPageChange"
+            />
+          </div>
+
+          <div class="analysis-history-timeline">
+            <div class="history-timeline-head">
+              <h4>评价强度时间轴</h4>
+              <p>中性为 0，利好在上方，利空在下方，重大级别距离更远。</p>
+            </div>
+            <div v-if="historyRecords.length > 0" ref="historyTimelineChartRef" class="history-timeline-chart"></div>
+            <el-empty v-else description="暂无时间轴数据" />
+          </div>
+        </template>
+      </div>
+    </el-dialog>
+
     <el-dialog
       v-model="newsDetailDialogVisible"
       title="新闻详情"
@@ -406,7 +483,7 @@
 </template>
 
 <script>
-import { ref, onMounted, watch, onBeforeUnmount, computed } from 'vue';
+import { ref, onMounted, watch, onBeforeUnmount, computed, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { ElMessage } from 'element-plus';
@@ -678,7 +755,251 @@ export default {
 
     const isForecastExpanded = ref(false);
     const forecastChartRef = ref(null);
+    const historyTimelineChartRef = ref(null);
+    const historyDialogVisible = ref(false);
+    const openingHistoryDialog = ref(false);
+    const loadingHistory = ref(false);
+    const historyErrorMessage = ref('');
+    const historyRecords = ref([]);
+    const historyPagination = ref({
+      page: 1,
+      pageSize: 10,
+      total: 0,
+      totalPages: 1
+    });
     let forecastChartInstance = null;
+    let historyTimelineChartInstance = null;
+
+    const HISTORY_SCORE_MAP = Object.freeze({
+      '重大利好': 2,
+      '利好': 1,
+      '中性': 0,
+      '利空': -1,
+      '重大利空': -2
+    });
+
+    const SCORE_LABEL_MAP = Object.freeze({
+      2: '重大利好',
+      1: '利好',
+      0: '中性',
+      '-1': '利空',
+      '-2': '重大利空'
+    });
+
+    const normalizeAnalysisTimeText = (value) => {
+      if (!value) return '';
+      return String(value).replace('T', ' ').trim();
+    };
+
+    const formatHistoryAxisTime = (value) => {
+      const normalized = normalizeAnalysisTimeText(value).replace(/\.\d+$/, '');
+      if (!normalized) return '--';
+      const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})/);
+      if (!match) return normalized;
+      return `${match[2]}-${match[3]} ${match[4]}`;
+    };
+
+    const toAnalysisTimestamp = (value) => {
+      const normalized = normalizeAnalysisTimeText(value).replace(/\.\d+$/, '');
+      if (!normalized) return 0;
+      const parsed = Date.parse(normalized.replace(' ', 'T'));
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+
+    const getHistoryScore = (conclusion) => {
+      const text = String(conclusion || '').trim();
+      if (!text) return 0;
+      if (Object.prototype.hasOwnProperty.call(HISTORY_SCORE_MAP, text)) {
+        return HISTORY_SCORE_MAP[text];
+      }
+      if (text.includes('重大利好')) return 2;
+      if (text.includes('利好')) return 1;
+      if (text.includes('重大利空')) return -2;
+      if (text.includes('利空')) return -1;
+      if (text.includes('中性')) return 0;
+      return 0;
+    };
+
+    const getHistoryScoreColor = (score) => {
+      if (score >= 2) return '#b42318';
+      if (score > 0) return '#dc2626';
+      if (score <= -2) return '#166534';
+      if (score < 0) return '#15803d';
+      return '#64748b';
+    };
+
+    const getHistoryConclusionClass = (conclusion) => {
+      const score = getHistoryScore(conclusion);
+      if (score >= 2) return 'is-strong-bull';
+      if (score > 0) return 'is-bull';
+      if (score <= -2) return 'is-strong-bear';
+      if (score < 0) return 'is-bear';
+      return 'is-neutral';
+    };
+
+    const disposeHistoryTimelineChart = () => {
+      if (historyTimelineChartInstance) {
+        historyTimelineChartInstance.dispose();
+        historyTimelineChartInstance = null;
+      }
+    };
+
+    const renderHistoryTimelineChart = () => {
+      if (!historyTimelineChartRef.value || historyRecords.value.length === 0) {
+        disposeHistoryTimelineChart();
+        return;
+      }
+
+      const timelineRows = [...historyRecords.value]
+        .map(item => ({
+          ...item,
+          analysisTime: normalizeAnalysisTimeText(item.analysisTime),
+          score: getHistoryScore(item.conclusion)
+        }))
+        .sort((a, b) => toAnalysisTimestamp(a.analysisTime) - toAnalysisTimestamp(b.analysisTime));
+
+      disposeHistoryTimelineChart();
+      historyTimelineChartInstance = echarts.init(historyTimelineChartRef.value);
+
+      historyTimelineChartInstance.setOption({
+        grid: {
+          left: 58,
+          right: 20,
+          top: 18,
+          bottom: 62
+        },
+        tooltip: {
+          trigger: 'item',
+          confine: true,
+          formatter: (params) => {
+            const data = params?.data || {};
+            const score = Number(data.value) || 0;
+            const scoreLabel = SCORE_LABEL_MAP[score] || data.conclusion || '中性';
+            return [
+              `<strong>${data.analysisTime || '--'}</strong>`,
+              `评级：${data.conclusion || '未知'}`,
+              `强度：${scoreLabel}`
+            ].join('<br/>');
+          }
+        },
+        xAxis: {
+          type: 'category',
+          data: timelineRows.map(item => formatHistoryAxisTime(item.analysisTime)),
+          axisTick: { alignWithLabel: true },
+          axisLabel: {
+            color: '#64748b',
+            interval: timelineRows.length > 12 ? 1 : 0,
+            rotate: timelineRows.length > 6 ? 24 : 0
+          },
+          axisLine: {
+            lineStyle: {
+              color: '#cbd5e1'
+            }
+          }
+        },
+        yAxis: {
+          type: 'value',
+          min: -2,
+          max: 2,
+          interval: 1,
+          axisLabel: {
+            formatter: (value) => SCORE_LABEL_MAP[value] || value,
+            color: '#64748b'
+          },
+          splitLine: {
+            lineStyle: {
+              color: '#e2e8f0',
+              type: 'dashed'
+            }
+          },
+          axisLine: {
+            lineStyle: {
+              color: '#cbd5e1'
+            }
+          }
+        },
+        series: [
+          {
+            type: 'line',
+            smooth: false,
+            symbol: 'circle',
+            symbolSize: 10,
+            lineStyle: {
+              color: '#94a3b8',
+              width: 2
+            },
+            data: timelineRows.map(item => ({
+              value: item.score,
+              analysisTime: item.analysisTime,
+              conclusion: item.conclusion,
+              itemStyle: {
+                color: getHistoryScoreColor(item.score),
+                borderColor: '#ffffff',
+                borderWidth: 1.5
+              }
+            })),
+            markLine: {
+              symbol: 'none',
+              silent: true,
+              label: { show: false },
+              lineStyle: {
+                color: '#94a3b8',
+                width: 1,
+                type: 'dashed'
+              },
+              data: [{ yAxis: 0 }]
+            }
+          }
+        ]
+      });
+    };
+
+    const loadEvaluationHistory = async (page = 1) => {
+      if (!stockInfo.value.code) return;
+      loadingHistory.value = true;
+      historyErrorMessage.value = '';
+
+      try {
+        const response = await store.dispatch('fetchStockEvaluationHistory', {
+          stockCode: stockInfo.value.code,
+          page,
+          pageSize: historyPagination.value.pageSize
+        });
+
+        historyRecords.value = Array.isArray(response?.history) ? response.history : [];
+        historyPagination.value = {
+          page: Number(response?.page) || page,
+          pageSize: Number(response?.pageSize) || historyPagination.value.pageSize,
+          total: Number(response?.total) || historyRecords.value.length,
+          totalPages: Number(response?.totalPages) || 1
+        };
+
+        await nextTick();
+        renderHistoryTimelineChart();
+      } catch (error) {
+        console.error('加载历史评价失败:', error);
+        historyRecords.value = [];
+        historyErrorMessage.value = error?.message || '加载历史评价失败，请稍后重试。';
+        disposeHistoryTimelineChart();
+      } finally {
+        loadingHistory.value = false;
+      }
+    };
+
+    const openHistoryDialog = async () => {
+      historyDialogVisible.value = true;
+      openingHistoryDialog.value = true;
+      await loadEvaluationHistory(1);
+      openingHistoryDialog.value = false;
+    };
+
+    const reloadHistoryPage = async () => {
+      await loadEvaluationHistory(historyPagination.value.page || 1);
+    };
+
+    const handleHistoryPageChange = async (page) => {
+      await loadEvaluationHistory(page);
+    };
 
     const hasForecastChartData = computed(() => {
       const details = forecastData.value?.['业绩预测详表_详细指标预测'];
@@ -953,11 +1274,6 @@ export default {
       };
       
       forecastChartInstance.setOption(option);
-      
-      // 监听窗口大小变化
-      window.addEventListener('resize', () => {
-        forecastChartInstance && forecastChartInstance.resize();
-      });
     };
 
     const loadForecast = async (refresh = false) => {
@@ -1373,13 +1689,6 @@ export default {
           }
         }
         // 刷新自选股列表
-      
-      if (forecastChartInstance) {
-        forecastChartInstance.dispose();
-      }
-      window.removeEventListener('resize', () => {
-         forecastChartInstance && forecastChartInstance.resize();
-      });
       } catch (error) {
         console.error('操作自选股失败:', error);
         ElMessage.error('操作失败，请稍后再试');
@@ -1459,6 +1768,15 @@ export default {
       }
     };
 
+    const handleWindowResize = () => {
+      if (forecastChartInstance) {
+        forecastChartInstance.resize();
+      }
+      if (historyTimelineChartInstance) {
+        historyTimelineChartInstance.resize();
+      }
+    };
+
     // 当路由中的股票代码改变时触发重新加载
     watch(() => route.params.code, (newCode) => {
       if (newCode && newCode !== stockInfo.value.code) {
@@ -1466,6 +1784,16 @@ export default {
         stockNews.value = [];
         totalNews.value = 0;
         newsCursor.value = 0;
+        historyDialogVisible.value = false;
+        historyErrorMessage.value = '';
+        historyRecords.value = [];
+        historyPagination.value = {
+          page: 1,
+          pageSize: historyPagination.value.pageSize,
+          total: 0,
+          totalPages: 1
+        };
+        disposeHistoryTimelineChart();
         
         loadStockData();
         loadNewsAndAnalysis();
@@ -1492,6 +1820,20 @@ export default {
         loadingEvaluation.value = true;
         await loadAIEvaluation(false);
       }
+    });
+
+    watch(historyDialogVisible, async (visible) => {
+      if (!visible) {
+        disposeHistoryTimelineChart();
+        return;
+      }
+      await nextTick();
+      renderHistoryTimelineChart();
+      setTimeout(() => {
+        if (historyTimelineChartInstance) {
+          historyTimelineChartInstance.resize();
+        }
+      }, 80);
     });
 
     onMounted(() => {
@@ -1548,6 +1890,8 @@ export default {
       
       // 设置自动刷新定时器
       setupAutoRefresh();
+
+      window.addEventListener('resize', handleWindowResize);
       
       // 确保页面加载时滚动到顶部
       window.scrollTo(0, 0);
@@ -1557,6 +1901,12 @@ export default {
       // 使用新的清除所有定时器函数
       clearAllTimers();
       cancelFlowAnimationFrames();
+      window.removeEventListener('resize', handleWindowResize);
+      if (forecastChartInstance) {
+        forecastChartInstance.dispose();
+        forecastChartInstance = null;
+      }
+      disposeHistoryTimelineChart();
     });
 
     return {
@@ -1584,7 +1934,9 @@ export default {
       priceTrendClass,
       mergedStructureChart,
       refreshAIEvaluation,
+      openHistoryDialog,
       loadingEvaluation,
+      openingHistoryDialog,
       evaluationErrorMessage,
       evaluationProgressText,
       hasStreamDelta,
@@ -1592,6 +1944,15 @@ export default {
       displayedConclusion,
       displayedCoreLogic,
       displayedRiskWarning,
+      historyDialogVisible,
+      loadingHistory,
+      historyErrorMessage,
+      historyRecords,
+      historyPagination,
+      historyTimelineChartRef,
+      reloadHistoryPage,
+      handleHistoryPageChange,
+      getHistoryConclusionClass,
       viewNewsDetail,
       lastPriceUpdate,
       lastNewsUpdate,
@@ -2267,6 +2628,31 @@ export default {
             width: 100%;
             align-items: flex-start;
           }
+
+          .analysis-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+
+            @media (max-width: 576px) {
+              width: 100%;
+              flex-wrap: wrap;
+            }
+          }
+
+          .history-capsule-btn {
+            border-radius: 999px;
+            border-color: #cfd8e3;
+            color: #334155;
+            background: #f8fafc;
+
+            &:hover,
+            &:focus {
+              border-color: #94a3b8;
+              color: #1e293b;
+              background: #f1f5f9;
+            }
+          }
         }
 
         .analysis-date {
@@ -2484,6 +2870,165 @@ export default {
           }
         }
       }
+    }
+  }
+
+  .analysis-history-content {
+    min-height: 180px;
+  }
+
+  .analysis-history-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .analysis-history-summary {
+    font-size: 0.9rem;
+    color: #475569;
+    font-weight: 500;
+  }
+
+  .analysis-history-error {
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: 1px solid #fecaca;
+    background: #fff1f2;
+    color: #b42318;
+    font-size: 0.9rem;
+  }
+
+  .analysis-history-list {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .history-record-item {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: #ffffff;
+  }
+
+  .history-record-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .history-record-time {
+    font-size: 0.86rem;
+    color: #475569;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .history-record-conclusion {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 62px;
+    height: 24px;
+    border-radius: 999px;
+    padding: 0 10px;
+    font-size: 0.78rem;
+    line-height: 1;
+    font-weight: 600;
+    border: 1px solid transparent;
+
+    &.is-strong-bull {
+      color: #991b1b;
+      background: #fee2e2;
+      border-color: #fca5a5;
+    }
+
+    &.is-bull {
+      color: #b91c1c;
+      background: #fef2f2;
+      border-color: #fecaca;
+    }
+
+    &.is-neutral {
+      color: #334155;
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+    }
+
+    &.is-bear {
+      color: #166534;
+      background: #f0fdf4;
+      border-color: #bbf7d0;
+    }
+
+    &.is-strong-bear {
+      color: #14532d;
+      background: #dcfce7;
+      border-color: #86efac;
+    }
+  }
+
+  .history-record-logic,
+  .history-record-risk {
+    margin: 0;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    color: #334155;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .history-record-risk {
+    margin-top: 6px;
+    color: #64748b;
+  }
+
+  .analysis-history-pagination {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 14px;
+  }
+
+  .analysis-history-timeline {
+    border-top: 1px solid #e2e8f0;
+    padding-top: 12px;
+  }
+
+  .history-timeline-head {
+    margin-bottom: 10px;
+
+    h4 {
+      margin: 0;
+      font-size: 1rem;
+      color: #0f172a;
+      font-weight: 600;
+    }
+
+    p {
+      margin: 6px 0 0;
+      font-size: 0.82rem;
+      color: #64748b;
+    }
+  }
+
+  .history-timeline-chart {
+    height: 280px;
+    width: 100%;
+  }
+
+  @media (max-width: 576px) {
+    .history-record-head {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .history-timeline-chart {
+      height: 240px;
     }
   }
 

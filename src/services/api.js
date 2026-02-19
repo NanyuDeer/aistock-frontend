@@ -475,6 +475,21 @@ export const stockApi = {
     return requestStockAnalysisStream(symbol, options);
   },
 
+  // 获取个股历史AI评价（分页只读）
+  getStockAnalysisHistory: (symbol, params = {}) => {
+    const page = Number(params.page) > 0 ? Number(params.page) : 1;
+    const pageSizeRaw = Number(params.pageSize) > 0 ? Number(params.pageSize) : 20;
+    const pageSize = Math.min(100, pageSizeRaw);
+    return api.get(`/api/cn/stocks/${encodeURIComponent(symbol)}/analysis/history`, {
+      params: {
+        page,
+        pageSize
+      },
+      timeout: AI_ANALYSIS_TIMEOUT,
+      'axios-retry': { retries: 0 }
+    });
+  },
+
   // 获取市场概览数据
   getMarketOverview: () => api.get('/api/market/overview'),
 
