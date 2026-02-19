@@ -94,8 +94,8 @@
           <div class="analysis-header">
             <div class="analysis-title">
               <div class="rating-display">
-                <span :class="getEvaluationClass(analysisResult.conclusion)">
-                  {{ analysisResult.conclusion || '加载中...' }}
+                <span :class="getEvaluationClass(displayedConclusion)">
+                  {{ displayedConclusion }}
                 </span>
               </div>
             </div>
@@ -120,12 +120,12 @@
           
           <div class="analysis-detail">
             <h4>核心逻辑</h4>
-            <div class="markdown-content" v-html="analysisResult.coreLogic"></div>
+            <div class="markdown-content" v-html="displayedCoreLogic"></div>
           </div>
 
           <div class="analysis-detail">
             <h4>风险提示</h4>
-            <div class="markdown-content" v-html="analysisResult.riskWarning"></div>
+            <div class="markdown-content" v-html="displayedRiskWarning"></div>
           </div>
 
           <div v-if="showEvaluationOverlay" class="analysis-loading-overlay" role="status" aria-live="polite" aria-label="AI投资建议生成中">
@@ -140,9 +140,8 @@
             <p class="analysis-loading-text">{{ evaluationProgressText || 'AI 正在生成投资建议...' }}</p>
           </div>
 
-          <div v-if="loadingEvaluation && hasStreamDelta" class="analysis-stream-live" role="status" aria-live="polite">
-            <p class="stream-live-title">{{ evaluationProgressText || 'AI 正在生成投资建议...' }}</p>
-            <p class="stream-live-body">{{ evaluationStreamPreview }}</p>
+          <div v-if="loadingEvaluation && hasStreamDelta" class="analysis-stream-status" role="status" aria-live="polite">
+            {{ evaluationProgressText || 'AI 正在生成投资建议...' }}
           </div>
 
           <a
@@ -516,25 +515,110 @@ export default {
     const evaluationErrorMessage = ref('');
     const evaluationProgressText = ref('');
     const evaluationStreamPreview = ref('');
+    const streamedConclusion = ref('');
+    const streamedCoreLogic = ref('');
+    const streamedRiskWarning = ref('');
     const hasStreamDelta = ref(false);
     const showEvaluationOverlay = computed(() => loadingEvaluation.value && !hasStreamDelta.value);
+    const isStreamingEvaluation = computed(() => loadingEvaluation.value && hasStreamDelta.value);
+
+    const displayedConclusion = computed(() => {
+      if (isStreamingEvaluation.value && streamedConclusion.value) {
+        return streamedConclusion.value;
+      }
+      return analysisResult.value.conclusion || '加载中...';
+    });
+
+    const displayedCoreLogic = computed(() => {
+      if (isStreamingEvaluation.value) {
+        const streamText = streamedCoreLogic.value || 'AI 正在生成核心逻辑...';
+        return md.render(streamText);
+      }
+      return analysisResult.value.coreLogic;
+    });
+
+    const displayedRiskWarning = computed(() => {
+      if (isStreamingEvaluation.value) {
+        const streamText = streamedRiskWarning.value || 'AI 正在生成风险提示...';
+        return md.render(streamText);
+      }
+      return analysisResult.value.riskWarning;
+    });
 
     const resetEvaluationStreamState = () => {
       evaluationProgressText.value = '';
       evaluationStreamPreview.value = '';
+      streamedConclusion.value = '';
+      streamedCoreLogic.value = '';
+      streamedRiskWarning.value = '';
       hasStreamDelta.value = false;
+    };
+
+    const extractStreamField = (source, field, nextFields = []) => {
+      if (!source) return '';
+      const fieldPattern = new RegExp(`"${field}"\\s*:\\s*"`);
+      const fieldMatch = fieldPattern.exec(source);
+      if (!fieldMatch) return '';
+
+      const start = fieldMatch.index + fieldMatch[0].length;
+      let end = source.length;
+      nextFields.forEach(nextField => {
+        const nextIndex = source.indexOf(`"${nextField}"`, start);
+        if (nextIndex !== -1 && nextIndex < end) {
+          end = nextIndex;
+        }
+      });
+
+      return source
+        .slice(start, end)
+        .replace(/",?\s*$/, '')
+        .replace(/,\s*$/, '')
+        .replace(/}\s*$/, '')
+        .trim();
+    };
+
+    const syncStreamDraft = () => {
+      const preview = evaluationStreamPreview.value;
+      if (!preview) return;
+
+      const jsonStart = preview.indexOf('{');
+      const jsonEnd = preview.lastIndexOf('}');
+      if (jsonStart !== -1 && jsonEnd > jsonStart) {
+        const jsonText = preview.slice(jsonStart, jsonEnd + 1);
+        try {
+          const parsed = JSON.parse(jsonText);
+          if (parsed && typeof parsed === 'object') {
+            streamedConclusion.value = parsed['结论'] || streamedConclusion.value;
+            streamedCoreLogic.value = parsed['核心逻辑'] || streamedCoreLogic.value;
+            streamedRiskWarning.value = parsed['风险提示'] || streamedRiskWarning.value;
+            return;
+          }
+        } catch (_) {
+          // ignore JSON parse errors in partial stream chunks
+        }
+      }
+
+      const conclusion = extractStreamField(preview, '结论', ['核心逻辑', '风险提示']);
+      const coreLogic = extractStreamField(preview, '核心逻辑', ['风险提示']);
+      const riskWarning = extractStreamField(preview, '风险提示', []);
+
+      if (conclusion) streamedConclusion.value = conclusion;
+      if (coreLogic) streamedCoreLogic.value = coreLogic;
+      if (riskWarning) streamedRiskWarning.value = riskWarning;
     };
 
     const appendStreamPreview = (text) => {
       if (!text || typeof text !== 'string') return;
       const normalized = text
         .replace(/\\n/g, '\n')
-        .replace(/\\"/g, '"');
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, '\\');
       const merged = `${evaluationStreamPreview.value}${normalized}`;
-      const maxLength = 1200;
+      const maxLength = 3000;
       evaluationStreamPreview.value = merged.length > maxLength
         ? `...${merged.slice(-maxLength)}`
         : merged;
+      syncStreamDraft();
     };
 
     const handleEvaluationStreamEvent = ({ event, data }) => {
@@ -1503,9 +1587,11 @@ export default {
       loadingEvaluation,
       evaluationErrorMessage,
       evaluationProgressText,
-      evaluationStreamPreview,
       hasStreamDelta,
       showEvaluationOverlay,
+      displayedConclusion,
+      displayedCoreLogic,
+      displayedRiskWarning,
       viewNewsDetail,
       lastPriceUpdate,
       lastNewsUpdate,
@@ -2115,30 +2201,14 @@ export default {
         letter-spacing: 0.02em;
       }
 
-      .analysis-stream-live {
+      .analysis-stream-status {
         margin-bottom: 16px;
-        padding: 10px 12px;
+        padding: 8px 12px;
         border-radius: 8px;
         border: 1px solid #d8e1eb;
         background: #f8fafc;
-      }
-
-      .stream-live-title {
-        margin: 0 0 6px;
         font-size: 0.8rem;
-        color: #475569;
-        font-weight: 500;
-      }
-
-      .stream-live-body {
-        margin: 0;
-        font-size: 0.78rem;
         color: #64748b;
-        line-height: 1.5;
-        white-space: pre-wrap;
-        word-break: break-word;
-        max-height: 180px;
-        overflow: auto;
       }
 
       .analysis-header {
