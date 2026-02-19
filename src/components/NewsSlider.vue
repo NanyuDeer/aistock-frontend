@@ -30,8 +30,12 @@
           <p class="news-preview" :class="{ 'headline-news-preview': headlineStyle }">
             {{ getNewsPreview(news.content) }}
           </p>
-          <p class="news-time" :class="{ 'headline-news-time': headlineStyle }">
-            {{ news.publish_time }}
+          <p class="news-meta" :class="{ 'headline-news-meta': headlineStyle }">
+            <span v-if="getNewsAuthor(news)" class="news-author">{{ getNewsAuthor(news) }}</span>
+            <span v-if="getNewsAuthor(news) && news.publish_time" class="news-meta-divider">·</span>
+            <span class="news-time" :class="{ 'headline-news-time': headlineStyle }">
+              {{ news.publish_time || '时间未知' }}
+            </span>
           </p>
         </div>
       </div>
@@ -86,6 +90,11 @@ export default {
     const getNewsPreview = (content) => {
       if (!content) return '暂无内容';
       return content;
+    };
+
+    const getNewsAuthor = (news) => {
+      if (!news || typeof news !== 'object') return '';
+      return String(news.author || news.source || news.作者 || news.来源 || '').trim();
     };
     
     // 开始自动轮播
@@ -177,6 +186,7 @@ export default {
       newsList,
       activeIndex,
       getNewsPreview,
+      getNewsAuthor,
       selectNews,
       changeNews,
       handleTouchStart,
@@ -248,7 +258,29 @@ export default {
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
         }
-        
+
+        .news-meta {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin: 0;
+          font-size: 0.75rem;
+          color: var(--text-tertiary);
+        }
+
+        .news-author {
+          color: var(--text-secondary);
+          font-weight: 500;
+          white-space: nowrap;
+          max-width: 9em;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .news-meta-divider {
+          color: var(--text-tertiary);
+        }
+
         .news-time {
           font-size: 0.75rem;
           color: var(--text-tertiary);
@@ -294,6 +326,10 @@ export default {
           .headline-news-time {
             font-size: 0.8rem;
             flex-shrink: 0;
+          }
+
+          .headline-news-meta {
+            font-size: 0.8rem;
           }
         }
       }
