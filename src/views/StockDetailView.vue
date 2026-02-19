@@ -38,11 +38,10 @@
           <div class="capital-chart-card is-merged">
             <div class="capital-chart-head">
               <div class="capital-chart-title-wrap">
-                <p class="capital-chart-title">流通结构（合并展示）</p>
-                <p class="capital-chart-total">股本与市值通常同占比，统一展示主图</p>
+                <p class="capital-chart-title">流通结构</p>
               </div>
               <div class="capital-chart-badge">
-                <span class="badge-label">合并流通占比</span>
+                <span class="badge-label">流通占比</span>
                 <transition name="number-flip" mode="out-in">
                   <span :key="`merged-${formatRatioText(mergedStructureChart.flowPercent)}`" class="badge-value">
                     {{ formatRatioText(mergedStructureChart.flowPercent) }}
@@ -91,7 +90,7 @@
 
       <div class="stock-analysis-section stock-tabs-section">
         <h3 class="section-title">AI投资建议</h3>
-        <div class="analysis-content">
+        <div class="analysis-content" :class="{ 'is-loading': loadingEvaluation }">
           <div class="analysis-header">
             <div class="analysis-title">
               <div class="rating-display">
@@ -127,6 +126,18 @@
           <div class="analysis-detail">
             <h4>风险提示</h4>
             <div class="markdown-content" v-html="analysisResult.riskWarning"></div>
+          </div>
+
+          <div v-if="loadingEvaluation" class="analysis-loading-overlay" role="status" aria-live="polite" aria-label="AI投资建议生成中">
+            <div class="star-loader" aria-hidden="true">
+              <span class="star-core"></span>
+              <span class="star-ring"></span>
+              <span class="star-spark spark-one"></span>
+              <span class="star-spark spark-two"></span>
+              <span class="star-spark spark-three"></span>
+              <span class="star-spark spark-four"></span>
+            </div>
+            <p class="analysis-loading-text">AI 正在生成投资建议...</p>
           </div>
 
           <a
@@ -1610,12 +1621,6 @@ export default {
         line-height: 1.3;
       }
 
-      .capital-chart-total {
-        margin: 4px 0 0;
-        font-size: 0.82rem;
-        color: #6b7280;
-      }
-
       .capital-chart-badge {
         display: inline-flex;
         flex-direction: column;
@@ -1949,6 +1954,100 @@ export default {
       position: relative;
       padding-bottom: 34px;
 
+      &.is-loading {
+        .analysis-detail,
+        .analysis-error-message {
+          opacity: 0.35;
+        }
+      }
+
+      .analysis-loading-overlay {
+        position: absolute;
+        inset: 0;
+        z-index: 4;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.78);
+        backdrop-filter: blur(1.5px);
+        pointer-events: none;
+      }
+
+      .star-loader {
+        position: relative;
+        width: 68px;
+        height: 68px;
+      }
+
+      .star-core {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 28px;
+        height: 28px;
+        transform: translate(-50%, -50%);
+        clip-path: polygon(50% 0%, 62% 36%, 100% 36%, 69% 58%, 82% 96%, 50% 74%, 18% 96%, 31% 58%, 0% 36%, 38% 36%);
+        background: linear-gradient(145deg, #94a3b8 0%, #475569 100%);
+        animation: star-core-build 1.4s ease-in-out infinite;
+      }
+
+      .star-ring {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 52px;
+        height: 52px;
+        transform: translate(-50%, -50%);
+        border: 1px solid rgba(100, 116, 139, 0.35);
+        border-radius: 50%;
+        animation: star-ring-pulse 1.4s ease-in-out infinite;
+      }
+
+      .star-spark {
+        --spark-angle: 0deg;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 6px;
+        height: 6px;
+        margin-left: -3px;
+        margin-top: -3px;
+        border-radius: 50%;
+        background: #64748b;
+        opacity: 0;
+        animation: star-spark-trail 1.4s ease-in-out infinite;
+      }
+
+      .star-spark.spark-one {
+        --spark-angle: 15deg;
+        animation-delay: 0s;
+      }
+
+      .star-spark.spark-two {
+        --spark-angle: 105deg;
+        animation-delay: 0.2s;
+      }
+
+      .star-spark.spark-three {
+        --spark-angle: 195deg;
+        animation-delay: 0.4s;
+      }
+
+      .star-spark.spark-four {
+        --spark-angle: 285deg;
+        animation-delay: 0.6s;
+      }
+
+      .analysis-loading-text {
+        margin: 0;
+        font-size: 0.88rem;
+        color: #475569;
+        letter-spacing: 0.02em;
+      }
+
       .analysis-header {
         display: flex;
         justify-content: space-between;
@@ -2222,6 +2321,55 @@ export default {
           }
         }
       }
+    }
+  }
+
+  @keyframes star-core-build {
+    0% {
+      opacity: 0.35;
+      transform: translate(-50%, -50%) scale(0.72) rotate(-12deg);
+    }
+
+    45% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1.05) rotate(0deg);
+    }
+
+    100% {
+      opacity: 0.68;
+      transform: translate(-50%, -50%) scale(0.92) rotate(8deg);
+    }
+  }
+
+  @keyframes star-ring-pulse {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.68);
+    }
+
+    40% {
+      opacity: 0.55;
+    }
+
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(1.18);
+    }
+  }
+
+  @keyframes star-spark-trail {
+    0% {
+      opacity: 0;
+      transform: rotate(var(--spark-angle)) translateX(4px) scale(0.6);
+    }
+
+    35% {
+      opacity: 0.72;
+    }
+
+    100% {
+      opacity: 0;
+      transform: rotate(var(--spark-angle)) translateX(28px) scale(0.3);
     }
   }
 
