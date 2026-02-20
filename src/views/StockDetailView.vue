@@ -29,8 +29,8 @@
           </el-button>
         </div>
         <div class="stock-tags">
-          <el-tag size="small" type="info">行业：{{ stockInfo.industry }}</el-tag>
-          <el-tag size="small" type="info">板块：{{ stockInfo.board }}</el-tag>
+          <el-tag size="small" type="info">行业板块：{{ stockInfo.industry }}</el-tag>
+          <el-tag size="small" type="info">地域板块：{{ stockInfo.board }}</el-tag>
           <el-tag size="small" type="info">上市日期：{{ stockInfo.listingDate }}</el-tag>
           <el-tag size="small" type="info">信息更新时间：{{ stockInfo.infoUpdatedAt }}</el-tag>
         </div>
@@ -1662,7 +1662,7 @@ export default {
             name: info.股票简称 || quote.股票简称 || stockInfo.value.name || '未知',
             code: info.股票代码 || quote.股票代码 || stockInfo.value.code,
             market: info.市场代码 || quote.市场代码 || stockInfo.value.market || '',
-            board: info.所属板块 || '--',
+            board: info.地域板块 || '--',
             price: formatPrice(latestPriceNum),
             avgPrice: formatPrice(avgPriceNum),
             change: changeNum,
