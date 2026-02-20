@@ -836,29 +836,82 @@ export default createStore({
       }
     },
     
-    // 添加新的 action 获取标签相关的股票
-    async fetchTagStocks(_, tagName) {
+    // 获取板块下的龙头股票（仅支持 BK 板块代码）
+    async fetchTagStocks(_, payload) {
+      const rawTagCode = typeof payload === 'string' ? payload : payload?.tagCode;
+      const rawTagName = typeof payload === 'object' ? (payload?.tagName || '') : '';
+      const safeCount = Math.min(100, Math.max(1, Number.parseInt(payload?.count, 10) || 10));
+
+      const normalizeTagCode = (value) => {
+        const text = String(value || '').trim().toUpperCase();
+        return /^BK\d{4}$/.test(text) ? text : '';
+      };
+      const toFiniteNumber = (value) => {
+        if (value === null || value === undefined) return null;
+        if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+        const text = String(value).replace(/,/g, '').trim();
+        if (!text || text === '-' || text === '--' || text === '—') return null;
+        const parsed = Number(text);
+        return Number.isFinite(parsed) ? parsed : null;
+      };
+      const inferMarketCode = (symbol) => {
+        const code = String(symbol || '').trim();
+        if (/^(60|68|90|50|51|52|56|58)/.test(code)) return 'SH';
+        if (/^(00|30|20)/.test(code)) return 'SZ';
+        if (/^(43|83|87|92)/.test(code)) return 'BJ';
+        return '';
+      };
+
+      const normalizedTagCode = normalizeTagCode(rawTagCode);
+      if (!normalizedTagCode) {
+        throw new Error('无效的板块代码，仅支持 BK+4位数字');
+      }
+
       try {
-        console.log('[DEBUG] 发起获取标签龙头股票请求:', tagName);
-        const response = await stockApi.getTagLeaders(tagName);
+        console.log('[DEBUG] 发起获取标签龙头股票请求:', {
+          tagCode: normalizedTagCode,
+          count: safeCount
+        });
+        const response = await stockApi.getTagLeaders(normalizedTagCode, safeCount);
         console.log('[DEBUG] 获取标签龙头股票响应:', response);
-        
-        if (response.code === 0 && response.data) {
-          // 获取股票列表并按照change_percent从大到小排序
-          const leaders = response.data.leaders || [];
-          const sortedLeaders = leaders.sort((a, b) => {
-            const changeA = parseFloat(a.change_percent) || 0;
-            const changeB = parseFloat(b.change_percent) || 0;
-            return changeB - changeA; // 从大到小排序
-          });
-          
-          // 返回标签描述和排序后的股票列表
+
+        if (response?.code === 200 && response?.data) {
+          const data = response.data;
+          const leaders = Array.isArray(data['龙头个股']) ? data['龙头个股'] : [];
+          const stocks = leaders
+            .map((item) => {
+              const code = String(item['股票代码'] || item.f12 || item.code || '').trim();
+              const name = String(item['股票名称'] || item['股票简称'] || item.f14 || item.name || '').trim();
+              const latestPrice = toFiniteNumber(item['最新价'] ?? item.f2 ?? item.price ?? item.latest_price);
+              const changePercent = toFiniteNumber(item['涨跌幅'] ?? item.f3 ?? item.change ?? item.change_percent);
+              const mainFundInflow = toFiniteNumber(item['主力净流入'] ?? item.f62 ?? item.main_fund_inflow);
+              if (!code) return null;
+              return {
+                code,
+                name: name || code,
+                market: inferMarketCode(code),
+                price: latestPrice,
+                change: changePercent,
+                mainFundInflow,
+                mainFundInflowValue: mainFundInflow
+              };
+            })
+            .filter(Boolean)
+            .sort((a, b) => {
+              const left = Number.isFinite(a.mainFundInflowValue) ? a.mainFundInflowValue : Number.NEGATIVE_INFINITY;
+              const right = Number.isFinite(b.mainFundInflowValue) ? b.mainFundInflowValue : Number.NEGATIVE_INFINITY;
+              return right - left;
+            });
+
           return {
-            description: response.data.description || '',
-            stocks: sortedLeaders
+            description: data['来源'] || '',
+            stocks,
+            tagCode: data['板块ID'] || normalizedTagCode,
+            tagName: rawTagName || normalizedTagCode
           };
         }
-        return { description: '', stocks: [] };
+
+        throw new Error(response?.message || '获取板块龙头股票失败');
       } catch (error) {
         console.error('获取标签股票失败:', error);
         throw error; // 抛出错误，让组件可以捕获并处理

@@ -302,15 +302,29 @@ export default {
 
     const FORECAST_RANKING_FETCH_LIMIT = 30;
 
+    const normalizeTagCode = (value) => {
+      const text = String(value || '').trim().toUpperCase();
+      return /^BK\d{4}$/.test(text) ? text : '';
+    };
+
     // --- 标签导航功能 ---
     const navigateToTag = (tag) => {
       // 关闭新闻详情弹窗(如果是从弹窗点击的标签)
       if (newsDetailVisible.value) {
         closeNewsDetail();
       }
-      
-      // 导航到标签页面
-      router.push(`/tags/${encodeURIComponent(tag)}`);
+
+      const tagCode = normalizeTagCode(tag);
+      if (!tagCode) {
+        ElMessage.warning('当前标签缺少板块ID，暂不支持跳转');
+        return;
+      }
+
+      router.push({
+        name: 'TagView',
+        params: { tagCode },
+        query: { name: String(tag || '').trim() }
+      });
     };
 
     // 国内资讯

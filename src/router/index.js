@@ -88,9 +88,12 @@ const routes = [
     }
   },
   {
-    path: '/tags/:tagName',
+    path: '/tags/:tagCode',
     name: 'TagView',
-    component: () => import('../views/TagView.vue')
+    component: () => import('../views/TagView.vue'),
+    meta: {
+      title: '股票资讯AI智能分析 - 板块龙头'
+    }
   }
 ]
 

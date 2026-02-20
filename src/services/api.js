@@ -449,9 +449,19 @@ export const stockApi = {
     }).then(res => res.data);
   },
   
-  // 获取标签相关的龙头股票
-  getTagLeaders: (tagName) => {
-    return api.get(`/api/tags/leaders?tag=${encodeURIComponent(tagName)}`);
+  // 获取板块龙头个股（仅支持 BK 板块代码）
+  getTagLeaders: (tagCode, count = 10) => {
+    const rawTag = String(tagCode || '').trim().toUpperCase();
+    const safeCount = Math.min(100, Math.max(1, Number.parseInt(count, 10) || 10));
+    if (!/^BK\d{4}$/.test(rawTag)) {
+      return Promise.reject(new Error('无效的板块代码，仅支持 BK+4位数字'));
+    }
+    const params = new URLSearchParams({
+      count: String(safeCount)
+    });
+    return axios.get(`https://extapi.aistocklink.cn/api/cn/tags/${encodeURIComponent(rawTag)}/leaders?${params.toString()}`, {
+      timeout: 8000
+    }).then(res => res.data);
   },
 
   // 获取个股最近一次AI评价（只读，不触发新评价）

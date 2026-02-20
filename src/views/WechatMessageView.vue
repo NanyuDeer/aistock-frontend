@@ -183,7 +183,18 @@ export default {
       return sector.split(/[、，,;]/).filter(s => s.trim() !== '').map(s => s.trim());
     };
 
-    const goToTag = (tagName) => { if (tagName && tagName.trim()) router.push(`/tags/${encodeURIComponent(tagName.trim())}`); };
+    const goToTag = (tagName) => {
+      const normalizedTagCode = String(tagName || '').trim().toUpperCase();
+      if (!/^BK\d{4}$/.test(normalizedTagCode)) {
+        ElMessage.warning('当前标签缺少板块ID，暂不支持跳转');
+        return;
+      }
+      router.push({
+        name: 'TagView',
+        params: { tagCode: normalizedTagCode },
+        query: { name: String(tagName || '').trim() }
+      });
+    };
     const goToStock = (stockId) => { if (stockId) window.open(`https://aistocklink.cn/stock/${stockId}`, '_blank'); };
     const goToHome = () => router.push('/');
     const copyShareLink = () => {

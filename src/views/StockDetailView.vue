@@ -29,8 +29,22 @@
           </el-button>
         </div>
         <div class="stock-tags">
-          <el-tag size="small" type="info">行业板块：{{ stockInfo.industry }}</el-tag>
-          <el-tag size="small" type="info">地域板块：{{ stockInfo.regionBoard }}</el-tag>
+          <el-tag
+            size="small"
+            :type="stockInfo.industryTagId ? 'primary' : 'info'"
+            :class="{ 'tag-item': true, 'is-clickable': !!stockInfo.industryTagId }"
+            @click="goToTagBoard(stockInfo.industryTagId, stockInfo.industry)"
+          >
+            行业板块：{{ stockInfo.industry }}
+          </el-tag>
+          <el-tag
+            size="small"
+            :type="stockInfo.regionBoardTagId ? 'primary' : 'info'"
+            :class="{ 'tag-item': true, 'is-clickable': !!stockInfo.regionBoardTagId }"
+            @click="goToTagBoard(stockInfo.regionBoardTagId, stockInfo.regionBoard)"
+          >
+            地域板块：{{ stockInfo.regionBoard }}
+          </el-tag>
           <el-tag size="small" type="info">上市日期：{{ stockInfo.listingDate }}</el-tag>
           <el-tag size="small" type="info">信息更新时间：{{ stockInfo.infoUpdatedAt }}</el-tag>
         </div>
@@ -567,12 +581,14 @@ export default {
       code: route.params.code || '',
       market: '', // 添加市场代码字段
       regionBoard: '--',
+      regionBoardTagId: '',
       price: '--',
       avgPrice: '--',
       change: 0,
       changeAmount: '--',
       changePercent: '--',
       industry: '--',
+      industryTagId: '',
       listingDate: '--',
       totalShares: '--',
       floatShares: '--',
@@ -1521,6 +1537,26 @@ export default {
       return num === null ? '--' : `${num.toFixed(2)}%`;
     };
 
+    const normalizeTagCode = (value) => {
+      const code = String(value || '').trim().toUpperCase();
+      return /^BK\d{4}$/.test(code) ? code : '';
+    };
+
+    const goToTagBoard = (tagCode, tagName = '') => {
+      const normalizedTagCode = normalizeTagCode(tagCode);
+      if (!normalizedTagCode) return;
+      const query = {};
+      const readableName = String(tagName || '').trim();
+      if (readableName && readableName !== '--') {
+        query.name = readableName;
+      }
+      router.push({
+        name: 'TagView',
+        params: { tagCode: normalizedTagCode },
+        query
+      });
+    };
+
     const formatSignedPercent = (value) => {
       const num = toNumber(value);
       if (num === null) return '--';
@@ -1663,12 +1699,14 @@ export default {
             code: info.股票代码 || quote.股票代码 || stockInfo.value.code,
             market: info.市场代码 || quote.市场代码 || stockInfo.value.market || '',
             regionBoard: info.地域板块 || '--',
+            regionBoardTagId: normalizeTagCode(info.地域板块ID),
             price: formatPrice(latestPriceNum),
             avgPrice: formatPrice(avgPriceNum),
             change: changeNum,
             changeAmount: formatPrice(changeAmountNum),
             changePercent: formatPercentValue(changePercentNum),
             industry: info.所属行业 || '未知行业',
+            industryTagId: normalizeTagCode(info.行业板块ID),
             listingDate: formatListingDate(info.上市时间),
             totalShares: formatScaledValue(info.总股本, '股'),
             floatShares: formatScaledValue(info.流通股, '股'),
@@ -1907,12 +1945,14 @@ export default {
           code: route.params.code || '',
           market: '',
           regionBoard: '--',
+          regionBoardTagId: '',
           price: '--',
           avgPrice: '--',
           change: 0,
           changeAmount: '--',
           changePercent: '--',
           industry: '--',
+          industryTagId: '',
           listingDate: '--',
           totalShares: '--',
           floatShares: '--',
@@ -1990,6 +2030,7 @@ export default {
       formatDate,
       formatSignedPercent,
       formatSignedPrice,
+      goToTagBoard,
       formatRatioText,
       priceTrendClass,
       mergedStructureChart,
@@ -2139,6 +2180,11 @@ export default {
       gap: 10px;
       flex-wrap: wrap;
       margin-bottom: 12px;
+
+      .tag-item.is-clickable {
+        cursor: pointer;
+        user-select: none;
+      }
     }
 
     .number-flip-enter-active,

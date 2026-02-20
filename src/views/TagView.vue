@@ -7,12 +7,14 @@
         <div class="container">
           <div class="tag-header">
             <h1 class="tag-title">
-            <span class="tag-name">#{{ tagName }}</span> 
+              <span class="tag-name">#{{ displayTagName }}</span>
+              <span v-if="normalizedTagCode" class="tag-code">{{ normalizedTagCode }}</span>
             </h1>
-            <p class="tag-description" style="display: flex; align-items: center; gap: 8px;">
-              <img src="@/assets/deepseek-color.svg" alt="DeepSeek Logo" style="height: 1.6rem; vertical-align: middle;" />
-              <span>{{ `DeepSeek AI 推荐的 ${tagName} 相关板块龙头个股` }}</span>
+            <p class="tag-description">
+              <img src="@/assets/deepseek-color.svg" alt="DeepSeek Logo" />
+              <span>{{ pageDescription }}</span>
             </p>
+            <p v-if="sourceText" class="tag-source">数据源：{{ sourceText }}</p>
             <div class="powered-by">
               <img src="@/assets/siliconflow-logo.svg" alt="SiliconFlow Logo" class="powered-by-logo" />
               <span class="powered-by-text">Powered by SiliconFlow</span>
@@ -23,13 +25,13 @@
           <StockCardList
             :stocks="stocks"
             :loading="loading"
-            :emptyText="`暂无${tagName}相关个股推荐`"
+            :emptyText="emptyText"
             @view-detail="viewStockDetail"
             @toggle-favorite="toggleFavorite"
           >
             <!-- 空状态自定义 -->
             <template #empty>
-              <el-empty :description="`暂无${tagName}相关个股推荐`">
+              <el-empty :description="emptyText">
                 <router-link to="/">
                   <el-button type="primary">返回首页</el-button>
                 </router-link>
@@ -38,7 +40,10 @@
             
             <template #item-content="{ stock }">
               <div class="stock-reason">
-                <span>{{ stock.reason || '推荐理由' }}</span>
+                <span v-if="stock.mainFundInflow !== null && stock.mainFundInflow !== undefined">
+                  主力净流入：{{ formatFundFlow(stock.mainFundInflow) }}
+                </span>
+                <span v-else>{{ stock.reason || '暂无主力净流入数据' }}</span>
               </div>
             </template>
           </StockCardList>
@@ -49,13 +54,15 @@
 </template>
 
 <script>
-import { ref, reactive, computed, onMounted, watch } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useStore } from 'vuex';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import TheNavbar from '@/components/TheNavbar.vue';
 import StockCardList from '@/components/StockCardList.vue';
-import 'element-plus/es/components/message/style/css'
+import 'element-plus/es/components/message/style/css';
+
+const TAG_CODE_PATTERN = /^BK\d{4}$/i;
 
 export default {
   name: 'TagView',
@@ -71,64 +78,92 @@ export default {
     const stocks = ref([]);
     const loading = ref(true);
     const error = ref(false);
-    const loadingStates = reactive({});
-    const tagDescription = ref('');
+    const sourceText = ref('');
+
+    const normalizeTagCode = (value) => {
+      const text = String(value || '').trim().toUpperCase();
+      return TAG_CODE_PATTERN.test(text) ? text : '';
+    };
+
+    const toText = (value) => {
+      if (Array.isArray(value)) return String(value[0] || '').trim();
+      return String(value || '').trim();
+    };
     
-    // 从路由参数获取标签名，并进行URL解码
-    const tagName = computed(() => decodeURIComponent(route.params.tagName || ''));
+    const routeTagCode = computed(() => toText(route.params.tagCode));
+    const normalizedTagCode = computed(() => normalizeTagCode(routeTagCode.value));
+    const queryTagName = computed(() => toText(route.query.name));
+    const displayTagName = computed(() => (
+      queryTagName.value || normalizedTagCode.value || routeTagCode.value || '板块'
+    ));
+    const emptyText = computed(() => `暂无${displayTagName.value}相关个股推荐`);
+    const pageDescription = computed(() => `${displayTagName.value} 板块龙头个股（按主力净流入降序）`);
     
-    // 监听标签名变化，重新获取数据
-    watch(() => route.params.tagName, (newTagName) => {
-      if (newTagName) {
-        fetchTagStocks();
-      }
-    });
-    
-    // 获取标签相关股票
     const fetchTagStocks = async () => {
-      if (!tagName.value) return;
+      const tagCode = normalizedTagCode.value;
+      if (!tagCode) {
+        error.value = true;
+        stocks.value = [];
+        sourceText.value = '';
+        loading.value = false;
+        document.title = `${displayTagName.value} - 板块龙头 | AI StockLink`;
+        return;
+      }
       
       loading.value = true;
       error.value = false;
       
       try {
-        const result = await store.dispatch('fetchTagStocks', tagName.value);
+        const result = await store.dispatch('fetchTagStocks', {
+          tagCode,
+          tagName: queryTagName.value || tagCode,
+          count: 10
+        });
+
         if (result) {
           stocks.value = result.stocks || [];
-          tagDescription.value = result.description || '';
+          sourceText.value = result.description || '';
         } else {
           stocks.value = [];
+          sourceText.value = '';
           console.error('获取标签股票返回格式不正确', result);
         }
       } catch (err) {
         console.error('获取标签股票失败:', err);
         error.value = true;
         stocks.value = [];
+        sourceText.value = '';
         ElMessage.error('获取标签股票失败，请稍后再试');
       } finally {
         loading.value = false;
+        document.title = `${displayTagName.value} - 板块龙头 | AI StockLink`;
       }
     };
-    
-    // 格式化价格
-    const formatPrice = (price) => {
-      if (price === undefined || price === null) return '--';
-      return Number(price).toFixed(2);
+
+    watch(
+      () => [route.params.tagCode, route.query.name],
+      () => {
+        window.scrollTo(0, 0);
+        fetchTagStocks();
+      },
+      { immediate: true }
+    );
+
+    const formatFundFlow = (value) => {
+      const num = Number(value);
+      if (!Number.isFinite(num)) return '--';
+      const sign = num > 0 ? '+' : '';
+      const abs = Math.abs(num);
+      if (abs >= 1e8) return `${sign}${(num / 1e8).toFixed(2)}亿元`;
+      if (abs >= 1e4) return `${sign}${(num / 1e4).toFixed(2)}万元`;
+      return `${sign}${num.toFixed(0)}元`;
     };
     
-    // 格式化百分比
-    const formatPercent = (percent) => {
-      if (percent === undefined || percent === null) return '--';
-      return Number(percent).toFixed(2);
-    };
-    
-    // 检查股票是否已收藏
     const isFavorite = (code) => {
       const favoriteStocks = store.getters.favoriteStocks || [];
       return favoriteStocks.some(stock => stock.code === code);
     };
     
-    // 添加/删除收藏
     const toggleFavorite = async (stock, loadingState) => {
       if (!store.getters.isLoggedIn) {
         ElMessage.warning('请先登录后才能添加自选股');
@@ -167,28 +202,20 @@ export default {
       }
     };
     
-    // 查看股票详情
     const viewStockDetail = (stock) => {
       router.push(`/stock/${stock.code}`);
     };
     
-    // 组件挂载时获取数据
-    onMounted(() => {
-      // 重置滚动位置到顶部
-      window.scrollTo(0, 0);
-      
-      fetchTagStocks();
-    });
-    
     return {
-      tagName,
-      tagDescription,
+      displayTagName,
+      normalizedTagCode,
+      emptyText,
+      pageDescription,
+      sourceText,
       stocks,
       loading,
       error,
-      loadingStates,
-      formatPrice,
-      formatPercent,
+      formatFundFlow,
       isFavorite,
       toggleFavorite,
       viewStockDetail,
@@ -219,11 +246,35 @@ export default {
         font-size: 2rem;
         font-weight: 700;
       }
+
+      .tag-code {
+        font-size: 0.95rem;
+        color: #64748b;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 2px 8px;
+      }
     }
     
     .tag-description {
+      display: flex;
+      align-items: center;
+      gap: 8px;
       color: var(--text-tertiary);
       font-size: 1rem;
+
+      img {
+        height: 1.6rem;
+        width: auto;
+        vertical-align: middle;
+      }
+    }
+
+    .tag-source {
+      margin-top: 8px;
+      color: #94a3b8;
+      font-size: 0.8rem;
     }
     
     .powered-by {
