@@ -2,36 +2,26 @@
   <div class="update-logs-page">
     <div class="page-container">
       <div class="logs-container">
-        <!-- 页面标题 -->
         <div class="page-header">
-          <h1>更新日志</h1>
-          <p class="subtitle">查看产品的最新更新与改进</p>
+          <h1>后端更新日志</h1>
+          <p class="subtitle">来自 aistock-api-cf 的 GitHub 提交记录</p>
         </div>
 
-        <!-- 筛选器 -->
-        <div class="filter-section">
-          <el-select
-            v-model="selectedType"
-            placeholder="选择更新类型"
-            clearable
-            @change="handleTypeChange"
-            style="width: 200px;"
+        <div class="toolbar">
+          <a
+            class="repo-link"
+            href="https://github.com/fengwm64/aistock-api-cf"
+            target="_blank"
+            rel="noopener noreferrer"
           >
-            <el-option
-              v-for="type in updateTypes"
-              :key="type"
-              :label="type"
-              :value="type"
-            />
-          </el-select>
+            查看后端仓库
+          </a>
         </div>
 
-        <!-- 加载状态 -->
         <div v-if="loading" class="loading-container">
           <el-skeleton :rows="5" animated />
         </div>
 
-        <!-- 错误状态 -->
         <div v-else-if="error" class="error-container">
           <i class="el-icon-warning-outline"></i>
           <h3>加载失败</h3>
@@ -39,10 +29,9 @@
           <el-button type="primary" @click="fetchLogs">重试</el-button>
         </div>
 
-        <!-- 日志列表 -->
         <div v-else class="logs-list">
           <div v-if="logs.length === 0" class="empty-state">
-            <p>暂无更新日志</p>
+            <p>暂无后端更新日志</p>
           </div>
           
           <div v-else>
@@ -54,17 +43,32 @@
               <div class="log-header">
                 <div class="log-meta">
                   <span class="log-date">{{ log.created_at }}</span>
-                  <span :class="['log-type', getTypeClass(log.update_type)]">
-                    {{ getTypeLabel(log.update_type) }}
-                  </span>
+                  <span class="log-type type-github">GitHub</span>
                 </div>
               </div>
-              
-              <div class="log-content" v-html="formatLogMessage(log.message)"></div>
+
+              <div class="commit-content">
+                <h3 class="commit-title">{{ log.title }}</h3>
+                <div
+                  v-if="log.body"
+                  class="commit-body"
+                  v-html="formatLogMessage(log.body)"
+                ></div>
+                <div class="commit-meta">
+                  <span>作者：{{ log.author }}</span>
+                  <a
+                    v-if="log.html_url"
+                    :href="log.html_url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {{ log.short_sha || '查看提交' }}
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
 
-          <!-- 分页 -->
           <div v-if="pagination.total > 0" class="pagination-container">
             <el-pagination
               v-model:current-page="currentPage"
@@ -83,7 +87,7 @@
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useStore } from 'vuex';
 
 export default {
@@ -91,8 +95,6 @@ export default {
   setup() {
     const store = useStore();
     const logs = ref([]);
-    const updateTypes = ref([]);
-    const selectedType = ref('');
     const loading = ref(true);
     const error = ref(null);
     const currentPage = ref(1);
@@ -110,10 +112,11 @@ export default {
       error.value = null;
 
       try {
-        const result = await store.dispatch('fetchUpdateLogs', {
+        const result = await store.dispatch('fetchGithubCommits', {
+          owner: 'fengwm64',
+          repo: 'aistock-api-cf',
           page: currentPage.value,
-          per_page: pageSize.value,
-          update_type: selectedType.value
+          per_page: pageSize.value
         });
 
         if (result) {
@@ -131,19 +134,6 @@ export default {
       }
     };
 
-    // 获取更新类型列表
-    const fetchUpdateTypes = async () => {
-      try {
-        const types = await store.dispatch('fetchUpdateTypes');
-        if (types && types.length > 0) {
-          updateTypes.value = types;
-        }
-      } catch (err) {
-        console.error('获取更新类型失败:', err);
-      }
-    };
-
-    // 格式化日志消息，支持Markdown
     const formatLogMessage = (message) => {
       if (!message) return '';
       
@@ -155,43 +145,11 @@ export default {
         .replace(/\* /g, '• '); // 简单列表项
     };
 
-    // 获取类型标签
-    const getTypeLabel = (type) => {
-      const typeMap = {
-        'frontend': '前端',
-        'backend': '后端',
-        'feature': '功能',
-        'fix': '修复',
-        'optimization': '优化'
-      };
-      return typeMap[type] || type;
-    };
-
-    // 获取类型样式类
-    const getTypeClass = (type) => {
-      const classMap = {
-        'frontend': 'type-frontend',
-        'backend': 'type-backend', 
-        'feature': 'type-feature',
-        'fix': 'type-fix',
-        'optimization': 'type-optimization'
-      };
-      return classMap[type] || 'type-default';
-    };
-
-    // 处理类型筛选变化
-    const handleTypeChange = () => {
-      currentPage.value = 1;
-      fetchLogs();
-    };
-
-    // 处理页码变化
     const handleCurrentChange = (page) => {
       currentPage.value = page;
       fetchLogs();
     };
 
-    // 处理每页条数变化
     const handleSizeChange = (size) => {
       pageSize.value = size;
       currentPage.value = 1;
@@ -199,18 +157,13 @@ export default {
     };
 
     onMounted(() => {
-      // 重置滚动位置到顶部
       window.scrollTo(0, 0);
-      
-      document.title = '更新日志 - AI StockLink';
-      fetchUpdateTypes();
+      document.title = '后端更新日志 - AI StockLink';
       fetchLogs();
     });
 
     return {
       logs,
-      updateTypes,
-      selectedType,
       loading,
       error,
       currentPage,
@@ -218,9 +171,6 @@ export default {
       pagination,
       fetchLogs,
       formatLogMessage,
-      getTypeLabel,
-      getTypeClass,
-      handleTypeChange,
       handleCurrentChange,
       handleSizeChange
     };
@@ -261,10 +211,21 @@ export default {
     }
   }
 
-  .filter-section {
+  .toolbar {
     display: flex;
     justify-content: flex-start;
+    align-items: center;
     margin-bottom: 24px;
+  }
+
+  .repo-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-size: 14px;
+
+    &:hover {
+      text-decoration: underline;
+    }
   }
 
   .loading-container {
@@ -342,6 +303,11 @@ export default {
               color: #1890ff;
             }
 
+            &.type-github {
+              background-color: #f6f8fa;
+              color: #24292f;
+            }
+
             &.type-backend {
               background-color: #f6ffed;
               color: #52c41a;
@@ -370,19 +336,46 @@ export default {
         }
       }
 
-      .log-content {
-        color: var(--text-secondary);
-        line-height: 1.6;
-        font-size: 14px;
-
-        :deep(strong) {
+      .commit-content {
+        .commit-title {
+          margin: 0 0 8px;
+          font-size: 16px;
           color: var(--text-primary);
-          font-weight: 600;
+          line-height: 1.5;
         }
 
-        :deep(em) {
-          font-style: italic;
-          color: var(--primary-color);
+        .commit-body {
+          color: var(--text-secondary);
+          line-height: 1.6;
+          font-size: 14px;
+
+          :deep(strong) {
+            color: var(--text-primary);
+            font-weight: 600;
+          }
+
+          :deep(em) {
+            font-style: italic;
+            color: var(--primary-color);
+          }
+        }
+
+        .commit-meta {
+          margin-top: 10px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          font-size: 13px;
+          color: var(--text-tertiary);
+
+          a {
+            color: var(--primary-color);
+            text-decoration: none;
+
+            &:hover {
+              text-decoration: underline;
+            }
+          }
         }
       }
     }

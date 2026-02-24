@@ -12,6 +12,12 @@
   <span class="team-info">暨大团队研发</span>
         <span style="margin: 0 8px; color: var(--text-tertiary);">|</span>
         <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">冀ICP备2025113956号</a>
+        <span style="margin: 0 8px; color: var(--text-tertiary);">|</span>
+        <span class="Powered-by">
+          <span>Powered by</span>
+          <img class="cloudflare-color-logo" src="/cloudflare-color.webp" alt="Cloudflare Color Logo" />
+          <img class="cloudflare-text-logo" src="/cloudflare-text.webp" alt="Cloudflare Text Logo" />
+        </span>
       </div>
     </div>
   </footer>
@@ -74,6 +80,28 @@ export default {
     align-items: center;
     row-gap: 6px;
     word-break: break-word;
+
+    .Powered-by {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+
+    .cloudflare-color-logo {
+      width: 24px;
+      height: 15px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    .cloudflare-text-logo {
+      width: 68px;
+      height: 15px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
     
     a {
       color: var(--text-tertiary);

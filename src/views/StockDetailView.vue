@@ -175,7 +175,7 @@
             rel="noopener noreferrer"
             class="analysis-powered-by"
           >
-            <span>Power By</span>
+            <span>Powered by</span>
             <span class="analysis-powered-logo" aria-hidden="true">
               <img class="analysis-powered-logo-icon" src="/pollinations.svg" alt="" />
               <img class="analysis-powered-logo-text" src="/pollinations-text.svg" alt="" />

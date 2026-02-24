@@ -563,6 +563,47 @@ export const stockApi = {
 
   // 获取更新类型列表
   getUpdateTypes: () => api.get('/api/logs/types'),
+
+  // 获取 GitHub 仓库提交记录（公开仓库）
+  getGithubRepoCommits: ({ owner, repo, page = 1, per_page = 10 } = {}) => {
+    const safeOwner = String(owner || '').trim();
+    const safeRepo = String(repo || '').trim();
+    const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
+    const safePerPage = Math.min(100, Math.max(1, Number.parseInt(per_page, 10) || 10));
+
+    if (!safeOwner || !safeRepo) {
+      return Promise.reject(new Error('无效的 GitHub 仓库参数'));
+    }
+
+    return axios.get(`https://api.github.com/repos/${encodeURIComponent(safeOwner)}/${encodeURIComponent(safeRepo)}/commits`, {
+      timeout: 12000,
+      params: {
+        page: safePage,
+        per_page: safePerPage
+      },
+      headers: {
+        Accept: 'application/vnd.github+json'
+      }
+    }).then((response) => {
+      const linkHeader = response?.headers?.link || '';
+      const hasNext = /rel="next"/.test(linkHeader);
+      const hasPrev = /rel="prev"/.test(linkHeader);
+      const lastMatch = linkHeader.match(/<[^>]*[?&]page=(\d+)[^>]*>; rel="last"/);
+      const lastPage = lastMatch ? Number.parseInt(lastMatch[1], 10) : null;
+
+      return {
+        code: 200,
+        data: {
+          commits: Array.isArray(response.data) ? response.data : [],
+          pagination: {
+            has_next: hasNext,
+            has_prev: hasPrev,
+            last_page: Number.isFinite(lastPage) ? lastPage : null
+          }
+        }
+      };
+    });
+  },
 };
 
 async function fetchMonitorData(startTime, endTime) {

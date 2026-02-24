@@ -89,6 +89,20 @@ function normalizeOcrImages(images) {
     .slice(0, 8);
 }
 
+function formatDateTime(dateText) {
+  const date = new Date(dateText);
+  if (Number.isNaN(date.getTime())) {
+    return String(dateText || '');
+  }
+  const pad2 = (value) => String(value).padStart(2, '0');
+  const year = date.getFullYear();
+  const month = pad2(date.getMonth() + 1);
+  const day = pad2(date.getDate());
+  const hour = pad2(date.getHours());
+  const minute = pad2(date.getMinutes());
+  return `${year}-${month}-${day} ${hour}:${minute}`;
+}
+
 export default createStore({
   state: {
     user: JSON.parse(localStorage.getItem('user')) || null, // 从 localStorage 恢复用户信息
@@ -1140,6 +1154,73 @@ export default createStore({
       } catch (error) {
         console.error('获取更新类型失败:', error);
         return [];
+      }
+    },
+    async fetchGithubCommits(_, params = {}) {
+      const owner = String(params.owner || '').trim();
+      const repo = String(params.repo || '').trim();
+      const page = Math.max(1, Number.parseInt(params.page, 10) || 1);
+      const perPage = Math.min(100, Math.max(1, Number.parseInt(params.per_page, 10) || 10));
+
+      if (!owner || !repo) {
+        throw new Error('GitHub 仓库参数缺失');
+      }
+
+      try {
+        console.log('[DEBUG] 发起获取 GitHub 提交记录请求:', { owner, repo, page, per_page: perPage });
+        const response = await stockApi.getGithubRepoCommits({
+          owner,
+          repo,
+          page,
+          per_page: perPage
+        });
+        console.log('[DEBUG] 获取 GitHub 提交记录响应:', response);
+
+        if (response?.code !== 200 || !response?.data) {
+          throw new Error(response?.message || '获取 GitHub 提交记录失败');
+        }
+
+        const commits = Array.isArray(response.data.commits) ? response.data.commits : [];
+        const logs = commits.map((item) => {
+          const fullMessage = String(item?.commit?.message || '').trim();
+          const [titleLine, ...restLines] = fullMessage.split('\n');
+          const body = restLines.join('\n').trim();
+          const sha = String(item?.sha || '').trim();
+
+          return {
+            id: sha || `${item?.html_url || ''}-${item?.commit?.author?.date || ''}`,
+            created_at: formatDateTime(item?.commit?.author?.date),
+            update_type: 'github',
+            title: titleLine || '(无提交说明)',
+            body,
+            author: item?.commit?.author?.name || item?.author?.login || 'unknown',
+            sha,
+            short_sha: sha ? sha.slice(0, 7) : '',
+            html_url: item?.html_url || ''
+          };
+        });
+
+        const hasNext = !!response.data.pagination?.has_next;
+        const hasPrev = !!response.data.pagination?.has_prev;
+        const lastPage = Number.parseInt(response.data.pagination?.last_page, 10);
+        const knownTotal = Number.isFinite(lastPage) ? lastPage * perPage : null;
+        const fallbackTotal = hasNext
+          ? page * perPage + 1
+          : (page - 1) * perPage + logs.length;
+        const total = knownTotal || fallbackTotal;
+
+        return {
+          logs,
+          pagination: {
+            total,
+            pages: Math.max(1, Math.ceil(total / perPage)),
+            has_prev: hasPrev,
+            has_next: hasNext
+          }
+        };
+      } catch (error) {
+        console.error('获取 GitHub 提交记录失败:', error);
+        throw error;
       }
     },
     // 添加获取推送设置的action
