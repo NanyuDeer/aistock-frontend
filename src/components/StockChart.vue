@@ -543,11 +543,20 @@ export default {
       }
     };
 
+    const normalizePredictionErrorMessage = (rawError) => {
+      const message = String(rawError || '').trim();
+      if (!message) return '预测服务暂时不可用，请稍后重试';
+      if (/RemoteDisconnected|Connection aborted|ECONNRESET|socket hang up|network error|timed out|timeout/i.test(message)) {
+        return '预测服务连接中断，请稍后重试';
+      }
+      return message;
+    };
+
     const finishPredictionWithError = (message) => {
       clearPredictionPollTimer();
       predictionLoading.value = false;
       predictionTaskId.value = '';
-      predictionError.value = message || '价格预测失败';
+      predictionError.value = normalizePredictionErrorMessage(message || '价格预测失败');
       predictionStatusText.value = '';
       renderChart();
     };
@@ -589,7 +598,7 @@ export default {
         }
 
         if (parsed.status === 'failed') {
-          finishPredictionWithError(parsed.error || '预测任务失败');
+          finishPredictionWithError(normalizePredictionErrorMessage(parsed.error || '预测任务失败'));
           return;
         }
 
@@ -747,12 +756,12 @@ export default {
           return;
         }
 
-        finishPredictionWithError(parsed.error || '预测服务返回异常');
+        finishPredictionWithError(normalizePredictionErrorMessage(parsed.error || '预测服务返回异常'));
       } catch (error) {
         if (requestId !== latestPredictionRequestId.value) return;
         console.error('提交预测任务失败:', error);
-        const message = error?.response?.data?.message || error?.message || '提交预测任务失败';
-        finishPredictionWithError(message);
+        const rawMessage = error?.response?.data?.message || error?.message || '提交预测任务失败';
+        finishPredictionWithError(normalizePredictionErrorMessage(rawMessage));
       }
     };
 
