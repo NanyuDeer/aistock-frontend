@@ -103,7 +103,7 @@
       </div>
 
       <div class="stock-analysis-section stock-tabs-section">
-        <h3 class="section-title">资讯面AI投资建议</h3>
+        <h3 class="section-title">资讯面</h3>
         <div class="analysis-content" :class="{ 'is-loading': showEvaluationOverlay }">
           <div class="analysis-header">
             <div class="analysis-title">
@@ -182,122 +182,118 @@
             </span>
           </a>
         </div>
-      </div>
-
-      <div class="stock-tabs-section">
-        <h3 class="section-title">资讯汇聚</h3>
-        <el-tabs v-model="activeTab">
-          <el-tab-pane label="股票资讯" name="news">
-            <div class="stock-news-list">
-              <div v-for="(news, index) in stockNews" :key="index" class="news-item">
-                <h4 @click="viewNewsDetail(news)" class="news-title">{{ news.title }}</h4>
-                <p v-if="news.summary" class="news-summary">{{ news.summary }}</p>
-                <div class="news-footer">
-                  <a v-if="news.url" :href="news.url" target="_blank" rel="noopener noreferrer" class="news-link">
-                    查看原文
-                  </a>
-                  <span class="news-time">{{ news.time }}</span>
-                </div>
-              </div>
-              <el-empty v-if="stockNews.length === 0" description="暂无相关资讯" />
-              <div v-if="stockNews.length > 0" class="news-actions">
-                <el-button
-                  type="primary"
-                  plain
-                  @click="loadMoreNews"
-                  :disabled="!hasMoreNews"
-                  :loading="loadingMoreNews"
-                >
-                  {{ hasMoreNews ? '加载更多' : '已加载全部' }}
-                </el-button>
-                <span class="news-total">已加载 {{ stockNews.length }}/{{ totalNews }}</span>
-              </div>
-            </div>
-          </el-tab-pane>
-          <el-tab-pane label="业绩预测" name="forecast">
-            <div class="forecast-content" v-loading="loadingForecast">
-              <div class="forecast-toolbar">
-                <el-button
-                  size="small"
-                  type="primary"
-                  plain
-                  @click="refreshForecast"
-                  :loading="loadingForecast"
-                  :disabled="!isLoggedIn"
-                  class="refresh-btn"
-                >
-                  <img v-if="!loadingForecast" src="@/assets/refresh.svg" alt="刷新" class="button-icon" />
-                  刷新预测
-                </el-button>
-              </div>
-              <div v-if="forecastData && (forecastData.symbol || forecastData['股票代码'])">
-                
-                <!-- 总结部分 -->
-                <div class="forecast-summary-card">
-                  <div class="summary-text">{{ forecastSummary }}</div>
-                </div>
-
-                <!-- 详细指标图表 -->
-                <div v-if="hasForecastChartData" class="forecast-charts-container">
-                   <div ref="forecastChartRef" class="forecast-chart"></div>
-                </div>
-
-                <!-- 机构预测详细列表 -->
-                <!-- <div v-if="forecastData.业绩预测详表_机构 && forecastData.业绩预测详表_机构.length > 0">
-                  <div class="forecast-list" :class="{ 'is-collapsed': !isForecastExpanded && forecastData.业绩预测详表_机构.length > 1 }">
-                    <div v-for="(item, index) in forecastData.业绩预测详表_机构" :key="index" class="forecast-item">
-                      <div class="forecast-header">
-                        <div class="institution-info">
-                          <span class="institution-name">{{ item.机构名称 }}</span>
-                          <span class="researcher">{{ item.研究员 }}</span>
-                        </div>
-                        <span class="report-date">{{ item.报告日期 }}</span>
-                      </div>
-                      
-                      <div class="forecast-details-grid">
-                        <div class="forecast-col">
-                          <div class="col-title">每股收益预测 (元)</div>
-                          <div class="col-row" v-for="(val, key) in item['预测年报每股收益（元）']" :key="key">
-                            <span class="year-label">{{ key.replace('预测', '') }}</span>
-                            <span class="val-num">{{ val }}</span>
-                          </div>
-                        </div>
-                        <div class="forecast-col">
-                          <div class="col-title">净利润预测 (元)</div>
-                          <div class="col-row" v-for="(val, key) in item['预测年报净利润（元）']" :key="key">
-                            <span class="year-label">{{ key.replace('预测', '') }}</span>
-                            <span class="val-num">{{ val }}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div v-if="!isForecastExpanded && forecastData.业绩预测详表_机构.length > 1" class="expand-mask" @click="isForecastExpanded = true">
-                       <span>展开全部 {{ forecastData.业绩预测详表_机构.length }} 家机构预测 <i class="el-icon-arrow-down"></i></span>
-                    </div>
-                  </div>
-                  
-                  <div v-if="isForecastExpanded" class="collapse-action" @click="isForecastExpanded = false">
-                    <span>收起 <i class="el-icon-arrow-up"></i></span>
-                  </div>
-                </div>
-                <el-empty v-else description="暂无机构预测详情"></el-empty> -->
-
-              </div>
-              <el-empty v-else-if="!loadingForecast" description="暂无业绩预测数据"></el-empty>
-              
-              <div class="forecast-footer">
-                <a :href="`https://stockpage.10jqka.com.cn/${stockInfo.code}/worth/#forecast`" target="_blank" class="source-link">
-                  <img src="https://s.thsi.cn/cd/news-p-fe-app-news-flow-home/home/_next/static/media/logo.1c8fc73f.png" alt="同花顺 Logo" class="source-logo">
+        <div class="info-news-block">
+          <div class="stock-news-list">
+            <div v-for="(news, index) in stockNews" :key="index" class="news-item">
+              <h4 @click="viewNewsDetail(news)" class="news-title">{{ news.title }}</h4>
+              <p v-if="news.summary" class="news-summary">{{ news.summary }}</p>
+              <div class="news-footer">
+                <a v-if="news.url" :href="news.url" target="_blank" rel="noopener noreferrer" class="news-link">
+                  查看原文
                 </a>
+                <span class="news-time">{{ news.time }}</span>
               </div>
             </div>
-          </el-tab-pane>
-        </el-tabs>
+            <el-empty v-if="stockNews.length === 0" description="暂无相关资讯" />
+            <div v-if="stockNews.length > 0" class="news-actions">
+              <el-button
+                type="primary"
+                plain
+                @click="loadMoreNews"
+                :disabled="!hasMoreNews"
+                :loading="loadingMoreNews"
+              >
+                {{ hasMoreNews ? '加载更多' : '已加载全部' }}
+              </el-button>
+              <span class="news-total">已加载 {{ stockNews.length }}/{{ totalNews }}</span>
+            </div>
+          </div>
+        </div>
       </div>
       
-      <!-- 使用新的StockChart组件替代原来的股票图表部分 -->
+      <!-- 技术面 -->
       <StockChart :stockCode="stockInfo.code" :stockMarket="stockInfo.market" />
+
+      <div class="stock-tabs-section">
+        <h3 class="section-title">基本面</h3>
+        <div class="forecast-content" v-loading="loadingForecast">
+          <div class="forecast-toolbar">
+            <el-button
+              size="small"
+              type="primary"
+              plain
+              @click="refreshForecast"
+              :loading="loadingForecast"
+              :disabled="!isLoggedIn"
+              class="refresh-btn"
+            >
+              <img v-if="!loadingForecast" src="@/assets/refresh.svg" alt="刷新" class="button-icon" />
+              刷新预测
+            </el-button>
+          </div>
+          <div v-if="forecastData && (forecastData.symbol || forecastData['股票代码'])">
+            
+            <!-- 总结部分 -->
+            <div class="forecast-summary-card">
+              <div class="summary-text">{{ forecastSummary }}</div>
+            </div>
+
+            <!-- 详细指标图表 -->
+            <div v-if="hasForecastChartData" class="forecast-charts-container">
+               <div ref="forecastChartRef" class="forecast-chart"></div>
+            </div>
+
+            <!-- 机构预测详细列表 -->
+            <!-- <div v-if="forecastData.业绩预测详表_机构 && forecastData.业绩预测详表_机构.length > 0">
+              <div class="forecast-list" :class="{ 'is-collapsed': !isForecastExpanded && forecastData.业绩预测详表_机构.length > 1 }">
+                <div v-for="(item, index) in forecastData.业绩预测详表_机构" :key="index" class="forecast-item">
+                  <div class="forecast-header">
+                    <div class="institution-info">
+                      <span class="institution-name">{{ item.机构名称 }}</span>
+                      <span class="researcher">{{ item.研究员 }}</span>
+                    </div>
+                    <span class="report-date">{{ item.报告日期 }}</span>
+                  </div>
+                  
+                  <div class="forecast-details-grid">
+                    <div class="forecast-col">
+                      <div class="col-title">每股收益预测 (元)</div>
+                      <div class="col-row" v-for="(val, key) in item['预测年报每股收益（元）']" :key="key">
+                        <span class="year-label">{{ key.replace('预测', '') }}</span>
+                        <span class="val-num">{{ val }}</span>
+                      </div>
+                    </div>
+                    <div class="forecast-col">
+                      <div class="col-title">净利润预测 (元)</div>
+                      <div class="col-row" v-for="(val, key) in item['预测年报净利润（元）']" :key="key">
+                        <span class="year-label">{{ key.replace('预测', '') }}</span>
+                        <span class="val-num">{{ val }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div v-if="!isForecastExpanded && forecastData.业绩预测详表_机构.length > 1" class="expand-mask" @click="isForecastExpanded = true">
+                   <span>展开全部 {{ forecastData.业绩预测详表_机构.length }} 家机构预测 <i class="el-icon-arrow-down"></i></span>
+                </div>
+              </div>
+              
+              <div v-if="isForecastExpanded" class="collapse-action" @click="isForecastExpanded = false">
+                <span>收起 <i class="el-icon-arrow-up"></i></span>
+              </div>
+            </div>
+            <el-empty v-else description="暂无机构预测详情"></el-empty> -->
+
+          </div>
+          <el-empty v-else-if="!loadingForecast" description="暂无业绩预测数据"></el-empty>
+          
+          <div class="forecast-footer">
+            <a :href="`https://stockpage.10jqka.com.cn/${stockInfo.code}/worth/#forecast`" target="_blank" class="source-link">
+              <img src="https://s.thsi.cn/cd/news-p-fe-app-news-flow-home/home/_next/static/media/logo.1c8fc73f.png" alt="同花顺 Logo" class="source-logo">
+            </a>
+          </div>
+        </div>
+      </div>
       
       <div class="stock-data-section">
         <h3 class="section-title">交易数据</h3>
@@ -614,7 +610,6 @@ export default {
       lastUpdated: '--'
     });
 
-    const activeTab = ref('news');
     const isLoggedIn = computed(() => store.getters.isLoggedIn);
     const isFavorite = ref(false);
     const addingToFavorites = ref(false);
@@ -1878,6 +1873,8 @@ export default {
         stockNews.value = [];
         totalNews.value = 0;
         newsCursor.value = 0;
+        forecastData.value = {};
+        forecastSummary.value = '';
         historyDialogVisible.value = false;
         historyDetailDialogVisible.value = false;
         historyErrorMessage.value = '';
@@ -1893,6 +1890,7 @@ export default {
         
         loadStockData();
         loadNewsAndAnalysis();
+        loadForecast();
         loadingEvaluation.value = true;
         loadAIEvaluation(false);
         
@@ -1901,12 +1899,6 @@ export default {
         
         // 重置滚动位置到顶部
         window.scrollTo(0, 0);
-      }
-    });
-
-    watch(activeTab, (newTab) => {
-      if (newTab === 'forecast') {
-        loadForecast();
       }
     });
 
@@ -1981,6 +1973,7 @@ export default {
 
       loadStockData();
       loadNewsAndAnalysis();
+      loadForecast();
       // 加载时检查是否已在自选列表中
       if (isLoggedIn.value) {
         checkIfFavorite();
@@ -2011,7 +2004,6 @@ export default {
 
     return {
       stockInfo,
-      activeTab,
       isFavorite,
       addingToFavorites,
       stockNews,
@@ -2501,6 +2493,12 @@ export default {
   }
 
   .stock-tabs-section {
+    .info-news-block {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #e5e7eb;
+    }
+
     .stock-news-list {
       margin-top: 0;
       margin-bottom: 10px;

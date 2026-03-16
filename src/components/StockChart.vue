@@ -3,7 +3,7 @@
     <div class="chart-header">
       <div class="chart-header-main">
         <div class="title-group">
-          <h3 class="section-title">价格K线</h3>
+          <h3 class="section-title">技术面</h3>
           <span class="adjustment-tag">前复权</span>
         </div>
         <div class="signal-row">
@@ -1194,7 +1194,7 @@ export default {
 
   .section-title {
     margin: 0;
-    font-size: 1.2rem;
+    font-size: 1.5rem;
     font-weight: 600;
     color: #1f2937;
     line-height: 1.3;
