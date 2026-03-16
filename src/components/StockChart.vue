@@ -9,11 +9,22 @@
         <div class="signal-row">
           <div class="signal-decision">
             <strong :class="['signal-value', `is-${predictionSignal}`]">{{ predictionSignalText }}</strong>
-            <el-popover trigger="click" placement="top-start" :width="340">
+            <el-popover trigger="click" placement="top-start" :width="360" popper-class="prediction-help-popover">
               <template #reference>
                 <button type="button" class="signal-help" aria-label="查看技术面预测说明">?</button>
               </template>
               <div class="prediction-help-content">
+                <div class="help-title-row">
+                  <span class="help-chip">Kronos</span>
+                  <span class="help-title">技术面预测说明</span>
+                </div>
+                <p class="help-meta">
+                  当前输入窗口：最近
+                  <strong>{{ predictionLookbackDays }}</strong>
+                  天历史K线；预测范围：未来
+                  <strong>{{ predictionPredLenDays }}</strong>
+                  个交易日。
+                </p>
                 <p>
                   基于清华大学 Kronos 金融 K 线基础大模型
                   （<a href="https://arxiv.org/abs/2508.02739" target="_blank" rel="noopener noreferrer">https://arxiv.org/abs/2508.02739</a>）
@@ -25,10 +36,13 @@
               </div>
             </el-popover>
           </div>
-          <div class="signal-progress" :aria-label="`决策概率 ${predictionProbabilityPercentText}`">
-            <span class="signal-progress-fill" :style="predictionProbabilityStyle"></span>
+          <div class="signal-progress-wrap">
+            <div class="signal-progress" :aria-label="`决策概率 ${predictionProbabilityPercentText}`">
+              <span class="signal-progress-fill" :style="predictionProbabilityStyle"></span>
+            </div>
+            <span class="signal-probability">{{ predictionProbabilityPercentText }}</span>
           </div>
-          <span class="signal-probability">{{ predictionProbabilityPercentText }}</span>
+          <span class="signal-time">{{ predictionTimeText }}</span>
         </div>
         <p v-if="predictionLoading && predictionStatusText" class="prediction-status">{{ predictionStatusText }}</p>
         <p v-if="predictionError" class="prediction-error">{{ predictionError }}</p>
@@ -324,6 +338,24 @@ export default {
       };
     });
 
+    const predictionTimeText = computed(() => {
+      const baseDate = String(predictionResult.value?.baseDate || '').trim();
+      if (baseDate) return `基准日 ${baseDate}`;
+      return '基准日 --';
+    });
+
+    const predictionLookbackDays = computed(() => {
+      const value = Number(predictionResult.value?.lookback);
+      if (Number.isFinite(value) && value > 0) return Math.round(value);
+      return PREDICTION_DEFAULTS.lookback;
+    });
+
+    const predictionPredLenDays = computed(() => {
+      const value = Number(predictionResult.value?.predLen);
+      if (Number.isFinite(value) && value > 0) return Math.round(value);
+      return PREDICTION_DEFAULTS.predLen;
+    });
+
     const showPredictionPlaceholder = computed(() => {
       return predictionLoading.value && predictionBands.value.length === 0 && klineItems.value.length > 0;
     });
@@ -512,6 +544,7 @@ export default {
       return {
         tsCode: String(source.ts_code || source.tsCode || ''),
         baseDate: String(source.base_date || source.baseDate || ''),
+        lookback: Number(source.lookback || source.input_days || source.inputDays || PREDICTION_DEFAULTS.lookback),
         predLen: Number(source.pred_len || source.predLen || bands.length || 0),
         cached: !!source.cached,
         cacheExpiresAt: String(source.cache_expires_at || source.cacheExpiresAt || ''),
@@ -691,7 +724,12 @@ export default {
         cacheHit = !!latestCacheEntry;
         if (latestCacheEntry?.result && typeof latestCacheEntry.result === 'object') {
           try {
-            applyPredictionResult(latestCacheEntry.result);
+            applyPredictionResult({
+              ...latestCacheEntry.result,
+              lookback: latestCacheEntry.lookback,
+              pred_len: latestCacheEntry.pred_len ?? latestCacheEntry.result?.pred_len,
+              sample_count: latestCacheEntry.sample_count
+            });
             predictionStatusText.value = '已读取最新缓存预测结果';
             return;
           } catch (cacheError) {
@@ -867,7 +905,7 @@ export default {
                   `<div style="margin-bottom:6px;font-weight:600;">${band.date || `T+${band.step}`}</div>`,
                   `<div>预测下界：<span style="color:${PREDICTION_LOWER_COLOR};font-weight:600;">${formatPrice(band.tradingLow)}</span></div>`,
                   `<div>预测上界：<span style="color:${PREDICTION_UPPER_COLOR};font-weight:600;">${formatPrice(band.tradingHigh)}</span></div>`,
-                  `<div>预测均线：<span style="color:${PREDICTION_MEAN_COLOR};font-weight:700;">${formatPrice(band.meanClose)}</span></div>`,
+                  `<div>预测收盘价（均值）：<span style="color:${PREDICTION_MEAN_COLOR};font-weight:700;">${formatPrice(band.meanClose)}</span></div>`,
                   `<div>置信度：<span style="font-weight:600;">${formatRatioPercent(confidence, 1)}</span></div>`
                 ].join('');
               }
@@ -893,7 +931,7 @@ export default {
               color: '#64748b',
               fontSize: 12
             },
-            data: ['K线', '预测区间', '预测上界', '预测下界', '预测均线']
+            data: ['K线', '预测区间', '预测上界', '预测下界', '预测收盘价（均值）']
           },
           grid: {
             left: '6%',
@@ -1076,7 +1114,7 @@ export default {
                     }
                   },
                   {
-                    name: '预测均线',
+                    name: '预测收盘价（均值）',
                     type: 'line',
                     z: 7,
                     data: predictionMeanData,
@@ -1233,6 +1271,9 @@ export default {
       predictionSignalText,
       predictionProbabilityPercentText,
       predictionProbabilityStyle,
+      predictionTimeText,
+      predictionLookbackDays,
+      predictionPredLenDays,
       predictionError,
       predictionStatusText,
       showPredictionPlaceholder
@@ -1292,11 +1333,10 @@ export default {
     display: flex;
     align-items: center;
     gap: 12px;
-    min-height: 56px;
-    padding: 8px 12px;
-    border-radius: 12px;
-    border: 1px solid #dbeafe;
-    background: linear-gradient(90deg, #eff6ff, #f8fafc);
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
   }
 
   .signal-decision {
@@ -1348,10 +1388,57 @@ export default {
     color: #334155;
   }
 
+  :deep(.prediction-help-popover) {
+    border-radius: 12px;
+    border: 1px solid #dbe4ee;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+    padding: 0;
+  }
+
+  :deep(.prediction-help-popover .el-popover__title) {
+    margin-bottom: 0;
+  }
+
   :deep(.prediction-help-content) {
+    padding: 12px 14px;
     font-size: 12px;
     color: #334155;
-    line-height: 1.55;
+    line-height: 1.6;
+  }
+
+  :deep(.prediction-help-content .help-title-row) {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  :deep(.prediction-help-content .help-chip) {
+    display: inline-flex;
+    align-items: center;
+    height: 18px;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: #e0e7ff;
+    color: #3730a3;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  :deep(.prediction-help-content .help-title) {
+    font-size: 13px;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  :deep(.prediction-help-content .help-meta) {
+    margin: 0 0 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #334155;
   }
 
   :deep(.prediction-help-content p) {
@@ -1362,16 +1449,30 @@ export default {
     margin-top: 8px;
   }
 
+  :deep(.prediction-help-content a) {
+    color: #1d4ed8;
+    text-decoration: none;
+  }
+
+  :deep(.prediction-help-content a:hover) {
+    text-decoration: underline;
+  }
+
   :deep(.prediction-help-content .risk-tip) {
+    margin-top: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #fecaca;
+    background: #fff1f2;
     color: #7f1d1d;
   }
 
   .signal-progress {
     position: relative;
-    flex: 1;
-    min-width: 140px;
-    max-width: 320px;
-    height: 12px;
+    width: 100%;
+    min-width: 180px;
+    max-width: 360px;
+    height: 16px;
     border-radius: 999px;
     border: 1px solid #cbd5e1;
     background: #e2e8f0;
@@ -1392,6 +1493,23 @@ export default {
     color: #0f172a;
     min-width: 58px;
     text-align: right;
+  }
+
+  .signal-progress-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+    min-width: 0;
+  }
+
+  .signal-time {
+    margin-left: 6px;
+    flex-shrink: 0;
+    font-size: 12px;
+    color: #64748b;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
 
   .prediction-status {
@@ -1537,8 +1655,19 @@ export default {
       margin-bottom: 2px;
     }
 
+    .signal-progress-wrap {
+      width: 100%;
+      margin-left: 0;
+    }
+
     .signal-progress {
       max-width: none;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .signal-time {
+      margin-left: auto;
     }
 
     .stock-chart {
