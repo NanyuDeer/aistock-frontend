@@ -4,13 +4,27 @@
       <div class="chart-header-main">
         <div class="title-group">
           <h3 class="section-title">技术面</h3>
-          <span class="adjustment-tag">前复权</span>
+          <span class="adjustment-tag">前复权历史K线</span>
         </div>
         <div class="signal-row">
-          <span class="signal-text">
-            技术面预测今日决策信号为
+          <div class="signal-decision">
             <strong :class="['signal-value', `is-${predictionSignal}`]">{{ predictionSignalText }}</strong>
-          </span>
+            <el-popover trigger="click" placement="top-start" :width="340">
+              <template #reference>
+                <button type="button" class="signal-help" aria-label="查看技术面预测说明">?</button>
+              </template>
+              <div class="prediction-help-content">
+                <p>
+                  基于清华大学 Kronos 金融 K 线基础大模型
+                  （<a href="https://arxiv.org/abs/2508.02739" target="_blank" rel="noopener noreferrer">https://arxiv.org/abs/2508.02739</a>）
+                  进行A股价格区间预测。
+                </p>
+                <p class="risk-tip">
+                  风险提示：技术面预测依赖历史价格统计规律与模型假设，受政策、业绩、流动性和突发事件影响较大，存在偏差风险，不构成任何投资建议。
+                </p>
+              </div>
+            </el-popover>
+          </div>
           <div class="signal-progress" :aria-label="`决策概率 ${predictionProbabilityPercentText}`">
             <span class="signal-progress-fill" :style="predictionProbabilityStyle"></span>
           </div>
@@ -59,10 +73,11 @@ import { ref, onMounted, watch, onBeforeUnmount, computed } from 'vue';
 import { useStore } from 'vuex';
 import { stockApi } from '@/services/api';
 import * as echarts from 'echarts/core';
-import { CandlestickChart, LineChart, CustomChart } from 'echarts/charts';
+import { CandlestickChart, LineChart } from 'echarts/charts';
 import {
   TooltipComponent,
   GridComponent,
+  LegendComponent,
   MarkPointComponent
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
@@ -70,9 +85,9 @@ import { CanvasRenderer } from 'echarts/renderers';
 echarts.use([
   CandlestickChart,
   LineChart,
-  CustomChart,
   TooltipComponent,
   GridComponent,
+  LegendComponent,
   MarkPointComponent,
   CanvasRenderer
 ]);
@@ -88,6 +103,9 @@ const PERIOD_OPTIONS = [
 
 const UP_COLOR = '#d94848';
 const DOWN_COLOR = '#2f9e44';
+const PREDICTION_MEAN_COLOR = '#1d4ed8';
+const PREDICTION_UPPER_COLOR = '#ef4444';
+const PREDICTION_LOWER_COLOR = '#14b8a6';
 const PREDICTION_POLL_INTERVAL = 60 * 1000;
 const PREDICTION_DEFAULTS = Object.freeze({
   lookback: 256,
@@ -257,11 +275,6 @@ export default {
     const getConfidenceRatio = (uncertainty) => {
       const safe = Number.isFinite(uncertainty) ? Math.max(0, uncertainty) : 0;
       return Math.max(0, Math.min(1, 1 - safe / 0.2));
-    };
-
-    const getRangeOpacity = (uncertainty) => {
-      const confidence = getConfidenceRatio(uncertainty);
-      return 0.12 + confidence * 0.6;
     };
 
     const predictionTsCode = computed(() => resolveTsCode(props.stockCode, props.stockMarket));
@@ -484,6 +497,18 @@ export default {
         .filter(item => Number.isFinite(item.meanClose))
         .sort((a, b) => a.step - b.step);
 
+      const directionProbability = normalizeProbability(
+        rawDirection.probability
+        ?? rawDirection.direction_probability
+        ?? source.direction_probability
+        ?? source.probability
+      );
+      const confidenceProbability = normalizeProbability(
+        rawDirection.confidence
+        ?? source.confidence
+        ?? source.model_confidence
+      );
+
       return {
         tsCode: String(source.ts_code || source.tsCode || ''),
         baseDate: String(source.base_date || source.baseDate || ''),
@@ -492,12 +517,9 @@ export default {
         cacheExpiresAt: String(source.cache_expires_at || source.cacheExpiresAt || ''),
         direction: {
           signal: String(rawDirection.signal || source.signal || '').toLowerCase(),
-          probability: normalizeProbability(
-            rawDirection.probability
-            ?? rawDirection.confidence
-            ?? source.direction_probability
-            ?? source.probability
-          )
+          probability: (directionProbability !== null && directionProbability > 0)
+            ? directionProbability
+            : (confidenceProbability ?? directionProbability)
         },
         summary: {
           meanClose: toFiniteNumber(summary.mean_close ?? summary.meanClose),
@@ -575,9 +597,28 @@ export default {
       }
     };
 
-    const hasMatchingCacheEntry = (cacheResponse, requestPayload) => {
+    const parseCacheDateTime = (value) => {
+      const raw = String(value || '').trim();
+      if (!raw) return 0;
+
+      let timestamp = Date.parse(raw);
+      if (Number.isFinite(timestamp)) return timestamp;
+
+      const utcOffsetMatch = raw.match(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})\s+UTC([+-]\d{2}:\d{2})$/i);
+      if (utcOffsetMatch) {
+        const isoText = `${utcOffsetMatch[1]}T${utcOffsetMatch[2]}${utcOffsetMatch[3]}`;
+        timestamp = Date.parse(isoText);
+        if (Number.isFinite(timestamp)) return timestamp;
+      }
+
+      const gmtText = raw.replace(/\bUTC\b/i, 'GMT');
+      timestamp = Date.parse(gmtText);
+      return Number.isFinite(timestamp) ? timestamp : 0;
+    };
+
+    const getLatestMatchingCacheEntry = (cacheResponse, requestPayload) => {
       const entries = Array.isArray(cacheResponse?.entries) ? cacheResponse.entries : [];
-      return entries.some((entry) => {
+      const matchingEntries = entries.filter((entry) => {
         const tsCode = String(entry?.ts_code || '').trim().toUpperCase();
         if (tsCode !== requestPayload.tsCode.toUpperCase()) return false;
 
@@ -593,6 +634,21 @@ export default {
           && mode === requestPayload.mode
           && includeVolume === requestPayload.includeVolume;
       });
+
+      if (!matchingEntries.length) return null;
+
+      const ranked = matchingEntries
+        .map((entry, index) => ({
+          entry,
+          index,
+          timestamp: parseCacheDateTime(entry?.cached_at ?? entry?.cachedAt)
+        }))
+        .sort((a, b) => {
+          if (b.timestamp !== a.timestamp) return b.timestamp - a.timestamp;
+          return b.index - a.index;
+        });
+
+      return ranked[0]?.entry || null;
     };
 
     const fetchPricePrediction = async () => {
@@ -631,10 +687,22 @@ export default {
       try {
         const cacheResponse = await stockApi.getPricePredictionCache(tsCode);
         if (requestId !== latestPredictionRequestId.value) return;
-        cacheHit = hasMatchingCacheEntry(cacheResponse, requestPayload);
-        predictionStatusText.value = cacheHit
-          ? '命中缓存，正在读取结果...'
-          : '缓存未命中，正在提交预测任务...';
+        const latestCacheEntry = getLatestMatchingCacheEntry(cacheResponse, requestPayload);
+        cacheHit = !!latestCacheEntry;
+        if (latestCacheEntry?.result && typeof latestCacheEntry.result === 'object') {
+          try {
+            applyPredictionResult(latestCacheEntry.result);
+            predictionStatusText.value = '已读取最新缓存预测结果';
+            return;
+          } catch (cacheError) {
+            console.warn('缓存结果不可用，转为提交预测任务:', cacheError);
+            predictionStatusText.value = '缓存结果不可用，正在提交预测任务...';
+          }
+        } else {
+          predictionStatusText.value = cacheHit
+            ? '命中缓存，正在提交任务拉取详情...'
+            : '缓存未命中，正在提交预测任务...';
+        }
       } catch (error) {
         if (requestId !== latestPredictionRequestId.value) return;
         console.warn('查询预测缓存失败，继续提交任务:', error);
@@ -731,33 +799,29 @@ export default {
         }
       }
 
-      const predictionRangeData = predictionBands.value.map((band, index) => {
-        const xIndex = realCategories.length + index;
-        return {
-          value: [xIndex, band.tradingLow, band.tradingHigh, band.meanClose, band.uncertainty],
-          band
-        };
-      });
-
       const predictionMeanData = [...new Array(realCategories.length).fill(null)];
       const predictionUpperLineData = [...new Array(realCategories.length).fill(null)];
       const predictionLowerLineData = [...new Array(realCategories.length).fill(null)];
+      const predictionBandBaseData = [...new Array(realCategories.length).fill(null)];
+      const predictionBandSpreadData = [...new Array(realCategories.length).fill(null)];
       if (predictionBands.value.length > 0) {
         predictionMeanData.push(...predictionBands.value.map((band) => band.meanClose));
         predictionUpperLineData.push(...predictionBands.value.map((band) => band.tradingHigh));
         predictionLowerLineData.push(...predictionBands.value.map((band) => band.tradingLow));
+        predictionBandBaseData.push(...predictionBands.value.map((band) => band.tradingLow));
+        predictionBandSpreadData.push(
+          ...predictionBands.value.map((band) => Math.max(0, band.tradingHigh - band.tradingLow))
+        );
       } else if (loadingFutureSlots.length > 0) {
         predictionMeanData.push(...new Array(loadingFutureSlots.length).fill(null));
         predictionUpperLineData.push(...new Array(loadingFutureSlots.length).fill(null));
         predictionLowerLineData.push(...new Array(loadingFutureSlots.length).fill(null));
+        predictionBandBaseData.push(...new Array(loadingFutureSlots.length).fill(null));
+        predictionBandSpreadData.push(...new Array(loadingFutureSlots.length).fill(null));
       }
 
+      const hasPredictionBands = predictionBands.value.length > 0;
       const hasPredictionArea = predictedCategories.length > 0;
-      const predictionRangeTone = predictionSignal.value === 'bearish'
-        ? '22, 163, 74'
-        : predictionSignal.value === 'bullish'
-          ? '220, 38, 38'
-          : '29, 78, 216';
 
       chartInstance.value.setOption(
         {
@@ -792,19 +856,18 @@ export default {
                 ].join('');
               }
 
-              const predictionRow = rows.find(item => item.seriesName === '预测区间阴影');
               const axisIndex = Number.isInteger(rows[0]?.dataIndex) ? rows[0].dataIndex : -1;
               const fallbackBand = axisIndex >= realCategories.length
                 ? predictionBands.value[axisIndex - realCategories.length]
                 : null;
-              const band = predictionRow?.data?.band || fallbackBand;
+              const band = fallbackBand;
               if (band) {
                 const confidence = getConfidenceRatio(band.uncertainty);
                 return [
                   `<div style="margin-bottom:6px;font-weight:600;">${band.date || `T+${band.step}`}</div>`,
-                  `<div>range_low：${formatPrice(band.tradingLow)}</div>`,
-                  `<div>range_high：${formatPrice(band.tradingHigh)}</div>`,
-                  `<div>mean_close：<span style="color:#1d4ed8;font-weight:700;">${formatPrice(band.meanClose)}</span></div>`,
+                  `<div>预测下界：<span style="color:${PREDICTION_LOWER_COLOR};font-weight:600;">${formatPrice(band.tradingLow)}</span></div>`,
+                  `<div>预测上界：<span style="color:${PREDICTION_UPPER_COLOR};font-weight:600;">${formatPrice(band.tradingHigh)}</span></div>`,
+                  `<div>预测均线：<span style="color:${PREDICTION_MEAN_COLOR};font-weight:700;">${formatPrice(band.meanClose)}</span></div>`,
                   `<div>置信度：<span style="font-weight:600;">${formatRatioPercent(confidence, 1)}</span></div>`
                 ].join('');
               }
@@ -820,10 +883,22 @@ export default {
               return '';
             }
           },
+          legend: {
+            show: hasPredictionBands,
+            top: 0,
+            left: 'center',
+            itemWidth: 14,
+            itemHeight: 8,
+            textStyle: {
+              color: '#64748b',
+              fontSize: 12
+            },
+            data: ['K线', '预测区间', '预测上界', '预测下界', '预测均线']
+          },
           grid: {
             left: '6%',
             right: hasPredictionArea ? '7%' : '4%',
-            top: 26,
+            top: hasPredictionBands ? 56 : 26,
             bottom: 52
           },
           xAxis: {
@@ -928,90 +1003,95 @@ export default {
                 ]
               }
             },
-            ...(predictionRangeData.length > 0
-              ? [
-                  {
-                    name: '预测区间阴影',
-                    type: 'custom',
-                    z: 4,
-                    encode: {
-                      x: 0,
-                      y: [1, 2]
-                    },
-                    data: predictionRangeData,
-                    renderItem: (params, api) => {
-                      const xIndex = api.value(0);
-                      const low = api.value(1);
-                      const high = api.value(2);
-                      const uncertainty = api.value(4);
-                      const center = api.coord([xIndex, (low + high) / 2]);
-                      const highPoint = api.coord([xIndex, high])[1];
-                      const lowPoint = api.coord([xIndex, low])[1];
-                      const top = Math.min(highPoint, lowPoint);
-                      const height = Math.max(2, Math.abs(lowPoint - highPoint));
-                      const halfWidth = Math.max(7, Math.min(18, api.size([1, 0])[0] * 0.34));
-                      const opacity = getRangeOpacity(uncertainty);
-                      return {
-                        type: 'rect',
-                        shape: {
-                          x: center[0] - halfWidth,
-                          y: top,
-                          width: halfWidth * 2,
-                          height
-                        },
-                        style: {
-                          fill: `rgba(${predictionRangeTone}, ${opacity})`,
-                          stroke: `rgba(${predictionRangeTone}, ${Math.min(opacity + 0.18, 0.9)})`,
-                          lineWidth: 1
-                        }
-                      };
-                    }
-                  }
-                ]
-              : []),
             ...(predictionBands.value.length > 0
               ? [
                   {
-                    name: '预测上沿',
+                    name: '__预测区间基线',
                     type: 'line',
-                    z: 5,
+                    z: 3,
+                    stack: 'prediction-band',
+                    data: predictionBandBaseData,
+                    symbol: 'none',
+                    showSymbol: false,
+                    connectNulls: false,
+                    lineStyle: {
+                      opacity: 0
+                    },
+                    areaStyle: {
+                      opacity: 0
+                    },
+                    emphasis: {
+                      disabled: true
+                    },
+                    tooltip: {
+                      show: false
+                    }
+                  },
+                  {
+                    name: '预测区间',
+                    type: 'line',
+                    z: 4,
+                    stack: 'prediction-band',
+                    data: predictionBandSpreadData,
+                    symbol: 'none',
+                    showSymbol: false,
+                    connectNulls: false,
+                    lineStyle: {
+                      opacity: 0
+                    },
+                    areaStyle: {
+                      color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                        { offset: 0, color: 'rgba(239, 68, 68, 0.20)' },
+                        { offset: 1, color: 'rgba(20, 184, 166, 0.20)' }
+                      ])
+                    },
+                    tooltip: {
+                      show: false
+                    }
+                  },
+                  {
+                    name: '预测上界',
+                    type: 'line',
+                    z: 6,
                     data: predictionUpperLineData,
                     showSymbol: false,
                     connectNulls: false,
                     lineStyle: {
-                      color: `rgba(${predictionRangeTone}, 0.52)`,
-                      width: 1.2
+                      color: PREDICTION_UPPER_COLOR,
+                      width: 1.8,
+                      type: 'dashed'
                     }
                   },
                   {
-                    name: '预测下沿',
+                    name: '预测下界',
                     type: 'line',
-                    z: 5,
+                    z: 6,
                     data: predictionLowerLineData,
                     showSymbol: false,
                     connectNulls: false,
                     lineStyle: {
-                      color: `rgba(${predictionRangeTone}, 0.52)`,
-                      width: 1.2
+                      color: PREDICTION_LOWER_COLOR,
+                      width: 1.8,
+                      type: 'dashed'
                     }
                   },
                   {
-                    name: '预测收盘均线',
+                    name: '预测均线',
                     type: 'line',
                     z: 7,
                     data: predictionMeanData,
                     showSymbol: true,
                     symbol: 'circle',
-                    symbolSize: 7,
+                    symbolSize: 6,
                     connectNulls: false,
                     lineStyle: {
-                      color: '#1d4ed8',
-                      width: 2.8,
+                      color: PREDICTION_MEAN_COLOR,
+                      width: 2.6,
                       type: 'solid'
                     },
                     itemStyle: {
                       color: '#ffffff',
-                      borderColor: '#1d4ed8',
+                      borderColor: PREDICTION_MEAN_COLOR,
                       borderWidth: 2
                     }
                   }
@@ -1212,24 +1292,24 @@ export default {
     display: flex;
     align-items: center;
     gap: 12px;
-    min-height: 34px;
+    min-height: 56px;
     padding: 8px 12px;
     border-radius: 12px;
     border: 1px solid #dbeafe;
     background: linear-gradient(90deg, #eff6ff, #f8fafc);
   }
 
-  .signal-text {
-    color: #334155;
-    font-size: 13px;
-    font-weight: 500;
-    line-height: 1.4;
-    white-space: nowrap;
+  .signal-decision {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
   }
 
   .signal-value {
-    margin-left: 4px;
-    font-size: 15px;
+    margin: 0;
+    font-size: 2rem;
+    line-height: 1;
     font-weight: 700;
 
     &.is-bullish {
@@ -1243,6 +1323,47 @@ export default {
     &.is-neutral {
       color: #475569;
     }
+  }
+
+  .signal-help {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1px solid #94a3b8;
+    background: #ffffff;
+    color: #475569;
+    font-size: 12px;
+    line-height: 1;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+  }
+
+  .signal-help:hover {
+    border-color: #64748b;
+    color: #334155;
+  }
+
+  :deep(.prediction-help-content) {
+    font-size: 12px;
+    color: #334155;
+    line-height: 1.55;
+  }
+
+  :deep(.prediction-help-content p) {
+    margin: 0;
+  }
+
+  :deep(.prediction-help-content p + p) {
+    margin-top: 8px;
+  }
+
+  :deep(.prediction-help-content .risk-tip) {
+    color: #7f1d1d;
   }
 
   .signal-progress {
@@ -1408,9 +1529,12 @@ export default {
       gap: 8px;
     }
 
-    .signal-text {
+    .signal-decision {
       width: 100%;
-      white-space: normal;
+    }
+
+    .signal-value {
+      margin-bottom: 2px;
     }
 
     .signal-progress {

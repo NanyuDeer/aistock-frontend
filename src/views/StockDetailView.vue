@@ -216,83 +216,87 @@
 
       <div class="stock-tabs-section">
         <h3 class="section-title">基本面</h3>
-        <div class="forecast-content" v-loading="loadingForecast">
-          <div class="forecast-toolbar">
-            <el-button
-              size="small"
-              type="primary"
-              plain
-              @click="refreshForecast"
-              :loading="loadingForecast"
-              :disabled="!isLoggedIn"
-              class="refresh-btn"
-            >
-              <img v-if="!loadingForecast" src="@/assets/refresh.svg" alt="刷新" class="button-icon" />
-              刷新预测
-            </el-button>
-          </div>
-          <div v-if="forecastData && (forecastData.symbol || forecastData['股票代码'])">
-            
-            <!-- 总结部分 -->
-            <div class="forecast-summary-card">
-              <div class="summary-text">{{ forecastSummary }}</div>
-            </div>
+        <el-tabs v-model="activeFundamentalTab">
+          <el-tab-pane label="业绩预测" name="forecast">
+            <div class="forecast-content" v-loading="loadingForecast">
+              <div class="forecast-toolbar">
+                <el-button
+                  size="small"
+                  type="primary"
+                  plain
+                  @click="refreshForecast"
+                  :loading="loadingForecast"
+                  :disabled="!isLoggedIn"
+                  class="refresh-btn"
+                >
+                  <img v-if="!loadingForecast" src="@/assets/refresh.svg" alt="刷新" class="button-icon" />
+                  刷新预测
+                </el-button>
+              </div>
+              <div v-if="forecastData && (forecastData.symbol || forecastData['股票代码'])">
+                
+                <!-- 总结部分 -->
+                <div class="forecast-summary-card">
+                  <div class="summary-text">{{ forecastSummary }}</div>
+                </div>
 
-            <!-- 详细指标图表 -->
-            <div v-if="hasForecastChartData" class="forecast-charts-container">
-               <div ref="forecastChartRef" class="forecast-chart"></div>
-            </div>
+                <!-- 详细指标图表 -->
+                <div v-if="hasForecastChartData" class="forecast-charts-container">
+                   <div ref="forecastChartRef" class="forecast-chart"></div>
+                </div>
 
-            <!-- 机构预测详细列表 -->
-            <!-- <div v-if="forecastData.业绩预测详表_机构 && forecastData.业绩预测详表_机构.length > 0">
-              <div class="forecast-list" :class="{ 'is-collapsed': !isForecastExpanded && forecastData.业绩预测详表_机构.length > 1 }">
-                <div v-for="(item, index) in forecastData.业绩预测详表_机构" :key="index" class="forecast-item">
-                  <div class="forecast-header">
-                    <div class="institution-info">
-                      <span class="institution-name">{{ item.机构名称 }}</span>
-                      <span class="researcher">{{ item.研究员 }}</span>
+                <!-- 机构预测详细列表 -->
+                <!-- <div v-if="forecastData.业绩预测详表_机构 && forecastData.业绩预测详表_机构.length > 0">
+                  <div class="forecast-list" :class="{ 'is-collapsed': !isForecastExpanded && forecastData.业绩预测详表_机构.length > 1 }">
+                    <div v-for="(item, index) in forecastData.业绩预测详表_机构" :key="index" class="forecast-item">
+                      <div class="forecast-header">
+                        <div class="institution-info">
+                          <span class="institution-name">{{ item.机构名称 }}</span>
+                          <span class="researcher">{{ item.研究员 }}</span>
+                        </div>
+                        <span class="report-date">{{ item.报告日期 }}</span>
+                      </div>
+                      
+                      <div class="forecast-details-grid">
+                        <div class="forecast-col">
+                          <div class="col-title">每股收益预测 (元)</div>
+                          <div class="col-row" v-for="(val, key) in item['预测年报每股收益（元）']" :key="key">
+                            <span class="year-label">{{ key.replace('预测', '') }}</span>
+                            <span class="val-num">{{ val }}</span>
+                          </div>
+                        </div>
+                        <div class="forecast-col">
+                          <div class="col-title">净利润预测 (元)</div>
+                          <div class="col-row" v-for="(val, key) in item['预测年报净利润（元）']" :key="key">
+                            <span class="year-label">{{ key.replace('预测', '') }}</span>
+                            <span class="val-num">{{ val }}</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <span class="report-date">{{ item.报告日期 }}</span>
+                    
+                    <div v-if="!isForecastExpanded && forecastData.业绩预测详表_机构.length > 1" class="expand-mask" @click="isForecastExpanded = true">
+                       <span>展开全部 {{ forecastData.业绩预测详表_机构.length }} 家机构预测 <i class="el-icon-arrow-down"></i></span>
+                    </div>
                   </div>
                   
-                  <div class="forecast-details-grid">
-                    <div class="forecast-col">
-                      <div class="col-title">每股收益预测 (元)</div>
-                      <div class="col-row" v-for="(val, key) in item['预测年报每股收益（元）']" :key="key">
-                        <span class="year-label">{{ key.replace('预测', '') }}</span>
-                        <span class="val-num">{{ val }}</span>
-                      </div>
-                    </div>
-                    <div class="forecast-col">
-                      <div class="col-title">净利润预测 (元)</div>
-                      <div class="col-row" v-for="(val, key) in item['预测年报净利润（元）']" :key="key">
-                        <span class="year-label">{{ key.replace('预测', '') }}</span>
-                        <span class="val-num">{{ val }}</span>
-                      </div>
-                    </div>
+                  <div v-if="isForecastExpanded" class="collapse-action" @click="isForecastExpanded = false">
+                    <span>收起 <i class="el-icon-arrow-up"></i></span>
                   </div>
                 </div>
-                
-                <div v-if="!isForecastExpanded && forecastData.业绩预测详表_机构.length > 1" class="expand-mask" @click="isForecastExpanded = true">
-                   <span>展开全部 {{ forecastData.业绩预测详表_机构.length }} 家机构预测 <i class="el-icon-arrow-down"></i></span>
-                </div>
+                <el-empty v-else description="暂无机构预测详情"></el-empty> -->
+
               </div>
+              <el-empty v-else-if="!loadingForecast" description="暂无业绩预测数据"></el-empty>
               
-              <div v-if="isForecastExpanded" class="collapse-action" @click="isForecastExpanded = false">
-                <span>收起 <i class="el-icon-arrow-up"></i></span>
+              <div class="forecast-footer">
+                <a :href="`https://stockpage.10jqka.com.cn/${stockInfo.code}/worth/#forecast`" target="_blank" class="source-link">
+                  <img src="https://s.thsi.cn/cd/news-p-fe-app-news-flow-home/home/_next/static/media/logo.1c8fc73f.png" alt="同花顺 Logo" class="source-logo">
+                </a>
               </div>
             </div>
-            <el-empty v-else description="暂无机构预测详情"></el-empty> -->
-
-          </div>
-          <el-empty v-else-if="!loadingForecast" description="暂无业绩预测数据"></el-empty>
-          
-          <div class="forecast-footer">
-            <a :href="`https://stockpage.10jqka.com.cn/${stockInfo.code}/worth/#forecast`" target="_blank" class="source-link">
-              <img src="https://s.thsi.cn/cd/news-p-fe-app-news-flow-home/home/_next/static/media/logo.1c8fc73f.png" alt="同花顺 Logo" class="source-logo">
-            </a>
-          </div>
-        </div>
+          </el-tab-pane>
+        </el-tabs>
       </div>
       
       <div class="stock-data-section">
@@ -625,6 +629,7 @@ export default {
     const newsDetailDialogVisible = ref(false);
     const forecastData = ref({});
     const forecastSummary = ref('');
+    const activeFundamentalTab = ref('forecast');
     const loadingForecast = ref(false);
     const newsLimit = ref(5);
     const newsCursor = ref(0);
@@ -2004,6 +2009,7 @@ export default {
 
     return {
       stockInfo,
+      activeFundamentalTab,
       isFavorite,
       addingToFavorites,
       stockNews,
