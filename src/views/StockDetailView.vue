@@ -184,7 +184,7 @@
         </div>
         <div class="info-news-block">
           <div class="stock-news-list">
-            <div v-for="(news, index) in stockNews" :key="index" class="news-item">
+            <div v-for="(news, index) in stockNews.slice(0, 3)" :key="index" class="news-item">
               <h4 @click="viewNewsDetail(news)" class="news-title">{{ news.title }}</h4>
               <p v-if="news.summary" class="news-summary">{{ news.summary }}</p>
               <div class="news-footer">
@@ -195,18 +195,6 @@
               </div>
             </div>
             <el-empty v-if="stockNews.length === 0" description="暂无相关资讯" />
-            <div v-if="stockNews.length > 0" class="news-actions">
-              <el-button
-                type="primary"
-                plain
-                @click="loadMoreNews"
-                :disabled="!hasMoreNews"
-                :loading="loadingMoreNews"
-              >
-                {{ hasMoreNews ? '加载更多' : '已加载全部' }}
-              </el-button>
-              <span class="news-total">已加载 {{ stockNews.length }}/{{ totalNews }}</span>
-            </div>
           </div>
         </div>
       </div>
@@ -631,7 +619,7 @@ export default {
     const forecastSummary = ref('');
     const activeFundamentalTab = ref('forecast');
     const loadingForecast = ref(false);
-    const newsLimit = ref(5);
+    const newsLimit = ref(3);
     const newsCursor = ref(0);
     const totalNews = ref(0);
     const loadingMoreNews = ref(false);

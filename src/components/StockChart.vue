@@ -41,8 +41,8 @@
               <span class="signal-progress-fill" :style="predictionProbabilityStyle"></span>
             </div>
             <span class="signal-probability">{{ predictionProbabilityPercentText }}</span>
+            <span class="signal-time">{{ predictionTimeText }}</span>
           </div>
-          <span class="signal-time">{{ predictionTimeText }}</span>
         </div>
         <p v-if="predictionLoading && predictionStatusText" class="prediction-status">{{ predictionStatusText }}</p>
         <p v-if="predictionError" class="prediction-error">{{ predictionError }}</p>
@@ -289,6 +289,14 @@ export default {
     const getConfidenceRatio = (uncertainty) => {
       const safe = Number.isFinite(uncertainty) ? Math.max(0, uncertainty) : 0;
       return Math.max(0, Math.min(1, 1 - safe / 0.2));
+    };
+
+    const getPredictionDotSize = (uncertainty) => {
+      const parsed = toFiniteNumber(uncertainty);
+      const confidence = parsed === null
+        ? 0.5
+        : Math.max(0, Math.min(1, 1 - parsed));
+      return 4 + confidence * 10;
     };
 
     const predictionTsCode = computed(() => resolveTsCode(props.stockCode, props.stockMarket));
@@ -843,7 +851,12 @@ export default {
       const predictionBandBaseData = [...new Array(realCategories.length).fill(null)];
       const predictionBandSpreadData = [...new Array(realCategories.length).fill(null)];
       if (predictionBands.value.length > 0) {
-        predictionMeanData.push(...predictionBands.value.map((band) => band.meanClose));
+        predictionMeanData.push(
+          ...predictionBands.value.map((band) => ({
+            value: band.meanClose,
+            uncertainty: band.uncertainty
+          }))
+        );
         predictionUpperLineData.push(...predictionBands.value.map((band) => band.tradingHigh));
         predictionLowerLineData.push(...predictionBands.value.map((band) => band.tradingLow));
         predictionBandBaseData.push(...predictionBands.value.map((band) => band.tradingLow));
@@ -1120,7 +1133,13 @@ export default {
                     data: predictionMeanData,
                     showSymbol: true,
                     symbol: 'circle',
-                    symbolSize: 6,
+                    symbolSize: (_value, params) => {
+                      const point = params?.data;
+                      const uncertainty = point && typeof point === 'object'
+                        ? point.uncertainty
+                        : null;
+                      return getPredictionDotSize(uncertainty);
+                    },
                     connectNulls: false,
                     lineStyle: {
                       color: PREDICTION_MEAN_COLOR,
@@ -1334,7 +1353,7 @@ export default {
     align-items: center;
     gap: 12px;
     min-height: 0;
-    padding: 0;
+    padding: 20px 0;
     border: 0;
     background: transparent;
   }
@@ -1501,10 +1520,11 @@ export default {
     gap: 10px;
     margin-left: auto;
     min-width: 0;
+    justify-content: flex-end;
   }
 
   .signal-time {
-    margin-left: 6px;
+    margin-left: 2px;
     flex-shrink: 0;
     font-size: 12px;
     color: #64748b;
@@ -1658,6 +1678,7 @@ export default {
     .signal-progress-wrap {
       width: 100%;
       margin-left: 0;
+      justify-content: flex-start;
     }
 
     .signal-progress {
@@ -1667,7 +1688,7 @@ export default {
     }
 
     .signal-time {
-      margin-left: auto;
+      margin-left: 2px;
     }
 
     .stock-chart {
