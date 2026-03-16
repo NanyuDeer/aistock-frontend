@@ -184,7 +184,7 @@
         </div>
         <div class="info-news-block">
           <div class="stock-news-list">
-            <div v-for="(news, index) in stockNews.slice(0, 3)" :key="index" class="news-item">
+            <div v-for="(news, index) in stockNews" :key="index" class="news-item">
               <h4 @click="viewNewsDetail(news)" class="news-title">{{ news.title }}</h4>
               <p v-if="news.summary" class="news-summary">{{ news.summary }}</p>
               <div class="news-footer">
@@ -195,6 +195,19 @@
               </div>
             </div>
             <el-empty v-if="stockNews.length === 0" description="暂无相关资讯" />
+            <div v-if="stockNews.length > 0" class="news-actions">
+              <span class="news-total">已显示 {{ stockNews.length }} / {{ totalNews }} 条</span>
+              <el-button
+                v-if="hasMoreNews"
+                size="small"
+                plain
+                class="news-more-btn"
+                :loading="loadingMoreNews"
+                @click="loadMoreNews"
+              >
+                查看更多
+              </el-button>
+            </div>
           </div>
         </div>
       </div>

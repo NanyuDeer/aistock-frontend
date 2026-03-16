@@ -1,64 +1,64 @@
 <template>
   <div class="stock-chart-section">
     <div class="chart-header">
-      <div class="chart-header-main">
+      <div class="chart-header-top">
         <div class="title-group">
           <h3 class="section-title">技术面</h3>
           <span class="adjustment-tag">前复权历史K线</span>
         </div>
-        <div class="signal-row">
-          <div class="signal-decision">
-            <strong :class="['signal-value', `is-${predictionSignal}`]">{{ predictionSignalText }}</strong>
-            <el-popover trigger="click" placement="top-start" :width="360" popper-class="prediction-help-popover">
-              <template #reference>
-                <button type="button" class="signal-help" aria-label="查看技术面预测说明">?</button>
-              </template>
-              <div class="prediction-help-content">
-                <div class="help-title-row">
-                  <span class="help-chip">Kronos</span>
-                  <span class="help-title">技术面预测说明</span>
-                </div>
-                <p class="help-meta">
-                  当前输入窗口：最近
-                  <strong>{{ predictionLookbackDays }}</strong>
-                  天历史K线；预测范围：未来
-                  <strong>{{ predictionPredLenDays }}</strong>
-                  个交易日。
-                </p>
-                <p>
-                  基于清华大学 Kronos 金融 K 线基础大模型
-                  （<a href="https://arxiv.org/abs/2508.02739" target="_blank" rel="noopener noreferrer">https://arxiv.org/abs/2508.02739</a>）
-                  进行A股价格区间预测。
-                </p>
-                <p class="risk-tip">
-                  风险提示：技术面预测依赖历史价格统计规律与模型假设，受政策、业绩、流动性和突发事件影响较大，存在偏差风险，不构成任何投资建议。
-                </p>
-              </div>
-            </el-popover>
-          </div>
-          <div class="signal-progress-wrap">
-            <div class="signal-progress" :aria-label="`决策概率 ${predictionProbabilityPercentText}`">
-              <span class="signal-progress-fill" :style="predictionProbabilityStyle"></span>
-            </div>
-            <span class="signal-probability">{{ predictionProbabilityPercentText }}</span>
-            <span class="signal-time">{{ predictionTimeText }}</span>
-          </div>
+        <div class="period-switch">
+          <button
+            v-for="option in periodOptions"
+            :key="option.klt"
+            type="button"
+            class="period-button"
+            :class="{ 'is-active': selectedKlt === option.klt }"
+            @click="handlePeriodChange(option.klt)"
+          >
+            {{ option.label }}
+          </button>
         </div>
-        <p v-if="predictionLoading && predictionStatusText" class="prediction-status">{{ predictionStatusText }}</p>
-        <p v-if="predictionError" class="prediction-error">{{ predictionError }}</p>
       </div>
-      <div class="period-switch">
-        <button
-          v-for="option in periodOptions"
-          :key="option.klt"
-          type="button"
-          class="period-button"
-          :class="{ 'is-active': selectedKlt === option.klt }"
-          @click="handlePeriodChange(option.klt)"
-        >
-          {{ option.label }}
-        </button>
+      <div class="signal-row">
+        <div class="signal-decision">
+          <strong :class="['signal-value', `is-${predictionSignal}`]">{{ predictionSignalText }}</strong>
+          <el-popover trigger="click" placement="top-start" :width="360" popper-class="prediction-help-popover">
+            <template #reference>
+              <button type="button" class="signal-help" aria-label="查看技术面预测说明">?</button>
+            </template>
+            <div class="prediction-help-content">
+              <div class="help-title-row">
+                <span class="help-chip">Kronos</span>
+                <span class="help-title">技术面预测说明</span>
+              </div>
+              <p class="help-meta">
+                当前输入窗口：最近
+                <strong>{{ predictionLookbackDays }}</strong>
+                天历史K线；预测范围：未来
+                <strong>{{ predictionPredLenDays }}</strong>
+                个交易日。
+              </p>
+              <p>
+                基于清华大学 Kronos 金融 K 线基础大模型
+                （<a href="https://arxiv.org/abs/2508.02739" target="_blank" rel="noopener noreferrer">https://arxiv.org/abs/2508.02739</a>）
+                进行A股价格区间预测。
+              </p>
+              <p class="risk-tip">
+                风险提示：技术面预测依赖历史价格统计规律与模型假设，受政策、业绩、流动性和突发事件影响较大，存在偏差风险，不构成任何投资建议。
+              </p>
+            </div>
+          </el-popover>
+        </div>
+        <div class="signal-progress-wrap">
+          <div class="signal-progress" :aria-label="`决策概率 ${predictionProbabilityPercentText}`">
+            <span class="signal-progress-fill" :style="predictionProbabilityStyle"></span>
+          </div>
+          <span class="signal-probability">{{ predictionProbabilityPercentText }}</span>
+          <span class="signal-time">{{ predictionTimeText }}</span>
+        </div>
       </div>
+      <p v-if="predictionLoading && predictionStatusText" class="prediction-status">{{ predictionStatusText }}</p>
+      <p v-if="predictionError" class="prediction-error">{{ predictionError }}</p>
     </div>
 
     <div class="stock-chart-wrap">
@@ -873,6 +873,17 @@ export default {
 
       const hasPredictionBands = predictionBands.value.length > 0;
       const hasPredictionArea = predictedCategories.length > 0;
+      const formatPredictionBandTooltip = (band) => {
+        if (!band) return '';
+        const confidence = getConfidenceRatio(band.uncertainty);
+        return [
+          `<div style="margin-bottom:6px;font-weight:600;">${band.date || `T+${band.step}`}</div>`,
+          `<div>预测最低价：<span style="color:${PREDICTION_LOWER_COLOR};font-weight:600;">${formatPrice(band.tradingLow)}</span></div>`,
+          `<div>预测最高价：<span style="color:${PREDICTION_UPPER_COLOR};font-weight:600;">${formatPrice(band.tradingHigh)}</span></div>`,
+          `<div>预测收盘价：<span style="color:${PREDICTION_MEAN_COLOR};font-weight:700;">${formatPrice(band.meanClose)}</span></div>`,
+          `<div>置信度：<span style="font-weight:600;">${formatRatioPercent(confidence, 1)}</span></div>`
+        ].join('');
+      };
 
       chartInstance.value.setOption(
         {
@@ -913,14 +924,7 @@ export default {
                 : null;
               const band = fallbackBand;
               if (band) {
-                const confidence = getConfidenceRatio(band.uncertainty);
-                return [
-                  `<div style="margin-bottom:6px;font-weight:600;">${band.date || `T+${band.step}`}</div>`,
-                  `<div>预测下界：<span style="color:${PREDICTION_LOWER_COLOR};font-weight:600;">${formatPrice(band.tradingLow)}</span></div>`,
-                  `<div>预测上界：<span style="color:${PREDICTION_UPPER_COLOR};font-weight:600;">${formatPrice(band.tradingHigh)}</span></div>`,
-                  `<div>预测收盘价（均值）：<span style="color:${PREDICTION_MEAN_COLOR};font-weight:700;">${formatPrice(band.meanClose)}</span></div>`,
-                  `<div>置信度：<span style="font-weight:600;">${formatRatioPercent(confidence, 1)}</span></div>`
-                ].join('');
+                return formatPredictionBandTooltip(band);
               }
 
               const axisLabel = rows[0]?.axisValueLabel || rows[0]?.axisValue || '';
@@ -944,7 +948,7 @@ export default {
               color: '#64748b',
               fontSize: 12
             },
-            data: ['K线', '预测区间', '预测上界', '预测下界', '预测收盘价（均值）']
+            data: ['K线', '预测区间', '预测最高价', '预测最低价', '预测收盘价']
           },
           grid: {
             left: '6%',
@@ -1101,7 +1105,7 @@ export default {
                     }
                   },
                   {
-                    name: '预测上界',
+                    name: '预测最高价',
                     type: 'line',
                     z: 6,
                     data: predictionUpperLineData,
@@ -1114,7 +1118,7 @@ export default {
                     }
                   },
                   {
-                    name: '预测下界',
+                    name: '预测最低价',
                     type: 'line',
                     z: 6,
                     data: predictionLowerLineData,
@@ -1127,7 +1131,7 @@ export default {
                     }
                   },
                   {
-                    name: '预测收盘价（均值）',
+                    name: '预测收盘价',
                     type: 'line',
                     z: 7,
                     data: predictionMeanData,
@@ -1150,6 +1154,17 @@ export default {
                       color: '#ffffff',
                       borderColor: PREDICTION_MEAN_COLOR,
                       borderWidth: 2
+                    },
+                    tooltip: {
+                      trigger: 'item',
+                      formatter: (params) => {
+                        const pointIndex = Number(params?.dataIndex);
+                        if (!Number.isInteger(pointIndex)) return '';
+                        const bandIndex = pointIndex - realCategories.length;
+                        if (bandIndex < 0) return '';
+                        const band = predictionBands.value[bandIndex];
+                        return formatPredictionBandTooltip(band);
+                      }
                     }
                   }
                 ]
@@ -1311,18 +1326,18 @@ export default {
 
   .chart-header {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 12px;
+    flex-direction: column;
+    gap: 8px;
     margin-bottom: 12px;
   }
 
-  .chart-header-main {
-    flex: 1;
+  .chart-header-top {
+    width: 100%;
     min-width: 0;
     display: flex;
-    flex-direction: column;
-    gap: 8px;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
   }
 
   .title-group {
@@ -1349,9 +1364,12 @@ export default {
   }
 
   .signal-row {
-    display: flex;
+    width: 100%;
+    align-self: stretch;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    gap: 12px;
+    column-gap: 12px;
     min-height: 0;
     padding: 20px 0;
     border: 0;
@@ -1515,10 +1533,11 @@ export default {
   }
 
   .signal-progress-wrap {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 10px;
     margin-left: auto;
+    justify-self: end;
     min-width: 0;
     justify-content: flex-end;
   }
@@ -1550,7 +1569,6 @@ export default {
   }
 
   .period-switch {
-    margin-left: auto;
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;
@@ -1663,6 +1681,7 @@ export default {
     padding: 14px 14px 12px;
 
     .signal-row {
+      display: flex;
       flex-wrap: wrap;
       gap: 8px;
     }
@@ -1677,7 +1696,7 @@ export default {
 
     .signal-progress-wrap {
       width: 100%;
-      margin-left: 0;
+      justify-self: auto;
       justify-content: flex-start;
     }
 
@@ -1706,7 +1725,7 @@ export default {
 
 @media (max-width: 576px) {
   .stock-chart-section {
-    .chart-header {
+    .chart-header-top {
       flex-direction: column;
       align-items: stretch;
     }
