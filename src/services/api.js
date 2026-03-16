@@ -347,35 +347,35 @@ export const stockApi = {
     }).then(res => res.data);
   },
 
-  // 查询股票价格预测缓存
-  getPricePredictionCache: (tsCode) => {
-    const safeTsCode = String(tsCode || '').trim();
-    if (!safeTsCode) {
-      return Promise.reject(new Error('缺少 ts_code 参数'));
+  // 查询股票价格预测缓存（新版 symbol 参数）
+  getPricePredictionCache: (symbol) => {
+    const safeSymbol = String(symbol || '').trim();
+    if (!safeSymbol) {
+      return Promise.reject(new Error('缺少 symbol 参数'));
     }
     return axios.get(`${PREDICTION_API_BASE_URL}/api/v1/cache`, {
       timeout: 8000,
       params: {
-        ts_code: safeTsCode
+        symbol: safeSymbol
       }
     }).then(res => res.data);
   },
 
   // 提交/读取股票价格预测任务（命中缓存时会快速返回）
   createPricePrediction: ({
-    tsCode,
-    lookback = 512,
+    symbol,
+    lookback = 256,
     predLen = 5,
     sampleCount = 30,
     mode = 'simple',
     includeVolume = false
   } = {}) => {
-    const safeTsCode = String(tsCode || '').trim();
-    if (!safeTsCode) {
-      return Promise.reject(new Error('缺少 ts_code 参数'));
+    const safeSymbol = String(symbol || '').trim();
+    if (!safeSymbol) {
+      return Promise.reject(new Error('缺少 symbol 参数'));
     }
     return axios.post(`${PREDICTION_API_BASE_URL}/api/v1/predict`, {
-      ts_code: safeTsCode,
+      symbol: safeSymbol,
       lookback,
       pred_len: predLen,
       sample_count: sampleCount,

@@ -187,37 +187,15 @@ export default {
       return Math.max(0, Math.min(1, ratio));
     };
 
-    const normalizeMarketCode = (value) => {
-      const raw = String(value || '').trim().toUpperCase();
-      if (!raw) return '';
-      if (raw.includes('SH')) return 'SH';
-      if (raw.includes('SZ')) return 'SZ';
-      if (raw.includes('BJ')) return 'BJ';
-      return '';
-    };
-
-    const inferMarketCode = (code) => {
-      const text = String(code || '').trim();
-      if (!text) return '';
-      if (/^(60|68|90|50|51|52|56|58)/.test(text)) return 'SH';
-      if (/^(00|30|20)/.test(text)) return 'SZ';
-      if (/^(43|83|87|92)/.test(text)) return 'BJ';
-      return '';
-    };
-
-    const resolveTsCode = (rawCode, marketHint) => {
+    const resolvePredictionSymbol = (rawCode) => {
       const source = String(rawCode || '').trim().toUpperCase();
       if (!source) return '';
       if (/^\d{6}\.(SH|SZ|BJ)$/.test(source)) {
         return source;
       }
-      const digits = source.replace(/\D/g, '').slice(0, 6);
-      if (!/^\d{6}$/.test(digits)) {
-        return '';
-      }
-      const market = normalizeMarketCode(marketHint) || inferMarketCode(digits);
-      if (!market) return '';
-      return `${digits}.${market}`;
+      if (/^\d{6}$/.test(source)) return source;
+      const digitsMatch = source.match(/\d{6}/);
+      return digitsMatch ? digitsMatch[0] : '';
     };
 
     const formatLocalDateTime = (date) => {
@@ -299,7 +277,7 @@ export default {
       return 4 + confidence * 10;
     };
 
-    const predictionTsCode = computed(() => resolveTsCode(props.stockCode, props.stockMarket));
+    const predictionSymbol = computed(() => resolvePredictionSymbol(props.stockCode));
 
     const predictionBands = computed(() => {
       const bands = predictionResult.value?.bands;
@@ -479,8 +457,7 @@ export default {
       return Array.isArray(payload.bands)
         || !!payload.summary
         || !!payload.direction
-        || !!payload.ts_code
-        || !!payload.tsCode;
+        || !!payload.symbol;
     };
 
     const unwrapPredictionPayload = (payload, depth = 0) => {
@@ -537,30 +514,18 @@ export default {
         .filter(item => Number.isFinite(item.meanClose))
         .sort((a, b) => a.step - b.step);
 
-      const directionProbability = normalizeProbability(
-        rawDirection.probability
-        ?? rawDirection.direction_probability
-        ?? source.direction_probability
-        ?? source.probability
-      );
-      const confidenceProbability = normalizeProbability(
-        rawDirection.confidence
-        ?? source.confidence
-        ?? source.model_confidence
-      );
+      const directionProbability = normalizeProbability(rawDirection.probability);
 
       return {
-        tsCode: String(source.ts_code || source.tsCode || ''),
+        symbol: String(source.symbol || ''),
         baseDate: String(source.base_date || source.baseDate || ''),
         lookback: Number(source.lookback || source.input_days || source.inputDays || PREDICTION_DEFAULTS.lookback),
         predLen: Number(source.pred_len || source.predLen || bands.length || 0),
         cached: !!source.cached,
         cacheExpiresAt: String(source.cache_expires_at || source.cacheExpiresAt || ''),
         direction: {
-          signal: String(rawDirection.signal || source.signal || '').toLowerCase(),
-          probability: (directionProbability !== null && directionProbability > 0)
-            ? directionProbability
-            : (confidenceProbability ?? directionProbability)
+          signal: String(rawDirection.signal || '').toLowerCase(),
+          probability: directionProbability
         },
         summary: {
           meanClose: toFiniteNumber(summary.mean_close ?? summary.meanClose),
@@ -660,8 +625,8 @@ export default {
     const getLatestMatchingCacheEntry = (cacheResponse, requestPayload) => {
       const entries = Array.isArray(cacheResponse?.entries) ? cacheResponse.entries : [];
       const matchingEntries = entries.filter((entry) => {
-        const tsCode = String(entry?.ts_code || '').trim().toUpperCase();
-        if (tsCode !== requestPayload.tsCode.toUpperCase()) return false;
+        const symbol = String(entry?.symbol || '').trim().toUpperCase();
+        if (symbol !== requestPayload.symbol.toUpperCase()) return false;
 
         const lookback = Number(entry?.lookback);
         const predLen = Number(entry?.pred_len);
@@ -693,19 +658,19 @@ export default {
     };
 
     const fetchPricePrediction = async () => {
-      const tsCode = predictionTsCode.value;
-      if (!tsCode) {
+      const symbol = predictionSymbol.value;
+      if (!symbol) {
         predictionLoading.value = false;
         predictionResult.value = null;
         predictionTaskId.value = '';
         predictionStatusText.value = '';
-        predictionError.value = '当前股票代码无法映射为预测接口 ts_code';
+        predictionError.value = '当前股票代码无法映射为预测接口 symbol';
         renderChart();
         return;
       }
 
       const requestPayload = {
-        tsCode,
+        symbol,
         lookback: PREDICTION_DEFAULTS.lookback,
         predLen: PREDICTION_DEFAULTS.predLen,
         sampleCount: PREDICTION_DEFAULTS.sampleCount,
@@ -726,7 +691,7 @@ export default {
       let cacheHit = false;
 
       try {
-        const cacheResponse = await stockApi.getPricePredictionCache(tsCode);
+        const cacheResponse = await stockApi.getPricePredictionCache(symbol);
         if (requestId !== latestPredictionRequestId.value) return;
         const latestCacheEntry = getLatestMatchingCacheEntry(cacheResponse, requestPayload);
         cacheHit = !!latestCacheEntry;
@@ -1271,8 +1236,8 @@ export default {
       }
     });
 
-    watch(predictionTsCode, (nextTsCode, prevTsCode) => {
-      if (nextTsCode && nextTsCode !== prevTsCode) {
+    watch(predictionSymbol, (nextSymbol, prevSymbol) => {
+      if (nextSymbol && nextSymbol !== prevSymbol) {
         fetchPricePrediction();
       }
     });
