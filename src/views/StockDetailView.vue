@@ -103,7 +103,7 @@
       </div>
 
       <div class="stock-analysis-section stock-tabs-section">
-        <h3 class="section-title">AI投资建议</h3>
+        <h3 class="section-title">资讯面AI投资建议</h3>
         <div class="analysis-content" :class="{ 'is-loading': showEvaluationOverlay }">
           <div class="analysis-header">
             <div class="analysis-title">
@@ -153,7 +153,7 @@
             <div class="markdown-content" v-html="displayedRiskWarning"></div>
           </div>
 
-          <div v-if="showEvaluationOverlay" class="analysis-loading-overlay" role="status" aria-live="polite" aria-label="AI投资建议生成中">
+          <div v-if="showEvaluationOverlay" class="analysis-loading-overlay" role="status" aria-live="polite" aria-label="资讯面AI投资建议生成中">
             <div class="star-loader" aria-hidden="true">
               <span class="star-core"></span>
               <span class="star-ring"></span>
@@ -297,7 +297,7 @@
       </div>
       
       <!-- 使用新的StockChart组件替代原来的股票图表部分 -->
-      <StockChart :stockCode="stockInfo.code" />
+      <StockChart :stockCode="stockInfo.code" :stockMarket="stockInfo.market" />
       
       <div class="stock-data-section">
         <h3 class="section-title">交易数据</h3>

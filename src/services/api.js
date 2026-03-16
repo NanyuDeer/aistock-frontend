@@ -33,6 +33,7 @@ axiosRetry(axios, retryConfig);
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
   ? 'https://extapi.aistocklink.cn' 
   : 'http://localhost:8000';
+const PREDICTION_API_BASE_URL = 'https://yingfeng64-kronos-api.hf.space';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -343,6 +344,56 @@ export const stockApi = {
     if (endDate) params.append('endDate', String(endDate));
     return axios.get(`https://extapi.aistocklink.cn/api/cn/stock/quotes/kline?${params.toString()}`, {
       timeout: 8000
+    }).then(res => res.data);
+  },
+
+  // 查询股票价格预测缓存
+  getPricePredictionCache: (tsCode) => {
+    const safeTsCode = String(tsCode || '').trim();
+    if (!safeTsCode) {
+      return Promise.reject(new Error('缺少 ts_code 参数'));
+    }
+    return axios.get(`${PREDICTION_API_BASE_URL}/api/v1/cache`, {
+      timeout: 8000,
+      params: {
+        ts_code: safeTsCode
+      }
+    }).then(res => res.data);
+  },
+
+  // 提交/读取股票价格预测任务（命中缓存时会快速返回）
+  createPricePrediction: ({
+    tsCode,
+    lookback = 512,
+    predLen = 5,
+    sampleCount = 30,
+    mode = 'simple',
+    includeVolume = false
+  } = {}) => {
+    const safeTsCode = String(tsCode || '').trim();
+    if (!safeTsCode) {
+      return Promise.reject(new Error('缺少 ts_code 参数'));
+    }
+    return axios.post(`${PREDICTION_API_BASE_URL}/api/v1/predict`, {
+      ts_code: safeTsCode,
+      lookback,
+      pred_len: predLen,
+      sample_count: sampleCount,
+      mode,
+      include_volume: includeVolume
+    }, {
+      timeout: 45000
+    }).then(res => res.data);
+  },
+
+  // 查询价格预测任务状态
+  getPricePredictionTask: (taskId) => {
+    const safeTaskId = String(taskId || '').trim();
+    if (!safeTaskId) {
+      return Promise.reject(new Error('缺少 task_id 参数'));
+    }
+    return axios.get(`${PREDICTION_API_BASE_URL}/api/v1/predict/${encodeURIComponent(safeTaskId)}`, {
+      timeout: 12000
     }).then(res => res.data);
   },
 
