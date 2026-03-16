@@ -11,12 +11,12 @@
             技术面预测今日决策信号为
             <strong :class="['signal-value', `is-${predictionSignal}`]">{{ predictionSignalText }}</strong>
           </span>
-          <div class="signal-progress" :aria-label="`看涨概率 ${predictionProbabilityPercentText}`">
+          <div class="signal-progress" :aria-label="`决策概率 ${predictionProbabilityPercentText}`">
             <span class="signal-progress-fill" :style="predictionProbabilityStyle"></span>
           </div>
           <span class="signal-probability">{{ predictionProbabilityPercentText }}</span>
         </div>
-        <p v-if="predictionSummaryText" class="prediction-summary">{{ predictionSummaryText }}</p>
+        <p v-if="predictionLoading && predictionStatusText" class="prediction-status">{{ predictionStatusText }}</p>
         <p v-if="predictionError" class="prediction-error">{{ predictionError }}</p>
       </div>
       <div class="period-switch">
@@ -90,7 +90,7 @@ const UP_COLOR = '#d94848';
 const DOWN_COLOR = '#2f9e44';
 const PREDICTION_POLL_INTERVAL = 60 * 1000;
 const PREDICTION_DEFAULTS = Object.freeze({
-  lookback: 512,
+  lookback: 256,
   predLen: 5,
   sampleCount: 30,
   mode: 'simple',
@@ -139,8 +139,20 @@ export default {
     };
 
     const toFiniteNumber = (value) => {
-      const num = Number(value);
+      if (value === null || value === undefined) return null;
+      if (typeof value === 'string' && !value.trim()) return null;
+      const normalized = typeof value === 'string'
+        ? value.replace(/%/g, '').trim()
+        : value;
+      const num = Number(normalized);
       return Number.isFinite(num) ? num : null;
+    };
+
+    const normalizeProbability = (value) => {
+      const parsed = toFiniteNumber(value);
+      if (parsed === null) return null;
+      const ratio = parsed > 1 && parsed <= 100 ? parsed / 100 : parsed;
+      return Math.max(0, Math.min(1, ratio));
     };
 
     const normalizeMarketCode = (value) => {
@@ -242,9 +254,14 @@ export default {
       return str;
     };
 
-    const getUncertaintyOpacity = (uncertainty) => {
-      const safe = Number.isFinite(uncertainty) ? uncertainty : 0;
-      return Math.max(0.22, Math.min(0.9, 0.26 + safe * 2.5));
+    const getConfidenceRatio = (uncertainty) => {
+      const safe = Number.isFinite(uncertainty) ? Math.max(0, uncertainty) : 0;
+      return Math.max(0, Math.min(1, 1 - safe / 0.2));
+    };
+
+    const getRangeOpacity = (uncertainty) => {
+      const confidence = getConfidenceRatio(uncertainty);
+      return 0.12 + confidence * 0.6;
     };
 
     const predictionTsCode = computed(() => resolveTsCode(props.stockCode, props.stockMarket));
@@ -271,9 +288,9 @@ export default {
     });
 
     const predictionProbability = computed(() => {
-      const probability = toFiniteNumber(predictionResult.value?.direction?.probability);
+      const probability = normalizeProbability(predictionResult.value?.direction?.probability);
       if (probability === null) return null;
-      return Math.max(0, Math.min(1, probability));
+      return probability;
     });
 
     const predictionProbabilityPercentText = computed(() => {
@@ -290,25 +307,8 @@ export default {
           : '#64748b';
       return {
         width: `${percent}%`,
-        backgroundColor: color
+        background: `linear-gradient(90deg, ${color}, ${color}cc)`
       };
-    });
-
-    const predictionSummaryText = computed(() => {
-      if (predictionLoading.value && predictionBands.value.length === 0) {
-        return predictionStatusText.value || '技术面预测加载中...';
-      }
-
-      const summary = predictionResult.value?.summary;
-      if (!summary) return '';
-      const rangeLow = formatPrice(toFiniteNumber(summary.rangeLow));
-      const rangeHigh = formatPrice(toFiniteNumber(summary.rangeHigh));
-      const meanClose = formatPrice(toFiniteNumber(summary.meanClose));
-      const sourceText = predictionResult.value?.cached ? '缓存命中' : '模型生成';
-      const expiresText = predictionResult.value?.cacheExpiresAt
-        ? `，缓存至 ${predictionResult.value.cacheExpiresAt}`
-        : '';
-      return `${sourceText}：range_low ${rangeLow}，range_high ${rangeHigh}，mean_close ${meanClose}${expiresText}`;
     });
 
     const showPredictionPlaceholder = computed(() => {
@@ -368,7 +368,7 @@ export default {
 
       if (body.status === 'done') {
         if (body.result && typeof body.result === 'object') {
-          return { status: 'done', result: body.result };
+          return parsePredictionResponse(body.result, depth + 1);
         }
         if (body.data && typeof body.data === 'object') {
           return parsePredictionResponse(body.data, depth + 1);
@@ -421,10 +421,35 @@ export default {
       };
     };
 
+    const hasPredictionFields = (payload) => {
+      if (!payload || typeof payload !== 'object') return false;
+      return Array.isArray(payload.bands)
+        || !!payload.summary
+        || !!payload.direction
+        || !!payload.ts_code
+        || !!payload.tsCode;
+    };
+
+    const unwrapPredictionPayload = (payload, depth = 0) => {
+      if (!payload || typeof payload !== 'object' || depth > 6) return payload;
+      if (hasPredictionFields(payload)) return payload;
+      if (payload.result && typeof payload.result === 'object') {
+        return unwrapPredictionPayload(payload.result, depth + 1);
+      }
+      if (payload.data && typeof payload.data === 'object') {
+        return unwrapPredictionPayload(payload.data, depth + 1);
+      }
+      return payload;
+    };
+
     const normalizePredictionResult = (result) => {
-      const source = result && typeof result === 'object' ? result : {};
+      const sourceRaw = result && typeof result === 'object' ? result : {};
+      const source = unwrapPredictionPayload(sourceRaw);
       const summary = source.summary && typeof source.summary === 'object' ? source.summary : {};
       const rawBands = Array.isArray(source.bands) ? source.bands : [];
+      const rawDirection = source.direction && typeof source.direction === 'object'
+        ? source.direction
+        : {};
 
       const bands = rawBands
         .map((item, index) => {
@@ -466,8 +491,13 @@ export default {
         cached: !!source.cached,
         cacheExpiresAt: String(source.cache_expires_at || source.cacheExpiresAt || ''),
         direction: {
-          signal: String(source.direction?.signal || '').toLowerCase(),
-          probability: toFiniteNumber(source.direction?.probability)
+          signal: String(rawDirection.signal || source.signal || '').toLowerCase(),
+          probability: normalizeProbability(
+            rawDirection.probability
+            ?? rawDirection.confidence
+            ?? source.direction_probability
+            ?? source.probability
+          )
         },
         summary: {
           meanClose: toFiniteNumber(summary.mean_close ?? summary.meanClose),
@@ -709,21 +739,25 @@ export default {
         };
       });
 
-      const predictionMeanData = [
-        ...new Array(realCategories.length).fill(null)
-      ];
+      const predictionMeanData = [...new Array(realCategories.length).fill(null)];
+      const predictionUpperLineData = [...new Array(realCategories.length).fill(null)];
+      const predictionLowerLineData = [...new Array(realCategories.length).fill(null)];
       if (predictionBands.value.length > 0) {
-        predictionMeanData.push(...predictionBands.value.map((band) => ({
-          value: band.meanClose,
-          itemStyle: {
-            color: `rgba(29, 78, 216, ${getUncertaintyOpacity(band.uncertainty)})`
-          }
-        })));
+        predictionMeanData.push(...predictionBands.value.map((band) => band.meanClose));
+        predictionUpperLineData.push(...predictionBands.value.map((band) => band.tradingHigh));
+        predictionLowerLineData.push(...predictionBands.value.map((band) => band.tradingLow));
       } else if (loadingFutureSlots.length > 0) {
         predictionMeanData.push(...new Array(loadingFutureSlots.length).fill(null));
+        predictionUpperLineData.push(...new Array(loadingFutureSlots.length).fill(null));
+        predictionLowerLineData.push(...new Array(loadingFutureSlots.length).fill(null));
       }
 
       const hasPredictionArea = predictedCategories.length > 0;
+      const predictionRangeTone = predictionSignal.value === 'bearish'
+        ? '22, 163, 74'
+        : predictionSignal.value === 'bullish'
+          ? '220, 38, 38'
+          : '29, 78, 216';
 
       chartInstance.value.setOption(
         {
@@ -758,16 +792,20 @@ export default {
                 ].join('');
               }
 
-              const predictionRow = rows.find(item => item.seriesName === '预测区间');
-              const band = predictionRow?.data?.band;
+              const predictionRow = rows.find(item => item.seriesName === '预测区间阴影');
+              const axisIndex = Number.isInteger(rows[0]?.dataIndex) ? rows[0].dataIndex : -1;
+              const fallbackBand = axisIndex >= realCategories.length
+                ? predictionBands.value[axisIndex - realCategories.length]
+                : null;
+              const band = predictionRow?.data?.band || fallbackBand;
               if (band) {
-                const opacity = getUncertaintyOpacity(band.uncertainty);
+                const confidence = getConfidenceRatio(band.uncertainty);
                 return [
                   `<div style="margin-bottom:6px;font-weight:600;">${band.date || `T+${band.step}`}</div>`,
-                  `<div>mean_close：<span style="color:#60a5fa;font-weight:600;">${formatPrice(band.meanClose)}</span></div>`,
                   `<div>range_low：${formatPrice(band.tradingLow)}</div>`,
                   `<div>range_high：${formatPrice(band.tradingHigh)}</div>`,
-                  `<div>uncertainty：<span style="color:rgba(147,197,253,${opacity});font-weight:600;">${formatRatioPercent(band.uncertainty, 2)}</span></div>`
+                  `<div>mean_close：<span style="color:#1d4ed8;font-weight:700;">${formatPrice(band.meanClose)}</span></div>`,
+                  `<div>置信度：<span style="font-weight:600;">${formatRatioPercent(confidence, 1)}</span></div>`
                 ].join('');
               }
 
@@ -893,9 +931,9 @@ export default {
             ...(predictionRangeData.length > 0
               ? [
                   {
-                    name: '预测区间',
+                    name: '预测区间阴影',
                     type: 'custom',
-                    z: 6,
+                    z: 4,
                     encode: {
                       x: 0,
                       y: [1, 2]
@@ -905,48 +943,27 @@ export default {
                       const xIndex = api.value(0);
                       const low = api.value(1);
                       const high = api.value(2);
-                      const mean = api.value(3);
                       const uncertainty = api.value(4);
-
-                      const highPoint = api.coord([xIndex, high]);
-                      const lowPoint = api.coord([xIndex, low]);
-                      const meanPoint = api.coord([xIndex, mean]);
-
-                      const width = Math.max(4, Math.min(12, api.size([1, 0])[0] * 0.25));
-                      const opacity = getUncertaintyOpacity(uncertainty);
-                      const rangeColor = `rgba(37, 99, 235, ${opacity})`;
-
+                      const center = api.coord([xIndex, (low + high) / 2]);
+                      const highPoint = api.coord([xIndex, high])[1];
+                      const lowPoint = api.coord([xIndex, low])[1];
+                      const top = Math.min(highPoint, lowPoint);
+                      const height = Math.max(2, Math.abs(lowPoint - highPoint));
+                      const halfWidth = Math.max(7, Math.min(18, api.size([1, 0])[0] * 0.34));
+                      const opacity = getRangeOpacity(uncertainty);
                       return {
-                        type: 'group',
-                        children: [
-                          {
-                            type: 'line',
-                            shape: {
-                              x1: highPoint[0],
-                              y1: highPoint[1],
-                              x2: lowPoint[0],
-                              y2: lowPoint[1]
-                            },
-                            style: {
-                              stroke: rangeColor,
-                              lineWidth: 3,
-                              lineCap: 'round'
-                            }
-                          },
-                          {
-                            type: 'line',
-                            shape: {
-                              x1: meanPoint[0] - width,
-                              y1: meanPoint[1],
-                              x2: meanPoint[0] + width,
-                              y2: meanPoint[1]
-                            },
-                            style: {
-                              stroke: '#1d4ed8',
-                              lineWidth: 2
-                            }
-                          }
-                        ]
+                        type: 'rect',
+                        shape: {
+                          x: center[0] - halfWidth,
+                          y: top,
+                          width: halfWidth * 2,
+                          height
+                        },
+                        style: {
+                          fill: `rgba(${predictionRangeTone}, ${opacity})`,
+                          stroke: `rgba(${predictionRangeTone}, ${Math.min(opacity + 0.18, 0.9)})`,
+                          lineWidth: 1
+                        }
                       };
                     }
                   }
@@ -955,21 +972,47 @@ export default {
             ...(predictionBands.value.length > 0
               ? [
                   {
-                    name: '预测均线',
+                    name: '预测上沿',
                     type: 'line',
                     z: 5,
+                    data: predictionUpperLineData,
+                    showSymbol: false,
+                    connectNulls: false,
+                    lineStyle: {
+                      color: `rgba(${predictionRangeTone}, 0.52)`,
+                      width: 1.2
+                    }
+                  },
+                  {
+                    name: '预测下沿',
+                    type: 'line',
+                    z: 5,
+                    data: predictionLowerLineData,
+                    showSymbol: false,
+                    connectNulls: false,
+                    lineStyle: {
+                      color: `rgba(${predictionRangeTone}, 0.52)`,
+                      width: 1.2
+                    }
+                  },
+                  {
+                    name: '预测收盘均线',
+                    type: 'line',
+                    z: 7,
                     data: predictionMeanData,
                     showSymbol: true,
                     symbol: 'circle',
-                    symbolSize: 6,
+                    symbolSize: 7,
                     connectNulls: false,
                     lineStyle: {
-                      color: '#3b82f6',
-                      width: 2,
-                      type: 'dashed'
+                      color: '#1d4ed8',
+                      width: 2.8,
+                      type: 'solid'
                     },
                     itemStyle: {
-                      color: '#1d4ed8'
+                      color: '#ffffff',
+                      borderColor: '#1d4ed8',
+                      borderWidth: 2
                     }
                   }
                 ]
@@ -1110,7 +1153,6 @@ export default {
       predictionSignalText,
       predictionProbabilityPercentText,
       predictionProbabilityStyle,
-      predictionSummaryText,
       predictionError,
       predictionStatusText,
       showPredictionPlaceholder
@@ -1169,19 +1211,26 @@ export default {
   .signal-row {
     display: flex;
     align-items: center;
-    gap: 10px;
-    min-height: 20px;
+    gap: 12px;
+    min-height: 34px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    border: 1px solid #dbeafe;
+    background: linear-gradient(90deg, #eff6ff, #f8fafc);
   }
 
   .signal-text {
-    color: #4b5563;
+    color: #334155;
     font-size: 13px;
+    font-weight: 500;
     line-height: 1.4;
     white-space: nowrap;
   }
 
   .signal-value {
     margin-left: 4px;
+    font-size: 15px;
+    font-weight: 700;
 
     &.is-bullish {
       color: #dc2626;
@@ -1199,11 +1248,12 @@ export default {
   .signal-progress {
     position: relative;
     flex: 1;
-    min-width: 120px;
-    max-width: 280px;
-    height: 8px;
+    min-width: 140px;
+    max-width: 320px;
+    height: 12px;
     border-radius: 999px;
-    background: #e5e7eb;
+    border: 1px solid #cbd5e1;
+    background: #e2e8f0;
     overflow: hidden;
   }
 
@@ -1212,19 +1262,22 @@ export default {
     height: 100%;
     border-radius: inherit;
     transition: width 0.25s ease;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.36) inset;
   }
 
   .signal-probability {
-    font-size: 12px;
-    color: #475569;
-    min-width: 50px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #0f172a;
+    min-width: 58px;
     text-align: right;
   }
 
-  .prediction-summary {
+  .prediction-status {
     margin: 0;
-    color: #64748b;
+    color: #3b82f6;
     font-size: 12px;
+    font-weight: 600;
     line-height: 1.4;
   }
 
@@ -1232,7 +1285,9 @@ export default {
     margin: 0;
     color: #dc2626;
     font-size: 12px;
+    font-weight: 600;
     line-height: 1.4;
+    padding: 4px 0 0;
   }
 
   .period-switch {
@@ -1282,12 +1337,12 @@ export default {
     position: absolute;
     top: 48px;
     right: 20px;
-    width: min(18%, 150px);
+    width: min(20%, 156px);
     min-width: 110px;
     height: calc(100% - 96px);
-    border: 1px dashed rgba(148, 163, 184, 0.8);
-    border-radius: 10px;
-    background: linear-gradient(180deg, rgba(191, 219, 254, 0.35), rgba(226, 232, 240, 0.72));
+    border: 1px dashed rgba(59, 130, 246, 0.6);
+    border-radius: 12px;
+    background: radial-gradient(circle at 30% 20%, rgba(191, 219, 254, 0.68), rgba(226, 232, 240, 0.8));
     backdrop-filter: blur(4px);
     overflow: hidden;
     display: flex;
@@ -1318,7 +1373,7 @@ export default {
 
     .loading-title {
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 700;
       color: #1e3a8a;
     }
 
