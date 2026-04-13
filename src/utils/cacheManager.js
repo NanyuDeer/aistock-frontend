@@ -6,6 +6,7 @@ class CacheManager {
     this.STOCK_PRICES_KEY = 'stock_prices_cache';
     this.HOT_STOCKS_KEY = 'hot_stocks_cache';
     this.STOCK_PRICES_TIMESTAMP_KEY = 'stock_prices_timestamp';
+    this.STOCK_PRICES_MAX_AGE = 2 * 60 * 1000;
   }
 
   // 检查是否需要清理缓存
@@ -59,10 +60,18 @@ class CacheManager {
    * @param {String} code - 股票代码
    * @returns {Object|null} 股票价格数据
    */
-  getStockPrice(code) {
+  getStockPrice(code, options = {}) {
     try {
       const cache = this.getStockPricesCache();
-      return cache[code] || null;
+      const stockData = cache[code];
+      if (!stockData) return null;
+
+      if (options.forceRefresh) {
+        return null;
+      }
+
+      const maxAge = Number.isFinite(options.maxAge) ? options.maxAge : this.STOCK_PRICES_MAX_AGE;
+      return this.isStockPriceExpired(stockData, maxAge) ? null : stockData;
     } catch (error) {
       console.error('[CacheManager] 获取股票价格失败:', error);
       return null;
@@ -72,29 +81,50 @@ class CacheManager {
   /**
    * 批量获取股票价格
    * @param {Array} codes - 股票代码数组
-   * @returns {Object} {found: [...], missing: [...]}
+   * @param {Object} options - { forceRefresh?: boolean, maxAge?: number }
+   * @returns {Object} {found: [...], missing: [...], stale: [...]}
    */
-  getBatchStockPrices(codes) {
+  getBatchStockPrices(codes, options = {}) {
     try {
       const cache = this.getStockPricesCache();
       const found = [];
       const missing = [];
+      const stale = [];
+      const forceRefresh = !!options.forceRefresh;
+      const maxAge = Number.isFinite(options.maxAge) ? options.maxAge : this.STOCK_PRICES_MAX_AGE;
       
       codes.forEach(code => {
         const stockData = cache[code];
+        if (!stockData) {
+          missing.push(code);
+          return;
+        }
+
+        if (forceRefresh || this.isStockPriceExpired(stockData, maxAge)) {
+          stale.push(stockData);
+          missing.push(code);
+          return;
+        }
+
         if (stockData) {
           found.push(stockData);
-        } else {
-          missing.push(code);
         }
       });
       
-      console.log(`[CacheManager] 批量获取价格: 找到 ${found.length}/${codes.length}, 缺失 ${missing.length}`);
-      return { found, missing };
+      console.log(`[CacheManager] 批量获取价格: 可用 ${found.length}/${codes.length}, 待刷新 ${missing.length}`);
+      return { found, missing, stale };
     } catch (error) {
       console.error('[CacheManager] 批量获取股票价格失败:', error);
-      return { found: [], missing: codes };
+      return { found: [], missing: codes, stale: [] };
     }
+  }
+
+  isStockPriceExpired(stockData, maxAge = this.STOCK_PRICES_MAX_AGE) {
+    const timestamp = Number(stockData?.timestamp);
+    if (!Number.isFinite(timestamp) || timestamp <= 0) {
+      return true;
+    }
+    return (Date.now() - timestamp) > maxAge;
   }
 
   /**

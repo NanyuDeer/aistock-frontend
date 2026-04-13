@@ -720,8 +720,8 @@ export default {
       }
     };
 
-    // 获取自选股（使用缓存的价格）
-    const fetchMyFavoriteStocks = async ({ showLoading = false } = {}) => {
+    // 获取自选股价格。默认优先使用短时缓存，自动刷新时可强制拉取最新报价。
+    const fetchMyFavoriteStocks = async ({ showLoading = false, forceRefresh = false } = {}) => {
       if (!isLoggedIn.value) return;
       const hadData = myFavoriteStocks.value.length > 0;
       const shouldShowLoading = showLoading && !hadData;
@@ -733,9 +733,12 @@ export default {
 
         const stocks = store.getters.favoriteStocks || [];
         
-        // 使用新的批量获取价格方法（优先从缓存）
+        // 自动刷新时跳过本地价格缓存，避免首页长期停留后价格不更新
         if (stocks.length > 0) {
-          const stocksWithPrices = await store.dispatch('fetchBatchStockPrices', stocks);
+          const stocksWithPrices = await store.dispatch('fetchBatchStockPrices', {
+            stocks,
+            forceRefresh
+          });
 
           if (Array.isArray(stocksWithPrices) && stocksWithPrices.length > 0) {
             myFavoriteStocks.value = mergeStocksWithPrevious(stocksWithPrices, myFavoriteStocks.value);
@@ -797,7 +800,7 @@ export default {
       // 自选股价格每 3 分钟刷新一次
       favoriteStocksPriceRefreshInterval = setInterval(() => {
         console.log('[HomeView] 定时刷新自选股价格');
-        fetchMyFavoriteStocks();
+        fetchMyFavoriteStocks({ forceRefresh: true });
       }, 3 * 60 * 1000);
     };
 
@@ -860,7 +863,7 @@ export default {
           }
         }
         // 操作完成后刷新自选股列表
-        await fetchMyFavoriteStocks(); // 这一行已包含获取最新自选股的逻辑
+        await fetchMyFavoriteStocks({ forceRefresh: true });
       } catch (error) {
         console.error('操作自选股失败:', error);
         ElMessage.error('操作失败，请稍后再试');
@@ -880,7 +883,7 @@ export default {
         const result = await store.dispatch('removeFavoriteStocks', [stock.code]);
         if (result) {
           ElMessage.success(`已将 ${stock.name} 从自选股中移除`);
-          await fetchMyFavoriteStocks();
+          await fetchMyFavoriteStocks({ forceRefresh: true });
         } else {
           ElMessage.error('移除自选股失败');
         }

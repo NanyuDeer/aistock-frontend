@@ -158,8 +158,8 @@ export default {
     const favoriteStocks = ref([]);
     const refreshTimer = ref(null);
 
-    // 获取自选股数据（使用缓存优化）
-    const fetchFavoriteStocks = async () => {
+    // 获取自选股数据。默认复用短时缓存，手动/定时刷新时强制拉取最新价格。
+    const fetchFavoriteStocks = async ({ forceRefresh = false } = {}) => {
       try {
         loading.value = true;
         
@@ -171,8 +171,10 @@ export default {
           return;
         }
         
-        // 使用新的批量获取价格方法（优先从缓存，缺失的自动分批请求）
-        const stocksWithPrices = await store.dispatch('fetchBatchStockPrices', stocks);
+        const stocksWithPrices = await store.dispatch('fetchBatchStockPrices', {
+          stocks,
+          forceRefresh
+        });
         
         // 格式化数据以匹配表格显示
         favoriteStocks.value = stocksWithPrices.map(stock => ({
@@ -196,7 +198,7 @@ export default {
       
       try {
         refreshing.value = true;
-        await fetchFavoriteStocks();
+        await fetchFavoriteStocks({ forceRefresh: true });
         ElMessage.success('数据刷新成功');
       } catch (error) {
         console.error('刷新数据失败:', error);
@@ -212,6 +214,7 @@ export default {
         loading.value = true;
         const result = await store.dispatch('removeFavoriteStocks', [stock.code]);
         if (result) {
+          await fetchFavoriteStocks({ forceRefresh: true });
           ElMessage.success(`已将 ${stock.name} 从自选股中移除`);
         } else {
           ElMessage.error('移除自选股失败');
@@ -274,7 +277,7 @@ export default {
       // 设置自动刷新定时器 (每3分钟刷新一次价格)
       refreshTimer.value = setInterval(() => {
         console.log('[FavoritesView] 定时刷新自选股价格');
-        fetchFavoriteStocks();
+        fetchFavoriteStocks({ forceRefresh: true });
       }, 3 * 60 * 1000);
     });
     

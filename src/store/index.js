@@ -482,18 +482,35 @@ export default createStore({
     },
     
     /**
-     * 批量获取股票价格（优先从缓存，缺失的自动分批请求）
-     * @param {Array} stocks - 股票列表 [{code, name, market}, ...]
+     * 批量获取股票价格（优先使用新鲜缓存，过期时自动刷新）
+     * @param {Array|Object} payload - 股票数组，或 { stocks, forceRefresh, maxAge }
      * @returns {Array} 包含价格的股票列表
      */
-    async fetchBatchStockPrices(_, stocks) {
+    async fetchBatchStockPrices(_, payload) {
+      let stocks = [];
       try {
+        const request = Array.isArray(payload)
+          ? { stocks: payload }
+          : (payload || {});
+        stocks = Array.isArray(request.stocks) ? request.stocks : [];
+        const forceRefresh = !!request.forceRefresh;
+        const maxAge = Number.isFinite(request.maxAge) ? request.maxAge : undefined;
+
         if (!stocks || stocks.length === 0) return [];
         
-        const codes = stocks.map(s => s.code);
+        const codes = Array.from(new Set(
+          stocks
+            .map(stock => stock?.code)
+            .filter(Boolean)
+        ));
+        if (codes.length === 0) return [];
         
-        // 1. 从缓存获取价格
-        const { found, missing } = cacheManager.getBatchStockPrices(codes);
+        // 1. 从缓存获取价格，过期数据仅作为失败时的回退
+        const cacheOptions = { forceRefresh };
+        if (maxAge !== undefined) {
+          cacheOptions.maxAge = maxAge;
+        }
+        const { found, missing, stale } = cacheManager.getBatchStockPrices(codes, cacheOptions);
         
         // 2. 如果有缺失的，分批请求
         let fetchedStocks = [];
@@ -562,12 +579,17 @@ export default createStore({
           }
         }
         
-        // 3. 合并缓存和新请求的数据
-        const allStocks = [...found, ...fetchedStocks];
+        // 3. 合并缓存和新请求的数据。优先级：新请求 > 新鲜缓存 > 过期缓存
+        const stockPriceMap = new Map();
+        [...stale, ...found, ...fetchedStocks].forEach(stock => {
+          if (stock?.code) {
+            stockPriceMap.set(stock.code, stock);
+          }
+        });
         
         // 4. 按原始顺序返回，并补充原始股票的name和market信息
         return stocks.map(stock => {
-          const priceData = allStocks.find(s => s.code === stock.code);
+          const priceData = stockPriceMap.get(stock.code);
           return {
             code: stock.code,
             name: priceData?.name || stock.name,
