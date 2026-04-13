@@ -119,6 +119,30 @@
                 <el-button
                   size="small"
                   plain
+                  circle
+                  class="tts-play-btn"
+                  :class="{ 'is-playing': isPlayingEvaluationAudio }"
+                  :loading="isGeneratingEvaluationAudio"
+                  :disabled="isGeneratingEvaluationAudio || (!canPlayEvaluationAudio && !isPlayingEvaluationAudio)"
+                  :aria-label="isPlayingEvaluationAudio ? '停止播报AI评价' : '播放AI评价语音'"
+                  :title="isPlayingEvaluationAudio ? '停止播报AI评价' : '播放AI评价语音'"
+                  @click="playEvaluationAudio"
+                >
+                  <span v-if="!isGeneratingEvaluationAudio" class="tts-icon" aria-hidden="true">
+                    <svg v-if="isPlayingEvaluationAudio" viewBox="0 0 16 16" fill="currentColor">
+                      <rect x="4" y="3" width="3" height="10" rx="1"></rect>
+                      <rect x="9" y="3" width="3" height="10" rx="1"></rect>
+                    </svg>
+                    <svg v-else viewBox="0 0 16 16" fill="none">
+                      <path d="M3.5 6.25H5.75L9 3.75V12.25L5.75 9.75H3.5C2.95 9.75 2.5 9.3 2.5 8.75V7.25C2.5 6.7 2.95 6.25 3.5 6.25Z" fill="currentColor"></path>
+                      <path d="M10.8 5.35C11.63 6.08 12.1 7.11 12.1 8.2C12.1 9.29 11.63 10.32 10.8 11.05" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path>
+                      <path d="M12.35 3.85C13.58 4.97 14.25 6.53 14.25 8.2C14.25 9.87 13.58 11.43 12.35 12.55" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path>
+                    </svg>
+                  </span>
+                </el-button>
+                <el-button
+                  size="small"
+                  plain
                   class="history-capsule-btn"
                   @click="openHistoryDialog"
                   :loading="openingHistoryDialog"
@@ -542,6 +566,7 @@ import { useStore } from 'vuex';
 import { ElMessage } from 'element-plus';
 import MarkdownIt from 'markdown-it';
 import StockChart from '@/components/StockChart.vue';
+import { ttsApi } from '@/services/api';
 import 'element-plus/es/components/message/style/css';
 
 // 引入 ECharts
@@ -623,7 +648,9 @@ export default {
       conclusion: '',
       date: '',
       coreLogic: '',
-      riskWarning: ''
+      coreLogicText: '',
+      riskWarning: '',
+      riskWarningText: ''
     });
 
     const currentNewsDetail = ref(null);
@@ -653,6 +680,11 @@ export default {
     const hasStreamDelta = ref(false);
     const showEvaluationOverlay = computed(() => loadingEvaluation.value && !hasStreamDelta.value);
     const isStreamingEvaluation = computed(() => loadingEvaluation.value && hasStreamDelta.value);
+    const isGeneratingEvaluationAudio = ref(false);
+    const isPlayingEvaluationAudio = ref(false);
+    let evaluationAudio = null;
+    let evaluationAudioUrl = '';
+    let evaluationTtsAbortController = null;
 
     const displayedConclusion = computed(() => {
       if (isStreamingEvaluation.value && streamedConclusion.value) {
@@ -676,6 +708,166 @@ export default {
       }
       return analysisResult.value.riskWarning;
     });
+
+    const displayedCoreLogicSource = computed(() => {
+      if (isStreamingEvaluation.value) {
+        return streamedCoreLogic.value || '';
+      }
+      return analysisResult.value.coreLogicText || '';
+    });
+
+    const displayedRiskWarningSource = computed(() => {
+      if (isStreamingEvaluation.value) {
+        return streamedRiskWarning.value || '';
+      }
+      return analysisResult.value.riskWarningText || '';
+    });
+
+    const markdownToPlainText = (value) => {
+      const source = String(value || '').trim();
+      if (!source) return '';
+
+      const renderedHtml = md.render(source)
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/(p|li|h[1-6]|blockquote)>/gi, '</$1>\n');
+
+      if (typeof document !== 'undefined') {
+        const container = document.createElement('div');
+        container.innerHTML = renderedHtml;
+        return String(container.textContent || '')
+          .replace(/\u00a0/g, ' ')
+          .replace(/[ \t]+\n/g, '\n')
+          .replace(/\n{3,}/g, '\n\n')
+          .replace(/[ \t]{2,}/g, ' ')
+          .trim();
+      }
+
+      return source
+        .replace(/\[(.*?)\]\((.*?)\)/g, '$1')
+        .replace(/[`*_>#-]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    };
+
+    const displayedCoreLogicText = computed(() => markdownToPlainText(displayedCoreLogicSource.value));
+    const displayedRiskWarningText = computed(() => markdownToPlainText(displayedRiskWarningSource.value));
+
+    const evaluationTtsText = computed(() => {
+      const sections = [];
+      const conclusion = String(displayedConclusion.value || '').trim();
+      const coreLogicText = displayedCoreLogicText.value;
+      const riskWarningText = displayedRiskWarningText.value;
+
+      if (conclusion) {
+        sections.push(`结论：${conclusion}`);
+      }
+      if (coreLogicText) {
+        sections.push(`核心逻辑：${coreLogicText}`);
+      }
+      if (riskWarningText) {
+        sections.push(`风险提示：${riskWarningText}`);
+      }
+
+      return sections.join('\n');
+    });
+
+    const canPlayEvaluationAudio = computed(() => (
+      !loadingEvaluation.value && Boolean(String(evaluationTtsText.value || '').trim())
+    ));
+
+    const clearEvaluationAudioUrl = () => {
+      if (
+        evaluationAudioUrl
+        && typeof URL !== 'undefined'
+        && typeof URL.revokeObjectURL === 'function'
+      ) {
+        URL.revokeObjectURL(evaluationAudioUrl);
+      }
+      evaluationAudioUrl = '';
+    };
+
+    const disposeEvaluationAudioPlayback = () => {
+      if (evaluationAudio) {
+        evaluationAudio.pause();
+        evaluationAudio.currentTime = 0;
+        evaluationAudio.onended = null;
+        evaluationAudio.onerror = null;
+        evaluationAudio = null;
+      }
+      clearEvaluationAudioUrl();
+      isPlayingEvaluationAudio.value = false;
+    };
+
+    const stopEvaluationAudio = () => {
+      if (evaluationTtsAbortController) {
+        evaluationTtsAbortController.abort();
+        evaluationTtsAbortController = null;
+      }
+      isGeneratingEvaluationAudio.value = false;
+      disposeEvaluationAudioPlayback();
+    };
+
+    const playEvaluationAudio = async () => {
+      if (isPlayingEvaluationAudio.value) {
+        stopEvaluationAudio();
+        return;
+      }
+
+      const text = String(evaluationTtsText.value || '').trim();
+      if (!text) {
+        ElMessage.warning('暂无可播报的AI评价内容');
+        return;
+      }
+
+      stopEvaluationAudio();
+      isGeneratingEvaluationAudio.value = true;
+      evaluationTtsAbortController = typeof AbortController !== 'undefined'
+        ? new AbortController()
+        : null;
+
+      try {
+        const audioBlob = await ttsApi.synthesize({
+          text,
+          voice: '晓晓',
+          emotion: '温柔',
+          provider: 'azure'
+        }, {
+          signal: evaluationTtsAbortController?.signal
+        });
+
+        evaluationTtsAbortController = null;
+        disposeEvaluationAudioPlayback();
+
+        if (typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') {
+          throw new Error('当前浏览器不支持语音播放');
+        }
+
+        evaluationAudioUrl = URL.createObjectURL(audioBlob);
+        evaluationAudio = new Audio(evaluationAudioUrl);
+        evaluationAudio.onended = () => {
+          disposeEvaluationAudioPlayback();
+        };
+        evaluationAudio.onerror = () => {
+          disposeEvaluationAudioPlayback();
+          ElMessage.error('语音播放失败，请稍后重试');
+        };
+
+        await evaluationAudio.play();
+        isPlayingEvaluationAudio.value = true;
+      } catch (error) {
+        disposeEvaluationAudioPlayback();
+        const aborted = error?.name === 'CanceledError'
+          || error?.name === 'AbortError'
+          || /aborted|canceled/i.test(String(error?.message || ''));
+        if (!aborted) {
+          console.error('播放AI评价语音失败:', error);
+          ElMessage.error(error?.message || '语音合成失败，请稍后重试');
+        }
+      } finally {
+        evaluationTtsAbortController = null;
+        isGeneratingEvaluationAudio.value = false;
+      }
+    };
 
     const resetEvaluationStreamState = () => {
       evaluationProgressText.value = '';
@@ -1442,6 +1634,7 @@ export default {
     };
     
     const loadAIEvaluation = async (refresh = false) => {
+      stopEvaluationAudio();
       evaluationErrorMessage.value = '';
       resetEvaluationStreamState();
       evaluationProgressText.value = refresh
@@ -1460,14 +1653,18 @@ export default {
             conclusion: evaluation.conclusion || '未知',
             date: evaluation.analysisTime || '--',
             coreLogic: md.render(evaluation.coreLogic || '暂无核心逻辑'),
-            riskWarning: md.render(evaluation.riskWarning || '暂无风险提示')
+            coreLogicText: evaluation.coreLogic || '暂无核心逻辑',
+            riskWarning: md.render(evaluation.riskWarning || '暂无风险提示'),
+            riskWarningText: evaluation.riskWarning || '暂无风险提示'
           };
         } else {
           analysisResult.value = {
             conclusion: '未知',
             date: '--',
             coreLogic: '暂无AI评估数据',
-            riskWarning: '无法获取AI评估结果，请稍后再试。'
+            coreLogicText: '暂无AI评估数据',
+            riskWarning: '无法获取AI评估结果，请稍后再试。',
+            riskWarningText: '无法获取AI评估结果，请稍后再试。'
           };
         }
       } catch (error) {
@@ -1477,7 +1674,9 @@ export default {
           conclusion: '获取失败',
           date: '--',
           coreLogic: 'AI评估数据获取失败',
-          riskWarning: '获取AI评估结果时发生错误，请稍后再试。'
+          coreLogicText: 'AI评估数据获取失败',
+          riskWarning: '获取AI评估结果时发生错误，请稍后再试。',
+          riskWarningText: '获取AI评估结果时发生错误，请稍后再试。'
         };
       } finally {
         loadingEvaluation.value = false;
@@ -1997,6 +2196,7 @@ export default {
     });
 
     onBeforeUnmount(() => {
+      stopEvaluationAudio();
       // 使用新的清除所有定时器函数
       clearAllTimers();
       cancelFlowAnimationFrames();
@@ -2044,6 +2244,10 @@ export default {
       displayedConclusion,
       displayedCoreLogic,
       displayedRiskWarning,
+      canPlayEvaluationAudio,
+      isGeneratingEvaluationAudio,
+      isPlayingEvaluationAudio,
+      playEvaluationAudio,
       historyDialogVisible,
       historyDetailDialogVisible,
       loadingHistory,
@@ -2765,6 +2969,51 @@ export default {
               border-color: #94a3b8;
               color: #1e293b;
               background: #f1f5f9;
+            }
+          }
+
+          .tts-play-btn {
+            min-width: 32px;
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            border-radius: 999px;
+            border-color: #bfdbfe;
+            color: #2563eb;
+            background: #eff6ff;
+
+            .tts-icon {
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              width: 100%;
+              height: 100%;
+            }
+
+            svg {
+              width: 16px;
+              height: 16px;
+              display: block;
+            }
+
+            &:hover,
+            &:focus {
+              border-color: #93c5fd;
+              color: #1d4ed8;
+              background: #dbeafe;
+            }
+
+            &.is-playing {
+              border-color: #fecaca;
+              color: #dc2626;
+              background: #fef2f2;
+
+              &:hover,
+              &:focus {
+                border-color: #fca5a5;
+                color: #b91c1c;
+                background: #fee2e2;
+              }
             }
           }
         }

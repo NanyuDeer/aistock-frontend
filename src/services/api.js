@@ -34,6 +34,7 @@ const API_BASE_URL = process.env.NODE_ENV === 'production'
   ? 'https://extapi.aistocklink.cn' 
   : 'http://localhost:8000';
 const PREDICTION_API_BASE_URL = 'https://yingfeng64-kronos-api.hf.space';
+const TTS_API_BASE_URL = process.env.VUE_APP_TTS_API_BASE_URL || 'https://tts.102465.xyz';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -240,6 +241,71 @@ export const authApi = {
 
   // 退出登录（清除后端 HttpOnly Cookie）
   logout: () => api.post('/api/auth/logout')
+};
+
+export const ttsApi = {
+  synthesize: async (payload = {}, options = {}) => {
+    const text = String(payload.text || '').trim();
+    if (!text) {
+      throw new Error('语音播报内容不能为空');
+    }
+
+    try {
+      const response = await axios.post(`${TTS_API_BASE_URL}/api/tts`, {
+        text,
+        voice: payload.voice || '晓晓',
+        emotion: payload.emotion || '温柔',
+        rate: Number.isFinite(Number(payload.rate)) ? Number(payload.rate) : 0,
+        pitch: Number.isFinite(Number(payload.pitch)) ? Number(payload.pitch) : 0,
+        provider: payload.provider || 'azure'
+      }, {
+        timeout: 60000,
+        responseType: 'blob',
+        signal: options.signal,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const audioBlob = response.data;
+      if (
+        typeof Blob !== 'undefined'
+        && audioBlob instanceof Blob
+        && audioBlob.type
+        && !audioBlob.type.startsWith('audio/')
+      ) {
+        const textBody = await audioBlob.text();
+        const parsed = parseMaybeJson(textBody);
+        if (parsed && typeof parsed === 'object') {
+          throw new Error(parsed.message || parsed.detail || parsed.error || '语音合成失败');
+        }
+        throw new Error(typeof parsed === 'string' && parsed.trim() ? parsed.trim() : '语音合成失败');
+      }
+
+      return audioBlob;
+    } catch (error) {
+      let message = error?.message || '语音合成失败';
+      const responseData = error?.response?.data;
+
+      if (typeof Blob !== 'undefined' && responseData instanceof Blob) {
+        try {
+          const textBody = await responseData.text();
+          const parsed = parseMaybeJson(textBody);
+          if (parsed && typeof parsed === 'object') {
+            message = parsed.message || parsed.detail || parsed.error || message;
+          } else if (typeof parsed === 'string' && parsed.trim()) {
+            message = parsed.trim();
+          }
+        } catch (_) {
+          // ignore blob parse errors
+        }
+      } else if (responseData && typeof responseData === 'object') {
+        message = responseData.message || responseData.detail || responseData.error || message;
+      }
+
+      throw new Error(message);
+    }
+  }
 };
 
 // 微信网页授权登录地址（用于微信浏览器内跳转）
