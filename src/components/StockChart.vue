@@ -1,24 +1,24 @@
 <template>
-  <div class="stock-chart-section">
-    <div class="chart-header">
-      <div class="chart-header-top">
-        <div class="title-group">
-          <h3 class="section-title">技术面</h3>
-          <span class="adjustment-tag">前复权历史K线</span>
-        </div>
-        <div class="period-switch">
-          <button
-            v-for="option in periodOptions"
-            :key="option.klt"
-            type="button"
-            class="period-button"
-            :class="{ 'is-active': selectedKlt === option.klt }"
-            @click="handlePeriodChange(option.klt)"
-          >
-            {{ option.label }}
-          </button>
-        </div>
+  <div class="card stock-chart-card">
+    <div class="card-header">
+      <div class="title-group">
+        <h3>技术面</h3>
+        <span class="adjustment-tag">前复权历史K线</span>
       </div>
+      <div class="period-switch">
+        <button
+          v-for="option in periodOptions"
+          :key="option.klt"
+          type="button"
+          class="period-button"
+          :class="{ 'is-active': selectedKlt === option.klt }"
+          @click="handlePeriodChange(option.klt)"
+        >
+          {{ option.label }}
+        </button>
+      </div>
+    </div>
+    <div class="card-body">
       <div class="signal-row">
         <div class="signal-decision">
           <strong :class="['signal-value', `is-${predictionSignal}`]">{{ predictionSignalText }}</strong>
@@ -59,25 +59,25 @@
       </div>
       <p v-if="predictionLoading && predictionStatusText" class="prediction-status">{{ predictionStatusText }}</p>
       <p v-if="predictionError" class="prediction-error">{{ predictionError }}</p>
-    </div>
 
-    <div class="stock-chart-wrap">
-      <div class="stock-chart" ref="chartContainer"></div>
-      <div v-if="showPredictionPlaceholder" class="prediction-loading-mask" role="status" aria-live="polite">
-        <span class="loading-title">技术面预测加载中</span>
-        <span class="loading-desc">{{ predictionStatusText || '模型推理中，结果将自动刷新' }}</span>
+      <div class="stock-chart-wrap">
+        <div class="stock-chart" ref="chartContainer"></div>
+        <div v-if="showPredictionPlaceholder" class="prediction-loading-mask" role="status" aria-live="polite">
+          <span class="loading-title">技术面预测加载中</span>
+          <span class="loading-desc">{{ predictionStatusText || '模型推理中，结果将自动刷新' }}</span>
+        </div>
       </div>
-    </div>
 
-    <div v-if="klineItems.length > 1" class="chart-range-slider">
-      <el-slider
-        v-model="zoomRange"
-        range
-        :min="0"
-        :max="100"
-        :step="1"
-        :show-tooltip="false"
-      />
+      <div v-if="klineItems.length > 1" class="chart-range-slider">
+        <el-slider
+          v-model="zoomRange"
+          range
+          :min="0"
+          :max="100"
+          :step="1"
+          :show-tooltip="false"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -92,7 +92,10 @@ import {
   TooltipComponent,
   GridComponent,
   LegendComponent,
-  MarkPointComponent
+  MarkPointComponent,
+  MarkLineComponent,
+  AxisPointerComponent,
+  GraphicComponent
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 
@@ -103,6 +106,9 @@ echarts.use([
   GridComponent,
   LegendComponent,
   MarkPointComponent,
+  MarkLineComponent,
+  AxisPointerComponent,
+  GraphicComponent,
   CanvasRenderer
 ]);
 
@@ -354,7 +360,7 @@ export default {
           xAxis: { show: false },
           yAxis: { show: false },
           series: [],
-          graphic: {
+          graphic: [{
             type: 'text',
             left: 'center',
             top: 'middle',
@@ -363,7 +369,7 @@ export default {
               fill: '#9ca3af',
               fontSize: 14
             }
-          }
+          }]
         },
         true
       );
@@ -759,8 +765,8 @@ export default {
         finishPredictionWithError(normalizePredictionErrorMessage(parsed.error || '预测服务返回异常'));
       } catch (error) {
         if (requestId !== latestPredictionRequestId.value) return;
-        console.error('提交预测任务失败:', error);
-        const rawMessage = error?.response?.data?.message || error?.message || '提交预测任务失败';
+        console.warn('预测服务暂不可用:', error?.message || '未知错误');
+        const rawMessage = error?.response?.data?.message || error?.message || '预测服务暂不可用';
         finishPredictionWithError(normalizePredictionErrorMessage(rawMessage));
       }
     };
@@ -806,18 +812,23 @@ export default {
 
       let highestIndex = 0;
       let lowestIndex = 0;
-      let highestValue = visibleItems[0].high;
-      let lowestValue = visibleItems[0].low;
+      let highestValue = Number.isFinite(visibleItems[0]?.high) ? visibleItems[0].high : 0;
+      let lowestValue = Number.isFinite(visibleItems[0]?.low) ? visibleItems[0].low : 0;
       for (let i = 1; i < visibleItems.length; i += 1) {
-        if (visibleItems[i].high > highestValue) {
-          highestValue = visibleItems[i].high;
+        const itemHigh = visibleItems[i]?.high;
+        const itemLow = visibleItems[i]?.low;
+        if (Number.isFinite(itemHigh) && itemHigh > highestValue) {
+          highestValue = itemHigh;
           highestIndex = i;
         }
-        if (visibleItems[i].low < lowestValue) {
-          lowestValue = visibleItems[i].low;
+        if (Number.isFinite(itemLow) && itemLow < lowestValue) {
+          lowestValue = itemLow;
           lowestIndex = i;
         }
       }
+      const hasValidMarkPointData = Number.isFinite(highestValue) && Number.isFinite(lowestValue)
+        && realCategories[highestIndex] !== undefined
+        && realCategories[lowestIndex] !== undefined;
 
       const predictionMeanData = [...new Array(realCategories.length).fill(null)];
       const predictionUpperLineData = [...new Array(realCategories.length).fill(null)];
@@ -846,7 +857,7 @@ export default {
       }
 
       const hasPredictionBands = predictionBands.value.length > 0;
-      const hasPredictionArea = predictedCategories.length > 0;
+      const hasPredictionArea = predictedCategories.length > 0 && realCategories.length > 0;
       const formatPredictionBandTooltip = (band) => {
         if (!band) return '';
         const confidence = getConfidenceRatio(band.uncertainty);
@@ -986,7 +997,7 @@ export default {
                     data: [{ xAxis: realCategories[realCategories.length - 1] }]
                   }
                 : undefined,
-              markPoint: {
+              markPoint: hasValidMarkPointData ? {
                 symbol: 'circle',
                 symbolSize: 6,
                 animation: false,
@@ -1030,7 +1041,7 @@ export default {
                     }
                   }
                 ]
-              }
+              } : undefined
             },
             ...(predictionBands.value.length > 0
               ? [
@@ -1291,55 +1302,49 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.stock-chart-section {
+.stock-chart-card {
   background: #fff;
-  border: 1px solid #edf1f5;
   border-radius: 10px;
-  padding: 16px 18px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
   margin-bottom: 20px;
 
-  .chart-header {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 12px;
-  }
-
-  .chart-header-top {
-    width: 100%;
-    min-width: 0;
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  .title-group {
+  .card-header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    min-width: 0;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid #f0f0f0;
+
+    h3 {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    .title-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .adjustment-tag {
+      color: #9ca3af;
+      font-size: 12px;
+      line-height: 1;
+      white-space: nowrap;
+    }
   }
 
-  .section-title {
-    margin: 0;
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: #1f2937;
-    line-height: 1.3;
-    white-space: nowrap;
-  }
-
-  .adjustment-tag {
-    color: #9ca3af;
-    font-size: 12px;
-    line-height: 1;
-    white-space: nowrap;
+  .card-body {
+    padding: 16px 20px;
+    position: relative;
   }
 
   .signal-row {
     width: 100%;
-    align-self: stretch;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
@@ -1651,9 +1656,7 @@ export default {
 }
 
 @media (max-width: 768px) {
-  .stock-chart-section {
-    padding: 14px 14px 12px;
-
+  .stock-chart-card {
     .signal-row {
       display: flex;
       flex-wrap: wrap;
@@ -1698,14 +1701,10 @@ export default {
 }
 
 @media (max-width: 576px) {
-  .stock-chart-section {
-    .chart-header-top {
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    .title-group {
-      justify-content: space-between;
+  .stock-chart-card {
+    .card-header {
+      flex-wrap: wrap;
+      gap: 8px;
     }
 
     .period-switch {
