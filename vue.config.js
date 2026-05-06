@@ -113,19 +113,26 @@ module.exports = {
     },
     proxy: {
       '/api': {
-        target: 'https://api.aistocklink.cn',
+        target: 'https://extapi.aistocklink.cn',
         changeOrigin: true,
-        secure: false,
+        secure: true,
         headers: {
-          Referer: 'https://api.aistocklink.cn'
+          Referer: 'https://extapi.aistocklink.cn'
         },
         onProxyReq(proxyReq, req, res) {
           console.log('代理请求:', req.method, req.url);
         },
         onProxyRes(proxyRes, req, res) {
           console.log('代理响应:', proxyRes.statusCode, req.url);
-          const contentType = proxyRes.headers['content-type'] || '';
-          console.log('响应内容类型:', contentType);
+        }
+      },
+      '/prediction-api': {
+        target: 'https://yingfeng64-kronos-api.hf.space',
+        changeOrigin: true,
+        secure: true,
+        pathRewrite: { '^/prediction-api': '' },
+        onProxyReq(proxyReq, req, res) {
+          console.log('预测API代理请求:', req.method, req.url);
         }
       }
     },
