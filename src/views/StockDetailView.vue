@@ -27,6 +27,7 @@
             />
             {{ isLoggedIn ? (isFavorite ? '已关注' : '关注') : '登录后关注' }}
           </el-button>
+          <CycleSelect v-if="isFavorite && stockInfo?.code" :model-value="stockCycle" @update:model-value="onStockCycleChange" />
         </div>
         <div class="stock-tags">
           <el-tag
@@ -263,7 +264,7 @@
               <div class="cf-stock-info">
                 <span class="cf-stock-name">{{ stockInfo.name }}</span>
                 <span class="cf-stock-code">{{ stockInfo.code }}</span>
-                <span class="cf-ai-tag is-bull">偏多</span>
+                <span :class="['cf-ai-tag', capitalFlowMock.tagClass]">{{ capitalFlowMock.tag }}</span>
               </div>
               <div class="cf-price-info" :class="stockInfo.change >= 0 ? 'is-up' : 'is-down'">
                 <span class="cf-current-price">{{ stockInfo.price || '--' }}</span>
@@ -273,66 +274,33 @@
 
             <div class="cf-block cf-ai-conclusion">
               <div class="cf-ai-narrative">
-                <p class="cf-narrative-main">主力资金连续3日净流入，今日超大单与大单合计净买入6.83亿，占全天成交额2.1%，资金面支撑偏强。</p>
-                <p class="cf-narrative-risk">风险：若明日主力转向净流出且单日超3亿，则短期支撑失效。</p>
+                <p class="cf-narrative-main">{{ capitalFlowMock.narrative }}</p>
+                <p class="cf-narrative-risk">风险：{{ capitalFlowMock.risk }}</p>
               </div>
             </div>
 
             <div class="cf-block cf-core-data">
               <div class="cf-hero-col">
                 <span class="cf-hero-label">主力净流入</span>
-                <span class="cf-hero-value is-up">+6.83亿</span>
+                <span :class="['cf-hero-value', capitalFlowMock.mainInflow >= 0 ? 'is-up' : 'is-down']">
+                  {{ formatFlowValue(capitalFlowMock.mainInflow) }}
+                </span>
                 <div class="cf-hero-tags">
-                  <span class="cf-hero-tag">占比 2.1%</span>
-                  <span class="cf-hero-tag">5日 +18.7亿</span>
-                  <span class="cf-hero-tag">连买 3天</span>
+                  <span v-for="tag in capitalFlowMock.tags" :key="tag" class="cf-hero-tag">{{ tag }}</span>
                 </div>
               </div>
               <div class="cf-split-col">
                 <div class="cf-bidi-chart">
-                  <div class="cf-bidi-row">
-                    <span class="cf-bidi-label">超大单</span>
+                  <div v-for="item in capitalFlowMock.orders" :key="item.label" class="cf-bidi-row">
+                    <span class="cf-bidi-label">{{ item.label }}</span>
                     <div class="cf-bidi-track-left">
-                      <div class="cf-bidi-bar cf-bidi-bar-left" style="width: 0%"></div>
+                      <div class="cf-bidi-bar cf-bidi-bar-left" :style="{ width: `${item.value < 0 ? item.width : 0}%` }"></div>
                     </div>
                     <div class="cf-bidi-axis"></div>
                     <div class="cf-bidi-track-right">
-                      <div class="cf-bidi-bar cf-bidi-bar-right" style="width: 70%"></div>
+                      <div class="cf-bidi-bar cf-bidi-bar-right" :style="{ width: `${item.value >= 0 ? item.width : 0}%` }"></div>
                     </div>
-                    <span class="cf-bidi-value is-up">+3.2亿</span>
-                  </div>
-                  <div class="cf-bidi-row">
-                    <span class="cf-bidi-label">大单</span>
-                    <div class="cf-bidi-track-left">
-                      <div class="cf-bidi-bar cf-bidi-bar-left" style="width: 0%"></div>
-                    </div>
-                    <div class="cf-bidi-axis"></div>
-                    <div class="cf-bidi-track-right">
-                      <div class="cf-bidi-bar cf-bidi-bar-right" style="width: 78%"></div>
-                    </div>
-                    <span class="cf-bidi-value is-up">+3.6亿</span>
-                  </div>
-                  <div class="cf-bidi-row">
-                    <span class="cf-bidi-label">中单</span>
-                    <div class="cf-bidi-track-left">
-                      <div class="cf-bidi-bar cf-bidi-bar-left" style="width: 35%"></div>
-                    </div>
-                    <div class="cf-bidi-axis"></div>
-                    <div class="cf-bidi-track-right">
-                      <div class="cf-bidi-bar cf-bidi-bar-right" style="width: 0%"></div>
-                    </div>
-                    <span class="cf-bidi-value is-down">-0.8亿</span>
-                  </div>
-                  <div class="cf-bidi-row">
-                    <span class="cf-bidi-label">小单</span>
-                    <div class="cf-bidi-track-left">
-                      <div class="cf-bidi-bar cf-bidi-bar-left" style="width: 50%"></div>
-                    </div>
-                    <div class="cf-bidi-axis"></div>
-                    <div class="cf-bidi-track-right">
-                      <div class="cf-bidi-bar cf-bidi-bar-right" style="width: 0%"></div>
-                    </div>
-                    <span class="cf-bidi-value is-down">-1.2亿</span>
+                    <span :class="['cf-bidi-value', item.value >= 0 ? 'is-up' : 'is-down']">{{ formatFlowValue(item.value) }}</span>
                   </div>
                 </div>
               </div>
@@ -341,7 +309,7 @@
             <div class="cf-block cf-trend">
               <div class="cf-trend-header">
                 <span class="cf-trend-title">10日资金趋势</span>
-                <span class="cf-trend-badge">趋势：反弹第4天，力度增强</span>
+                <span class="cf-trend-badge">{{ capitalFlowMock.trendBadge }}</span>
               </div>
               <div ref="capitalFlowChartRef" class="cf-trend-chart"></div>
             </div>
@@ -458,65 +426,50 @@
 
       <!-- 中线视图 -->
       <div v-show="activeView === 'mid'" class="view-content">
-        <!-- Mock: AI分析（中线）待接入API
         <div class="card ai-analysis-card">
           <div class="card-header">
-            <h3>AI分析</h3>
-            <span class="card-badge mock-badge">Mock数据 · 待接入API</span>
+            <h3>中线AI研判</h3>
           </div>
           <div class="card-body">
             <div class="ai-conclusion">
-              <span class="conclusion-badge is-hold">业绩稳中向好</span>
+              <span :class="['conclusion-badge', midAiAnalysis.badgeClass]">{{ midAiAnalysis.conclusion }}</span>
             </div>
             <div class="ai-logic">
-              <p>近两季度营收同比增长12.3%，净利润增速高于营收增速，毛利率稳中有升。机构一致预期2026年EPS增长15%+，当前PE处于行业中枢偏低位置，估值具备安全边际。</p>
+              <p>{{ midAiAnalysis.logic }}</p>
+            </div>
+            <div class="ai-basis">
+              <h4>研判依据</h4>
+              <ul>
+                <li v-for="item in midAiAnalysis.basis" :key="item">{{ item }}</li>
+              </ul>
+            </div>
+            <div class="ai-risk">
+              <h4>投资建议</h4>
+              <ul class="ai-advice-list">
+                <li v-for="item in midAiAnalysis.advice" :key="item">{{ item }}</li>
+              </ul>
+              <h4 class="risk-title">风险提示</h4>
+              <ul class="ai-risk-list">
+                <li v-for="item in midAiAnalysis.riskTips" :key="item">{{ item }}</li>
+              </ul>
             </div>
           </div>
         </div>
-        Mock: AI分析（中线）结束 -->
 
-        <!-- Mock: 财报分析待接入API
         <div class="card">
           <div class="card-header">
             <h3>财报分析</h3>
-            <span class="card-badge mock-badge">Mock数据 · 待接入API</span>
           </div>
           <div class="card-body">
             <div class="finance-grid">
-              <div class="finance-item">
-                <span class="finance-label">营收(亿)</span>
-                <span class="finance-value">186.5</span>
-                <span class="finance-change is-up">+12.3%</span>
-              </div>
-              <div class="finance-item">
-                <span class="finance-label">净利润(亿)</span>
-                <span class="finance-value">23.8</span>
-                <span class="finance-change is-up">+18.6%</span>
-              </div>
-              <div class="finance-item">
-                <span class="finance-label">PE(TTM)</span>
-                <span class="finance-value">22.5</span>
-                <span class="finance-change is-down">行业均值28</span>
-              </div>
-              <div class="finance-item">
-                <span class="finance-label">PB</span>
-                <span class="finance-value">3.2</span>
-                <span class="finance-change">行业均值3.8</span>
-              </div>
-              <div class="finance-item">
-                <span class="finance-label">毛利率</span>
-                <span class="finance-value">32.1%</span>
-                <span class="finance-change is-up">+1.2%</span>
-              </div>
-              <div class="finance-item">
-                <span class="finance-label">ROE</span>
-                <span class="finance-value">14.5%</span>
-                <span class="finance-change is-up">+0.8%</span>
+              <div v-for="item in midMockData.finance" :key="item.label" class="finance-item">
+                <span class="finance-label">{{ item.label }}</span>
+                <span class="finance-value">{{ item.value }}</span>
+                <span :class="['finance-change', item.type]">{{ item.change }}</span>
               </div>
             </div>
           </div>
         </div>
-        Mock: 财报分析结束 -->
 
         <div class="card">
           <div class="card-header">
@@ -552,164 +505,78 @@
           </div>
         </div>
 
-        <!-- Mock: 行业景气指数待接入API
         <div class="card">
           <div class="card-header">
             <h3>行业景气指数</h3>
-            <span class="card-badge mock-badge">Mock数据 · 待接入API</span>
           </div>
-          <div class="card-body">
+          <div class="card-body industry-card-body">
             <div class="industry-health">
-              <div class="health-score">
-                <span class="score-value is-up">72</span>
-                <span class="score-label">景气度评分</span>
+              <div class="industry-health-head">
+                <div class="industry-health-title">
+                  <span v-for="tag in midMockData.industryHealth.tags" :key="tag.text" class="industry-pill">{{ tag.text }}</span>
+                </div>
+                <div :class="['industry-score-number', midMockData.industryHealth.levelClass]">
+                  <strong>{{ midMockData.industryHealth.score }}</strong>
+                  <span>/ 100</span>
+                </div>
               </div>
-              <div class="health-tags">
-                <el-tag size="small" type="success">政策利好</el-tag>
-                <el-tag size="small" type="warning">产能扩张</el-tag>
-                <el-tag size="small" type="info">需求稳定</el-tag>
+              <div class="industry-chart-wrap">
+                <div ref="industryHealthChartRef" class="industry-line-chart" role="img" aria-label="行业景气指数趋势"></div>
+              </div>
+              <div class="industry-detail-title">行业详情（点击展开）</div>
+              <div class="industry-detail-grid">
+                <div v-for="item in midMockData.industryHealth.details" :key="item.title" class="industry-detail-item">
+                  <span class="detail-icon">{{ item.icon }}</span>
+                  <div>
+                    <strong>{{ item.title }}</strong>
+                    <span>{{ item.desc }}</span>
+                  </div>
+                  <span class="detail-arrow">›</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
-        Mock: 行业景气指数结束 -->
       </div>
 
       <!-- 长线视图 -->
       <div v-show="activeView === 'long'" class="view-content">
-        <!-- Mock: AI分析（长线）待接入API
         <div class="card ai-analysis-card">
           <div class="card-header">
-            <h3>AI分析</h3>
-            <span class="card-badge mock-badge">Mock数据 · 待接入API</span>
+            <h3>长线AI研判</h3>
           </div>
           <div class="card-body">
             <div class="ai-conclusion">
-              <span class="conclusion-badge is-bull">长期看好</span>
+              <span :class="['conclusion-badge', longAiAnalysis.badgeClass]">{{ longAiAnalysis.conclusion }}</span>
             </div>
             <div class="ai-logic">
-              <p>公司处于行业龙头地位，受益于国家"双碳"政策长期驱动，新能源赛道空间广阔。技术壁垒较高，核心竞争力突出，具备持续成长潜力。需关注行业竞争加剧风险。</p>
+              <p>{{ longAiAnalysis.logic }}</p>
+            </div>
+            <div class="ai-basis">
+              <h4>研判依据</h4>
+              <ul>
+                <li v-for="item in longAiAnalysis.basis" :key="item">{{ item }}</li>
+              </ul>
+            </div>
+            <div class="ai-risk">
+              <h4>投资建议</h4>
+              <ul class="ai-advice-list">
+                <li v-for="item in longAiAnalysis.advice" :key="item">{{ item }}</li>
+              </ul>
+              <h4 class="risk-title">风险提示</h4>
+              <ul class="ai-risk-list">
+                <li v-for="item in longAiAnalysis.riskTips" :key="item">{{ item }}</li>
+              </ul>
             </div>
           </div>
         </div>
-        Mock: AI分析（长线）结束 -->
 
-        <!-- Mock: 行业政策待接入API
-        <div class="card">
+        <div v-if="shouldShowTenxModel" class="card tenx-card">
           <div class="card-header">
-            <h3>行业政策</h3>
-            <span class="card-badge mock-badge">Mock数据 · 待接入API</span>
+            <h3>倍数潜力模型</h3>
           </div>
           <div class="card-body">
-            <div class="policy-list">
-              <div class="policy-item">
-                <span class="policy-tag is-good">利好</span>
-                <span class="policy-text">《关于更高水平更高质量做好节能降碳工作的意见》发布</span>
-              </div>
-              <div class="policy-item">
-                <span class="policy-tag is-good">利好</span>
-                <span class="policy-text">新型储能发展规划落地，行业进入加速期</span>
-              </div>
-              <div class="policy-item">
-                <span class="policy-tag is-neutral">中性</span>
-                <span class="policy-text">电力市场化改革推进，电价波动性可能加大</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        Mock: 行业政策结束 -->
-
-        <!-- Mock: 公司护城河待接入API
-        <div class="card">
-          <div class="card-header">
-            <h3>公司护城河</h3>
-            <span class="card-badge mock-badge">Mock数据 · 待接入API</span>
-          </div>
-          <div class="card-body">
-            <div class="moat-grid">
-              <div class="moat-item">
-                <div class="moat-icon">🏆</div>
-                <div class="moat-info">
-                  <span class="moat-title">品牌溢价</span>
-                  <span class="moat-desc">行业龙头品牌，市场认知度高</span>
-                </div>
-              </div>
-              <div class="moat-item">
-                <div class="moat-icon">📐</div>
-                <div class="moat-info">
-                  <span class="moat-title">规模效应</span>
-                  <span class="moat-desc">装机容量行业前三，成本优势明显</span>
-                </div>
-              </div>
-              <div class="moat-item">
-                <div class="moat-icon">🔬</div>
-                <div class="moat-info">
-                  <span class="moat-title">技术壁垒</span>
-                  <span class="moat-desc">核心专利126项，研发投入持续增长</span>
-                </div>
-              </div>
-              <div class="moat-item">
-                <div class="moat-icon">🔗</div>
-                <div class="moat-info">
-                  <span class="moat-title">产业链</span>
-                  <span class="moat-desc">上下游一体化布局，供应链稳定</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        Mock: 公司护城河结束 -->
-
-        <!-- Mock: 年报对比待接入API
-        <div class="card">
-          <div class="card-header">
-            <h3>年报对比</h3>
-            <span class="card-badge mock-badge">Mock数据 · 待接入API</span>
-          </div>
-          <div class="card-body">
-            <div class="annual-grid">
-              <div class="annual-item">
-                <span class="annual-label">管理层薪酬</span>
-                <span class="annual-value">同比+8%</span>
-                <span class="annual-note">合理区间</span>
-              </div>
-              <div class="annual-item">
-                <span class="annual-label">股东结构</span>
-                <span class="annual-value">北向资金增持</span>
-                <span class="annual-note is-up">积极信号</span>
-              </div>
-              <div class="annual-item">
-                <span class="annual-label">资本回报率</span>
-                <span class="annual-value">14.5%</span>
-                <span class="annual-note is-up">高于行业</span>
-              </div>
-              <div class="annual-item">
-                <span class="annual-label">自由现金流</span>
-                <span class="annual-value">+18.3亿</span>
-                <span class="annual-note is-up">持续为正</span>
-              </div>
-              <div class="annual-item">
-                <span class="annual-label">分红率</span>
-                <span class="annual-value">35.2%</span>
-                <span class="annual-note">稳定分红</span>
-              </div>
-              <div class="annual-item">
-                <span class="annual-label">商誉</span>
-                <span class="annual-value">0.8亿</span>
-                <span class="annual-note">风险较低</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        Mock: 年报对比结束 -->
-
-        <div class="card tenx-card">
-          <div class="card-header">
-            <h3>10倍股模型</h3>
-            <span class="card-badge mock-badge">Mock数据 · 待接入API</span>
-          </div>
-          <div class="card-body">
-            <div class="tenx-hero" :class="getScoreClass(78)">
+            <div class="tenx-hero" :class="getScoreClass(tenxModel.score)">
               <div class="tenx-score-ring">
                 <svg viewBox="0 0 120 120" class="score-svg">
                   <defs>
@@ -727,78 +594,83 @@
                     </linearGradient>
                   </defs>
                   <circle cx="60" cy="60" r="52" class="score-bg"/>
-                  <circle cx="60" cy="60" r="52" class="score-fill" :class="getScoreClass(78)" :style="getScoreRingStyle(78)"/>
+                  <circle cx="60" cy="60" r="52" class="score-fill" :class="getScoreClass(tenxModel.score)" :style="getScoreRingStyle(tenxModel.score)"/>
                 </svg>
-                <div class="score-center" :class="getScoreClass(78)">
-                  <span class="score-value">78</span>
-                  <span class="score-label">潜力评分</span>
+                <div class="score-center" :class="getScoreClass(tenxModel.score)">
+                  <span class="score-value">{{ tenxModel.score }}</span>
+                  <span class="score-label">{{ tenxModel.expectedMultiple }}</span>
                 </div>
               </div>
               <div class="tenx-verdict">
-                <span class="verdict-tag" :class="getScoreClass(78)">{{ getScoreLabel(78) }}</span>
-                <p class="verdict-text">{{ getScoreDescription(78) }}</p>
+                <span class="verdict-tag" :class="getScoreClass(tenxModel.score)">{{ tenxModel.label }}</span>
+                <p class="verdict-text">{{ tenxModel.description }}</p>
                 <div class="tenx-insight-inline">
                   <div class="insight-header">
-                    <span class="insight-icon">💡</span>
                     <span class="insight-title">AI洞察</span>
                   </div>
-                  <p class="insight-content">该股在赛道景气与成长动能维度表现突出，符合"高景气赛道+业绩高速增长"的十倍股核心特征。但估值偏高，建议关注回调机会。竞争壁垒需持续跟踪，护城河深度将决定长期空间。</p>
+                  <p class="insight-content">{{ tenxModel.insight }}</p>
                 </div>
               </div>
             </div>
             <div class="tenx-dimensions-grid">
-              <div class="dimension-item" :class="getScoreClass(85)">
+              <div v-for="item in tenxModel.dimensions" :key="item.name" class="dimension-item" :class="getScoreClass(item.score)">
                 <div class="dim-header">
-                  <span class="dim-icon">📈</span>
-                  <span class="dim-name">赛道景气</span>
-                  <span class="dim-score" :class="getScoreClass(85)">85</span>
+                  <span class="dim-name">{{ item.name }}</span>
+                  <span class="dim-score" :class="getScoreClass(item.score)">{{ item.score }}</span>
                 </div>
-                <div class="dim-bar"><div class="dim-fill" :class="getScoreClass(85)" :style="{ width: '85%' }"></div></div>
-                <div class="dim-detail">行业增速28% · 渗透率12% · 政策强支持</div>
+                <div class="dim-bar"><div class="dim-fill" :class="getScoreClass(item.score)" :style="{ width: `${item.score}%` }"></div></div>
+                <div class="dim-detail">{{ item.detail }}</div>
               </div>
-              <div class="dimension-item" :class="getScoreClass(82)">
-                <div class="dim-header">
-                  <span class="dim-icon">🚀</span>
-                  <span class="dim-name">成长动能</span>
-                  <span class="dim-score" :class="getScoreClass(82)">82</span>
-                </div>
-                <div class="dim-bar"><div class="dim-fill" :class="getScoreClass(82)" :style="{ width: '82%' }"></div></div>
-                <div class="dim-detail">ROE 22% · 净利增35% · 营收增28%</div>
-              </div>
-              <div class="dimension-item" :class="getScoreClass(72)">
-                <div class="dim-header">
-                  <span class="dim-icon">🏰</span>
-                  <span class="dim-name">竞争壁垒</span>
-                  <span class="dim-score" :class="getScoreClass(72)">72</span>
-                </div>
-                <div class="dim-bar"><div class="dim-fill" :class="getScoreClass(72)" :style="{ width: '72%' }"></div></div>
-                <div class="dim-detail">市占率15% · 专利126项 · 技术壁垒中等</div>
-              </div>
-              <div class="dimension-item" :class="getScoreClass(75)">
-                <div class="dim-header">
-                  <span class="dim-icon">💰</span>
-                  <span class="dim-name">财务质量</span>
-                  <span class="dim-score" :class="getScoreClass(75)">75</span>
-                </div>
-                <div class="dim-bar"><div class="dim-fill" :class="getScoreClass(75)" :style="{ width: '75%' }"></div></div>
-                <div class="dim-detail">毛利率38% · 现金流健康 · 负债率32%</div>
-              </div>
-              <div class="dimension-item" :class="getScoreClass(58)">
-                <div class="dim-header">
-                  <span class="dim-icon">🎯</span>
-                  <span class="dim-name">估值安全</span>
-                  <span class="dim-score" :class="getScoreClass(58)">58</span>
-                </div>
-                <div class="dim-bar"><div class="dim-fill" :class="getScoreClass(58)" :style="{ width: '58%' }"></div></div>
-                <div class="dim-detail">PE 35倍 · PEG 1.2 · 市值186亿</div>
-              </div>
-            </div>
-            <div class="tenx-data-source">
-              <span class="source-label">数据来源：</span>
-              <span class="source-list">财报数据、行业研报、专利数据库、政策文件</span>
             </div>
           </div>
         </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>行业政策</h3>
+          </div>
+          <div class="card-body">
+            <div class="policy-list">
+              <div v-for="item in longMockData.policies" :key="item.text" class="policy-item">
+                <span :class="['policy-tag', item.type]">{{ item.tag }}</span>
+                <span class="policy-text">{{ item.text }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>公司护城河</h3>
+          </div>
+          <div class="card-body">
+            <div class="moat-grid">
+              <div v-for="item in longMockData.moats" :key="item.title" class="moat-item">
+                <div class="moat-icon">{{ item.icon }}</div>
+                <div class="moat-info">
+                  <span class="moat-title">{{ item.title }}</span>
+                  <span class="moat-desc">{{ item.desc }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>年报对比</h3>
+          </div>
+          <div class="card-body">
+            <div class="annual-grid">
+              <div v-for="item in longMockData.annual" :key="item.label" class="annual-item">
+                <span class="annual-label">{{ item.label }}</span>
+                <span class="annual-value">{{ item.value }}</span>
+                <span :class="['annual-note', item.type]">{{ item.note }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -873,9 +745,13 @@ import { useStore } from 'vuex';
 import { ElMessage } from 'element-plus';
 import MarkdownIt from 'markdown-it';
 import StockChart from '@/components/StockChart.vue';
+import CycleSelect from '@/components/CycleSelect.vue';
+import { useStockCycle } from '@/utils/stockCycle';
 import { ttsApi } from '@/services/api';
+import { getCuratedStockProfile } from '@/mock/curatedStocks';
 import 'element-plus/es/components/message/style/css';
 import * as echarts from 'echarts/core';
+
 import { LineChart, BarChart } from 'echarts/charts';
 import { TitleComponent, TooltipComponent, LegendComponent, GridComponent, MarkLineComponent, AxisPointerComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
@@ -905,7 +781,7 @@ const invalidateCache = (code) => {
 
 export default {
   name: 'StockDetailView',
-  components: { StockChart },
+  components: { StockChart, CycleSelect },
   setup() {
     const route = useRoute();
     const router = useRouter();
@@ -931,6 +807,11 @@ export default {
     const isLoggedIn = computed(() => store.getters.isLoggedIn);
     const isFavorite = ref(false);
     const addingToFavorites = ref(false);
+    const { getCycle, setCycle } = useStockCycle();
+    const stockCycle = computed(() => getCycle(stockInfo.value.code));
+    const onStockCycleChange = (val) => {
+      setCycle(stockInfo.value.code, val);
+    };
     const stockNews = ref([]);
     const analysisResult = ref({ conclusion: '', date: '', coreLogic: '', coreLogicText: '', riskWarning: '', riskWarningText: '' });
     const currentNewsDetail = ref(null);
@@ -991,6 +872,343 @@ export default {
     const canPlayEvaluationAudio = computed(() => (
       !loadingEvaluation.value && Boolean(String(evaluationTtsText.value || '').trim())
     ));
+
+    const curatedProfile = computed(() => getCuratedStockProfile(stockInfo.value.code));
+    const profileScore = computed(() => Number(curatedProfile.value?.aiScore || 78));
+    const profileTheme = computed(() => curatedProfile.value?.theme || stockInfo.value.industry || '成长赛道');
+    const profileName = computed(() => curatedProfile.value?.name || stockInfo.value.name || '该股');
+    const expectedMultipleText = computed(() => curatedProfile.value?.expectedMultiple || '1.5倍');
+    const expectedMultipleNumber = computed(() => Number(String(expectedMultipleText.value).replace('倍', '').trim()) || 1.5);
+
+    const fifteenthPlanThemeMap = {
+      '光通讯': '算力基础设施、数据中心网络升级和高速信息通信底座',
+      '半导体': '集成电路、高端芯片和关键产业链自主可控',
+      'AI应用': '人工智能+、数字经济和智能化应用落地',
+      '商业航天': '商业航天、卫星互联网和空天信息产业',
+      '机器人': '具身智能、智能制造和机器人产业',
+      '锂电储能': '新型能源体系、新型储能和绿色低碳转型',
+      '算电协同': '算力网络、能源数字化和算电协同基础设施',
+      '新型储能': '新型能源体系、新型储能和绿色低碳转型'
+    };
+
+    const getFifteenthPlanStatement = (themeName) => {
+      const rawName = String(themeName || '').trim();
+      const matchedKey = Object.keys(fifteenthPlanThemeMap).find(key => rawName === key || rawName.includes(key) || key.includes(rawName));
+      if (matchedKey) {
+        return `${matchedKey}对应${fifteenthPlanThemeMap[matchedKey]}，属于十五五期间培育新质生产力、战略性新兴产业和未来产业时容易被重点关注的方向。`;
+      }
+      return `${rawName || '该方向'}与十五五期间培育新质生产力、发展战略性新兴产业的政策主线存在一定关联。`;
+    };
+
+    const getTenbaggerSimilarityScore = (baseScore, multiple) => {
+      const score = Number(baseScore) || 78;
+      const m = Number(multiple) || 1.5;
+      if (m >= 10) return Math.min(98, Math.max(86, Math.round(score)));
+      if (m >= 5) return Math.min(74, Math.max(68, Math.round(64 + m + (score - 85) * 0.25)));
+      if (m >= 3) return Math.min(64, Math.max(56, Math.round(52 + m * 2 + (score - 85) * 0.18)));
+      if (m >= 2) return Math.min(55, Math.max(48, Math.round(45 + m * 2.5 + (score - 85) * 0.12)));
+      return Math.min(47, Math.max(38, Math.round(36 + m * 3 + (score - 85) * 0.1)));
+    };
+
+    const formatFlowValue = (value) => {
+      const amount = Number(value) || 0;
+      const abs = Math.abs(amount);
+      const digits = abs >= 10 ? 1 : 2;
+      return `${amount >= 0 ? '+' : '-'}${abs.toFixed(digits)}亿`;
+    };
+
+    const capitalFlowPresets = {
+      '300308': { tag: '强承接', tagClass: 'is-bull', mainInflow: 8.46, ratio: '2.8%', fiveDay: 26.4, streak: '连买5天', trendBadge: '趋势：高位抱团第5天', narrative: '主力资金继续围绕光模块核心资产集中，超大单净买入占比提升，说明高位换手后仍有机构承接。', risk: '若单日成交放大但主力净流入转负，说明抱团资金开始松动。', trend: [1.2, 2.6, 3.4, 1.9, 4.8, 5.6, 3.2, 6.1, 7.3, 8.46], orders: [{ label: '超大单', value: 4.96 }, { label: '大单', value: 3.5 }, { label: '中单', value: -1.14 }, { label: '小单', value: -1.82 }] },
+      '002371': { tag: '稳步流入', tagClass: 'is-bull', mainInflow: 4.18, ratio: '1.6%', fiveDay: 11.2, streak: '连买3天', trendBadge: '趋势：权重资金回补', narrative: '半导体设备权重资金以稳步回补为主，大单净流入强于超大单，偏机构底仓加仓节奏。', risk: '若设备板块缩量回落且大单流入降至1亿以内，短线资金面支撑会减弱。', trend: [-0.6, 0.4, 1.1, -0.2, 1.8, 2.4, 1.7, 2.9, 3.6, 4.18], orders: [{ label: '超大单', value: 1.42 }, { label: '大单', value: 2.76 }, { label: '中单', value: -0.62 }, { label: '小单', value: -0.91 }] },
+      '300058': { tag: '高换手', tagClass: 'is-bull', mainInflow: 6.72, ratio: '3.4%', fiveDay: 18.9, streak: '连买4天', trendBadge: '趋势：情绪主升第4天', narrative: 'AI应用人气资金继续涌入，超大单和大单同步净买入，但小单流出明显，说明筹码正在快速换手。', risk: '若次日高开后小单继续流出且超大单不再接力，容易出现剧烈震荡。', trend: [-1.5, 0.8, 2.6, 4.1, 3.2, -0.7, 5.4, 6.0, 4.9, 6.72], orders: [{ label: '超大单', value: 3.88 }, { label: '大单', value: 2.84 }, { label: '中单', value: -1.36 }, { label: '小单', value: -2.08 }] },
+      '600118': { tag: '主题流入', tagClass: 'is-bull', mainInflow: 3.36, ratio: '2.0%', fiveDay: 9.8, streak: '连买3天', trendBadge: '趋势：主题资金抬升', narrative: '商业航天主题资金回流明显，超大单净流入温和但持续，更多体现为事件催化下的趋势抬升。', risk: '若主题催化降温且中单转为持续流出，短线承接会变弱。', trend: [-0.4, 0.6, 1.5, 1.2, 2.0, 2.6, 1.9, 2.7, 3.1, 3.36], orders: [{ label: '超大单', value: 1.18 }, { label: '大单', value: 2.18 }, { label: '中单', value: -0.48 }, { label: '小单', value: -0.76 }] },
+      '688017': { tag: '放量抢筹', tagClass: 'is-bull', mainInflow: 5.27, ratio: '3.1%', fiveDay: 14.6, streak: '连买4天', trendBadge: '趋势：弹性资金加强', narrative: '机器人弹性资金明显增强，超大单净流入超过大单，显示资金更偏向抢筹核心零部件标的。', risk: '若机器人板块回落且超大单净流入低于1亿，高弹性资金可能快速撤离。', trend: [0.2, -0.5, 1.4, 2.3, 2.8, 3.6, 2.9, 4.2, 4.8, 5.27], orders: [{ label: '超大单', value: 3.04 }, { label: '大单', value: 2.23 }, { label: '中单', value: -0.82 }, { label: '小单', value: -1.4 }] },
+      '300750': { tag: '低位回补', tagClass: 'is-neutral', mainInflow: 2.15, ratio: '0.7%', fiveDay: 5.6, streak: '连买2天', trendBadge: '趋势：权重修复初期', narrative: '新能源权重资金以低位回补为主，净流入金额不弱但占成交比例不高，说明当前更像估值修复。', risk: '若储能催化未延续且主力净流入重新回到负值，修复趋势可能放缓。', trend: [-2.1, -1.4, -0.6, 0.5, 1.2, -0.3, 0.8, 1.6, 1.9, 2.15], orders: [{ label: '超大单', value: 0.82 }, { label: '大单', value: 1.33 }, { label: '中单', value: -0.42 }, { label: '小单', value: -0.58 }] },
+      '600406': { tag: '稳健增配', tagClass: 'is-neutral', mainInflow: 1.32, ratio: '0.9%', fiveDay: 4.1, streak: '连买3天', trendBadge: '趋势：慢速抬升', narrative: '电网权重资金呈稳健增配特征，大单流入为主，短线爆发力一般但流出压力较小。', risk: '若成交继续缩小且大单净流入转负，慢牛节奏可能进入横盘。', trend: [0.1, 0.3, 0.5, 0.4, 0.9, 1.0, 0.8, 1.1, 1.25, 1.32], orders: [{ label: '超大单', value: 0.38 }, { label: '大单', value: 0.94 }, { label: '中单', value: -0.22 }, { label: '小单', value: -0.31 }] },
+      '688205': { tag: '试探流入', tagClass: 'is-bull', mainInflow: 2.86, ratio: '4.2%', fiveDay: 7.4, streak: '连买3天', trendBadge: '趋势：小市值弹性回暖', narrative: '光通讯小市值弹性资金开始试探流入，超大单不算极端，但大单承接改善明显。', risk: '若海外订单预期落空且大单转流出，资金会快速回到观望。', trend: [-0.8, -0.3, 0.2, 0.9, 1.6, 1.4, 2.1, 2.4, 2.6, 2.86], orders: [{ label: '超大单', value: 0.96 }, { label: '大单', value: 1.9 }, { label: '中单', value: -0.34 }, { label: '小单', value: -0.62 }] },
+      '688008': { tag: '机构加仓', tagClass: 'is-bull', mainInflow: 3.94, ratio: '2.5%', fiveDay: 12.7, streak: '连买4天', trendBadge: '趋势：芯片资金回流', narrative: 'AI服务器芯片链条资金回流，超大单和大单结构均衡，显示机构加仓意愿较强。', risk: '若半导体整体冲高回落且超大单流入低于0.8亿，短线趋势会转弱。', trend: [0.5, 1.2, 0.9, 1.7, 2.2, 2.6, 3.4, 3.1, 3.8, 3.94], orders: [{ label: '超大单', value: 1.98 }, { label: '大单', value: 1.96 }, { label: '中单', value: -0.54 }, { label: '小单', value: -0.7 }] },
+      '300136': { tag: '脉冲流入', tagClass: 'is-neutral', mainInflow: 1.76, ratio: '1.8%', fiveDay: 3.9, streak: '连买2天', trendBadge: '趋势：事件驱动脉冲', narrative: '卫星通信主题带来脉冲式流入，大单净买入较明显，但超大单参与度仍需继续观察。', risk: '若事件催化减弱且小单流出扩大，短线容易回到震荡。', trend: [-0.9, -0.2, 0.6, 1.4, 0.7, -0.4, 0.8, 1.2, 1.5, 1.76], orders: [{ label: '超大单', value: 0.42 }, { label: '大单', value: 1.34 }, { label: '中单', value: -0.28 }, { label: '小单', value: -0.56 }] },
+      '002050': { tag: '白马回流', tagClass: 'is-bull', mainInflow: 4.62, ratio: '2.2%', fiveDay: 13.5, streak: '连买4天', trendBadge: '趋势：白马成长回流', narrative: '机器人链条扩散到白马成长股，机构资金回流清晰，大单和超大单同步净买入。', risk: '若机器人执行器预期降温且大单净流入小于1亿，资金会转为防守。', trend: [0.6, 1.0, 1.8, 2.2, 2.9, 3.1, 3.6, 4.0, 4.4, 4.62], orders: [{ label: '超大单', value: 2.12 }, { label: '大单', value: 2.5 }, { label: '中单', value: -0.64 }, { label: '小单', value: -0.96 }] },
+      '002015': { tag: '分歧流入', tagClass: 'is-neutral', mainInflow: 0.88, ratio: '1.1%', fiveDay: 2.6, streak: '连买2天', trendBadge: '趋势：分歧修复', narrative: '算电协同方向有资金试探，但超大单参与度偏低，当前更像分歧中的修复而非主升。', risk: '若算力项目落地节奏不清晰，试探资金可能重新流出。', trend: [-0.7, -0.4, 0.1, 0.6, -0.2, 0.4, 0.7, 0.5, 0.9, 0.88], orders: [{ label: '超大单', value: 0.16 }, { label: '大单', value: 0.72 }, { label: '中单', value: -0.18 }, { label: '小单', value: -0.35 }] },
+      '300438': { tag: '底部吸筹', tagClass: 'is-neutral', mainInflow: 1.08, ratio: '1.5%', fiveDay: 3.2, streak: '连买2天', trendBadge: '趋势：底部吸筹初期', narrative: '储能弹性资金有底部吸筹迹象，大单净流入改善，但还没有形成连续强势主升。', risk: '若电池价格继续下行且主力净流入转负，底部修复会延后。', trend: [-1.1, -0.8, -0.4, 0.2, 0.5, -0.1, 0.6, 0.9, 1.0, 1.08], orders: [{ label: '超大单', value: 0.28 }, { label: '大单', value: 0.8 }, { label: '中单', value: -0.24 }, { label: '小单', value: -0.42 }] }
+    };
+
+    const normalizeCapitalFlow = (preset) => {
+      const source = preset || {
+        tag: '观察',
+        tagClass: 'is-neutral',
+        mainInflow: 0.62,
+        ratio: '0.6%',
+        fiveDay: 1.4,
+        streak: '观察中',
+        trendBadge: '趋势：资金温和观察',
+        narrative: '当前资金流向以温和观察为主，缺少连续主力净流入信号，短线更适合等待方向确认。',
+        risk: '若主力净流入持续为负，短线资金面会偏弱。',
+        trend: [-0.2, 0.1, 0.4, -0.1, 0.2, 0.5, 0.3, 0.7, 0.4, 0.62],
+        orders: [{ label: '超大单', value: 0.12 }, { label: '大单', value: 0.5 }, { label: '中单', value: -0.18 }, { label: '小单', value: -0.26 }]
+      };
+      const maxOrder = Math.max(0.01, ...source.orders.map(item => Math.abs(Number(item.value) || 0)));
+      return {
+        ...source,
+        tags: [`占比 ${source.ratio}`, `5日 ${formatFlowValue(source.fiveDay)}`, source.streak],
+        orders: source.orders.map(item => ({
+          ...item,
+          width: Math.max(8, Math.round((Math.abs(Number(item.value) || 0) / maxOrder) * 88))
+        }))
+      };
+    };
+
+    const capitalFlowMock = computed(() => normalizeCapitalFlow(capitalFlowPresets[String(stockInfo.value.code || '')]));
+
+    const industryHealthPresets = {
+      '光通讯': { values: [70, 76, 74, 82, 87, 91, 93], details: [{ icon: '政', title: '相关政策', desc: '14项' }, { icon: '告', title: '重大公告', desc: '11条' }, { icon: '排', title: '行业股票排行', desc: '查看' }] },
+      '半导体': { values: [56, 61, 65, 71, 78, 83, 86], details: [{ icon: '政', title: '相关政策', desc: '16项' }, { icon: '告', title: '重大公告', desc: '9条' }, { icon: '排', title: '行业股票排行', desc: '查看' }] },
+      'AI应用': { values: [62, 69, 68, 76, 83, 88, 90], details: [{ icon: '政', title: '相关政策', desc: '12项' }, { icon: '告', title: '重大公告', desc: '8条' }, { icon: '排', title: '行业股票排行', desc: '查看' }] },
+      '商业航天': { values: [48, 55, 60, 66, 72, 79, 83], details: [{ icon: '政', title: '相关政策', desc: '15项' }, { icon: '告', title: '重大公告', desc: '7条' }, { icon: '排', title: '行业股票排行', desc: '查看' }] },
+      '机器人': { values: [52, 59, 64, 72, 80, 85, 88], details: [{ icon: '政', title: '相关政策', desc: '13项' }, { icon: '告', title: '重大公告', desc: '10条' }, { icon: '排', title: '行业股票排行', desc: '查看' }] },
+      '锂电储能': { values: [45, 49, 52, 58, 64, 69, 72], details: [{ icon: '政', title: '相关政策', desc: '9项' }, { icon: '告', title: '重大公告', desc: '5条' }, { icon: '排', title: '行业股票排行', desc: '查看' }] },
+      '算电协同': { values: [50, 57, 63, 70, 77, 82, 85], details: [{ icon: '政', title: '相关政策', desc: '11项' }, { icon: '告', title: '重大公告', desc: '6条' }, { icon: '排', title: '行业股票排行', desc: '查看' }] },
+      '新型储能': { values: [40, 46, 52, 59, 67, 72, 76], details: [{ icon: '政', title: '相关政策', desc: '10项' }, { icon: '告', title: '重大公告', desc: '6条' }, { icon: '排', title: '行业股票排行', desc: '查看' }] }
+    };
+
+    const getIndustryHealthClass = (score) => {
+      const value = Number(score) || 0;
+      if (value >= 85) return 'is-hot';
+      if (value >= 70) return 'is-warm';
+      if (value >= 50) return 'is-normal';
+      return 'is-cold';
+    };
+
+    const getIndustryHealthPreset = (industryName) => {
+      const rawName = String(industryName || '').trim();
+      const matchedKey = Object.keys(industryHealthPresets).find(key => rawName === key || rawName.includes(key) || key.includes(rawName));
+      if (matchedKey) return industryHealthPresets[matchedKey];
+
+      const monthsCount = 7;
+      const seed = rawName.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+      const base = 48 + (seed % 18);
+      const values = Array.from({ length: monthsCount }, (_, index) => {
+        const wave = ((seed + index * 5) % 7) - 3;
+        return Math.max(38, Math.min(82, Math.round(base + index * 3.2 + wave)));
+      });
+      return {
+        values,
+        details: [
+          { icon: '政', title: '相关政策', desc: `${Math.max(4, Math.round(values[values.length - 1] / 10))}项` },
+          { icon: '告', title: '重大公告', desc: `${Math.max(2, Math.round(values[values.length - 1] / 14))}条` },
+          { icon: '排', title: '行业股票排行', desc: '查看' }
+        ]
+      };
+    };
+
+    const buildFinancialMock = (score, multiple) => {
+      const revenueGrowth = Math.round(12 + score * 0.55 + multiple * 2);
+      const profitGrowth = Math.round(revenueGrowth + 8 + multiple * 1.5);
+      const pe = Math.max(18, Math.round(62 - score * 0.22 + multiple * 1.8));
+      const pb = (2.1 + score / 55 + multiple / 8).toFixed(1);
+      const margin = (22 + score * 0.18 + multiple * 0.6).toFixed(1);
+      const roe = (10 + score * 0.13 + multiple * 0.35).toFixed(1);
+      return [
+        { label: '营收增速', value: `${revenueGrowth}%`, change: `较上季+${Math.max(2, Math.round(multiple))}%`, type: 'is-up' },
+        { label: '净利增速', value: `${profitGrowth}%`, change: '利润弹性释放', type: 'is-up' },
+        { label: 'PE(TTM)', value: `${pe}倍`, change: multiple >= 10 ? '成长估值' : '行业中枢', type: multiple >= 10 ? '' : 'is-down' },
+        { label: 'PB', value: `${pb}倍`, change: '资产质量稳定', type: '' },
+        { label: '毛利率', value: `${margin}%`, change: `+${(multiple / 2).toFixed(1)}%`, type: 'is-up' },
+        { label: 'ROE', value: `${roe}%`, change: score >= 88 ? '高于行业' : '接近行业', type: 'is-up' }
+      ];
+    };
+
+    const midMockData = computed(() => {
+      const score = profileScore.value;
+      const multiple = expectedMultipleNumber.value;
+      const months = ['10月', '11月', '12月', '1月', '2月', '3月', '4月'];
+      const industryPreset = getIndustryHealthPreset(profileTheme.value);
+      const trendValues = months.map((month, index) => ({
+        month,
+        value: industryPreset.values[index] ?? industryPreset.values[industryPreset.values.length - 1] ?? 60
+      }));
+      const healthScore = trendValues[trendValues.length - 1].value;
+      return {
+        finance: buildFinancialMock(score, multiple),
+        industryHealth: {
+          score: healthScore,
+          levelClass: getIndustryHealthClass(healthScore),
+          tags: [
+            { text: profileTheme.value, type: 'success' },
+            { text: '东方财富数据', type: 'success' }
+          ],
+          months,
+          trend: trendValues,
+          values: trendValues.map(item => item.value),
+          details: industryPreset.details
+        }
+      };
+    });
+
+    const midAiAnalysis = computed(() => {
+      const profile = curatedProfile.value || {};
+      const focus = profile.midTermFocus || ['趋势结构保持健康', '行业景气度仍在修复', '业绩拐点需要继续验证'];
+      const risks = profile.risks || ['业绩兑现节奏低于预期', '板块交易拥挤导致波动加大'];
+      const score = profileScore.value;
+      const conclusion = score >= 90 ? '持有可顺势跟踪' : score >= 85 ? '关注等回踩确认' : '持有者稳健观察';
+      const finance = midMockData.value.finance;
+      const health = midMockData.value.industryHealth;
+      const revenue = finance.find(item => item.label === '营收增速');
+      const profit = finance.find(item => item.label === '净利增速');
+      const margin = finance.find(item => item.label === '毛利率');
+      const roe = finance.find(item => item.label === 'ROE');
+      const planStatement = getFifteenthPlanStatement(profileTheme.value);
+      const summary = `${profileName.value}中线核心在于${focus.slice(0, 2).join('和')}，财报增速、毛利率与行业景气度同步改善，说明这轮行情更像业绩与赛道共同验证。`;
+      const advice = score >= 90
+        ? [
+          `已持有者可继续按趋势跟踪，重点观察回踩关键均线时是否仍有主力承接。`,
+          `关注者不宜在连续放量急涨后追高，更适合等待缩量回踩或业绩预期再次确认。`,
+          `若${focus[2] || '业绩兑现'}继续改善，同时行业景气指数维持高位，中线仓位可以保持偏积极。`,
+          `若资金流向从连续净流入转为放量净流出，应先降低中线预期，等待下一次承接确认。`
+        ]
+        : [
+          `已持有者可维持观察仓位，优先看${focus[0] || '趋势结构'}是否保持完整。`,
+          `关注者建议等待放量确认或财报预期更清晰后再提高关注级别。`,
+          `若行业景气指数继续上行，同时毛利率和ROE改善，中线判断可从观察转为偏积极。`,
+          `若股价脱离业绩兑现过快，应以分批观察为主，不把主题热度当成中线确定性。`
+        ];
+      const riskTips = [
+        `若${risks[0]}，中线逻辑会从业绩验证转为题材交易，估值支撑会变弱。`,
+        `若行业景气指数回落到70分以下，说明赛道热度和订单预期开始降温。`,
+        `若主力资金连续转净流出且成交放大，持有者需要防范趋势破位后的回撤。`
+      ];
+      return {
+        conclusion,
+        badgeClass: score >= 90 ? 'is-bull' : 'is-hold',
+        logic: summary,
+        basis: [
+          `财报分析显示营收增速为${revenue?.value || '--'}、净利增速为${profit?.value || '--'}，利润弹性高于收入弹性，说明中线业绩拐点正在被数据支撑。`,
+          `毛利率为${margin?.value || '--'}、ROE为${roe?.value || '--'}，若后续继续改善，说明公司不是单纯题材上涨，而是经营质量同步抬升。`,
+          `行业景气指数为${health.score}分，标签集中在“${health.tags.map(tag => tag.text).join('、')}”，说明中线逻辑和所属赛道景气度保持一致。`,
+          `政策维度上，${planStatement} 这会强化中线资金对赛道景气和订单兑现的跟踪，但仍需要用财报增速与资金承接继续验证。`,
+          `第二步股票画像中的中线关注点为“${focus.join('、')}”，与当前财报和景气卡片方向一致，因此AI给出${conclusion}。`
+        ],
+        advice,
+        riskTips
+      };
+    });
+
+    const longMockData = computed(() => {
+      const profile = curatedProfile.value || {};
+      const theme = profileTheme.value;
+      const focus = profile.longTermFocus || ['产业空间仍在扩张', '核心壁垒需要持续验证', '估值弹性取决于盈利兑现'];
+      const multiple = expectedMultipleNumber.value;
+      const planStatement = getFifteenthPlanStatement(theme);
+      return {
+        policies: [
+          { tag: '利好', type: 'is-good', text: `${planStatement}长期需求预期因此更容易获得政策资源、产业资本和应用场景共振。` },
+          { tag: '利好', type: 'is-good', text: `${focus[0]}，公司若能维持份额或切入核心客户，估值体系有望继续抬升。` },
+          { tag: '中性', type: 'is-neutral', text: `需要关注产业节奏和订单兑现的时间差，长线逻辑不等于短期单边上涨。` }
+        ],
+        moats: [
+          { icon: 'A', title: '技术壁垒', desc: focus[1] || '核心技术与产品验证周期形成进入门槛。' },
+          { icon: 'C', title: '客户资源', desc: multiple >= 10 ? '若进入核心客户供应链，成长曲线将明显陡峭。' : '客户结构稳定，适合观察份额提升。' },
+          { icon: 'S', title: '规模效应', desc: profile.investmentLogic || `${profileName.value}具备一定规模和产业链协同基础。` },
+          { icon: 'G', title: '成长曲线', desc: focus[2] || '第二增长曲线是长期估值扩张的关键。' }
+        ],
+        annual: [
+          { label: '研发投入', value: `同比+${Math.round(18 + multiple * 3)}%`, note: '持续加码', type: 'is-up' },
+          { label: '股东结构', value: multiple >= 10 ? '成长资金增配' : '机构底仓稳定', note: '积极信号', type: 'is-up' },
+          { label: '资本回报率', value: `${(12 + profileScore.value / 8).toFixed(1)}%`, note: '高于行业', type: 'is-up' },
+          { label: '自由现金流', value: multiple >= 10 ? '拐点修复' : '持续为正', note: '质量改善', type: 'is-up' },
+          { label: '分红率', value: multiple >= 10 ? '低分红高投入' : '稳定分红', note: multiple >= 10 ? '成长优先' : '稳健', type: '' },
+          { label: '商誉', value: '低风险', note: '风险可控', type: '' }
+        ]
+      };
+    });
+
+    const longAiAnalysis = computed(() => {
+      const profile = curatedProfile.value || {};
+      const focus = profile.longTermFocus || ['产业空间', '核心壁垒', '成长弹性'];
+      const risks = profile.risks || ['产业兑现节奏低于预期'];
+      const multiple = expectedMultipleText.value;
+      const multipleNumber = expectedMultipleNumber.value;
+      const conclusion = multiple === '10倍'
+        ? '长线可分批跟踪'
+        : multipleNumber >= 3
+          ? '长线弹性观察'
+          : multipleNumber >= 2
+            ? '长线稳健跟踪'
+            : '长线耐心观察';
+      const policies = longMockData.value.policies;
+      const moats = longMockData.value.moats;
+      const annual = longMockData.value.annual;
+      const hasMultipleModel = Boolean(curatedProfile.value) && expectedMultipleNumber.value >= 1.5;
+      const planStatement = getFifteenthPlanStatement(profileTheme.value);
+      const tenxBasis = hasMultipleModel
+        ? `倍数潜力模型给出${tenxModel.value.score}分和“${tenxModel.value.label}”，当前倍数预期为${multiple}，因此AI给出${conclusion}。`
+        : `当前股票未进入精选倍数模型池，长线判断暂以行业政策、护城河和年报质量为主，不单独给出倍数预期。`;
+      const summary = `${profileName.value}长线核心在于${focus.slice(0, 2).join('和')}，行业政策、护城河和年报投入共同支撑长期估值弹性。`;
+      const advice = multiple === '10倍'
+        ? [
+          `已持有者可按长线高弹性样本跟踪，避免一次性重仓，适合用分批方式等待产业验证。`,
+          `关注者优先等估值回落、业绩公告或订单数据确认，不把短期题材上涨直接等同于十倍股兑现。`,
+          `若${focus[0] || '产业空间'}和${focus[1] || '核心壁垒'}持续验证，倍数潜力模型的高分才有继续上修基础。`,
+          `长期跟踪重点放在研发投入、客户突破、现金流改善和政策落地四个维度。`
+        ]
+        : [
+          `已持有者可按趋势龙头做长期观察，核心是验证${focus[0] || '产业空间'}能否持续兑现。`,
+          `关注者不必按十倍股预期定价，更适合在估值和业绩匹配时分批跟踪。`,
+          `若护城河、研发投入和资本回报率继续改善，${multiple}空间的可信度会提高。`,
+          `若长期逻辑没有新订单或新利润验证，应降低倍数预期，把它视作稳健成长而非高弹性标的。`
+        ];
+      const riskTips = [
+        `核心风险是${risks[0]}，一旦兑现，倍数潜力模型会先从成长动能和赛道景气两项下修。`,
+        `若政策催化强但订单、利润和现金流没有同步改善，长线逻辑容易停留在主题阶段。`,
+        `若估值提前大幅透支，后续即使行业方向正确，也可能出现较长时间的震荡消化。`
+      ];
+      return {
+        conclusion,
+        badgeClass: multiple === '10倍' ? 'is-bull' : 'is-hold',
+        logic: summary,
+        basis: [
+          `行业政策卡片中有${policies.filter(item => item.type === 'is-good').length}条利好线索，核心方向是“${profileTheme.value}”；${planStatement} 说明长期产业空间仍有政策、资本和场景落地推动。`,
+          `公司护城河卡片显示“${moats.map(item => item.title).join('、')}”四个维度，分别对应技术、客户、规模和成长曲线，是长线估值能否扩张的基础。`,
+          `年报对比中研发投入为${annual.find(item => item.label === '研发投入')?.value || '--'}，资本回报率为${annual.find(item => item.label === '资本回报率')?.value || '--'}，说明长期逻辑既看投入，也看回报质量。`,
+          tenxBasis,
+          hasMultipleModel
+            ? `需要反向跟踪的风险是：${risks[0]}，如果这个风险兑现，长线倍数模型会先于股价表现下修。`
+            : `需要反向跟踪的风险是：${risks[0]}，如果这个风险兑现，长线判断会先从护城河和年报质量两项下修。`
+        ],
+        advice,
+        riskTips
+      };
+    });
+
+    const shouldShowTenxModel = computed(() => Boolean(curatedProfile.value) && expectedMultipleNumber.value >= 1.5);
+
+    const tenxModel = computed(() => {
+      const score = getTenbaggerSimilarityScore(profileScore.value, expectedMultipleNumber.value);
+      const multiple = expectedMultipleText.value;
+      const profile = curatedProfile.value || {};
+      const focus = profile.longTermFocus || ['产业空间', '核心壁垒', '成长弹性'];
+      const multipleNumber = expectedMultipleNumber.value;
+      const tenxLike = multipleNumber >= 10;
+      const scoreAdjust = score - 70;
+      const dimensions = [
+        { name: '赛道景气', score: Math.min(98, Math.max(35, Math.round(score + (tenxLike ? 2 : 4)))), detail: `${profileTheme.value}景气度和产业催化决定倍数弹性的上限。` },
+        { name: '成长动能', score: Math.min(96, Math.max(32, Math.round(score + scoreAdjust * 0.12))), detail: `${focus[2] || '成长曲线'}决定业绩能否从主题兑现到利润。` },
+        { name: '竞争壁垒', score: Math.min(95, Math.max(30, Math.round(score - (tenxLike ? 4 : 8)))), detail: `${focus[1] || '核心壁垒'}决定长期份额和定价能力。` },
+        { name: '财务质量', score: Math.min(92, Math.max(28, Math.round(score - (tenxLike ? 8 : 12)))), detail: '毛利率、ROE和现金流质量决定十倍股评分能否站稳。' }
+      ];
+      const strongest = [...dimensions].sort((a, b) => b.score - a.score)[0];
+      const weakest = [...dimensions].sort((a, b) => a.score - b.score)[0];
+      return {
+        score,
+        expectedMultiple: multiple,
+        label: tenxLike ? '10倍股高相似度' : `${multiple}股相似度`,
+        description: tenxLike
+          ? '十倍股相似度处于高分区，模型认为赛道空间、成长弹性与护城河正在形成共振。'
+          : `该股具备${multiple}空间，但与十倍股样本相比仍有差距，因此评分不会进入高分区。`,
+        insight: `${profileName.value}的四项因子中，“${strongest.name}”得分最高，说明当前最强支撑来自${strongest.detail.replace('。', '')}。“${weakest.name}”得分相对靠后，后续需要看${weakest.detail.replace('。', '')}；若这项补强，整体倍数弹性会更扎实。`,
+        dimensions
+      };
+    });
 
     const clearEvaluationAudioUrl = () => {
       if (evaluationAudioUrl && typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
@@ -1118,6 +1336,8 @@ export default {
     let historyTimelineChartInstance = null;
     const capitalFlowChartRef = ref(null);
     let capitalFlowChartInstance = null;
+    const industryHealthChartRef = ref(null);
+    let industryHealthChartInstance = null;
     const HISTORY_SCORE_MAP = Object.freeze({ '重大利好': 2, '利好': 1, '中性': 0, '利空': -1, '重大利空': -2 });
     const SCORE_LABEL_MAP = Object.freeze({ 2: '重大利好', 1: '利好', 0: '中性', '-1': '利空', '-2': '重大利空' });
     const normalizeAnalysisTimeText = (v) => v ? String(v).replace('T', ' ').trim() : '';
@@ -1196,6 +1416,68 @@ export default {
         ]
       });
     };
+    const disposeIndustryHealthChart = () => {
+      if (industryHealthChartInstance) {
+        industryHealthChartInstance.dispose();
+        industryHealthChartInstance = null;
+      }
+    };
+    const renderIndustryHealthChart = () => {
+      const el = industryHealthChartRef.value;
+      if (!el) return;
+      if (el.clientWidth === 0 || el.clientHeight === 0) {
+        setTimeout(() => { renderIndustryHealthChart(); }, 150);
+        return;
+      }
+      disposeIndustryHealthChart();
+      industryHealthChartInstance = echarts.init(el);
+      const chartData = midMockData.value.industryHealth;
+      industryHealthChartInstance.setOption({
+        tooltip: {
+          trigger: 'axis',
+          confine: true,
+          axisPointer: {
+            type: 'cross',
+            lineStyle: { color: '#9ca3af', width: 1 }
+          },
+          formatter: (params) => {
+            const item = params?.[0] || {};
+            return [`<strong>${item.axisValue || '--'}</strong>`, `景气指数：${item.value ?? '--'}`].join('<br/>');
+          }
+        },
+        grid: { left: 48, right: 24, top: 18, bottom: 30 },
+        xAxis: {
+          type: 'category',
+          data: chartData.months,
+          boundaryGap: false,
+          axisLabel: { color: '#6b7280', fontSize: 12 },
+          axisLine: { lineStyle: { color: '#8b8b8b' } },
+          axisTick: { show: false },
+          splitLine: { show: true, lineStyle: { type: 'dashed', color: '#e5e7eb' } }
+        },
+        yAxis: {
+          type: 'value',
+          min: 0,
+          max: 100,
+          interval: 25,
+          axisLabel: { color: '#6b7280', fontSize: 12 },
+          splitLine: { lineStyle: { type: 'dashed', color: '#e5e7eb' } },
+          axisLine: { show: true, lineStyle: { color: '#8b8b8b' } },
+          axisTick: { show: false }
+        },
+        series: [{
+          name: '景气指数',
+          type: 'line',
+          data: chartData.values,
+          smooth: true,
+          symbol: 'circle',
+          symbolSize: 8,
+          lineStyle: { color: '#45c98f', width: 3 },
+          itemStyle: { color: '#45c98f', borderColor: '#45c98f', borderWidth: 2 },
+          emphasis: { scale: 1.15 }
+        }]
+      });
+    };
     const renderCapitalFlowChart = () => {
       const el = capitalFlowChartRef.value;
       if (!el) return;
@@ -1206,7 +1488,7 @@ export default {
       if (capitalFlowChartInstance) { capitalFlowChartInstance.dispose(); capitalFlowChartInstance = null; }
       capitalFlowChartInstance = echarts.init(el);
       var dates = ['04/21', '04/22', '04/23', '04/24', '04/25', '04/26', '04/27', '04/28', '04/29', '04/30'];
-      var values = [-1.2, -0.8, 0.5, 1.3, 2.1, 1.8, -0.3, 3.2, 4.5, 6.83];
+      var values = capitalFlowMock.value.trend || [-1.2, -0.8, 0.5, 1.3, 2.1, 1.8, -0.3, 3.2, 4.5, 6.83];
       var posData = [];
       var negData = [];
       for (var i = 0; i < values.length; i++) {
@@ -1354,7 +1636,7 @@ export default {
     const priceUpdateTimer = ref(null); const newsUpdateTimer = ref(null);
     const setupAutoRefresh = () => { clearAutoRefreshTimers(); priceUpdateTimer.value = setInterval(() => { loadStockData(); }, 5 * 60 * 1000); newsUpdateTimer.value = setInterval(() => { loadNewsAndAnalysis(); }, 10 * 60 * 1000); };
     const clearAutoRefreshTimers = () => { if (priceUpdateTimer.value) { clearInterval(priceUpdateTimer.value); priceUpdateTimer.value = null; } if (newsUpdateTimer.value) { clearInterval(newsUpdateTimer.value); newsUpdateTimer.value = null; } };
-    const handleWindowResize = () => { if (forecastChartInstance) forecastChartInstance.resize(); if (historyTimelineChartInstance) historyTimelineChartInstance.resize(); if (capitalFlowChartInstance) capitalFlowChartInstance.resize(); };
+    const handleWindowResize = () => { if (forecastChartInstance) forecastChartInstance.resize(); if (historyTimelineChartInstance) historyTimelineChartInstance.resize(); if (capitalFlowChartInstance) capitalFlowChartInstance.resize(); if (industryHealthChartInstance) industryHealthChartInstance.resize(); };
     watch(() => route.params.code, (nc) => {
       if (nc && nc !== stockInfo.value.code) {
         invalidateCache(stockInfo.value.code);
@@ -1369,6 +1651,12 @@ export default {
         if (!isCacheFresh('forecast', nc)) loadForecast();
         if (!isCacheFresh('evaluation', nc)) { loadingEvaluation.value = true; loadAIEvaluation(false); }
         setupAutoRefresh(); window.scrollTo(0, 0);
+        if (activeView.value === 'short') {
+          setTimeout(() => { renderCapitalFlowChart(); }, 160);
+        }
+        if (activeView.value === 'mid') {
+          setTimeout(() => { renderIndustryHealthChart(); }, 160);
+        }
       }
     });
     watch(isLoggedIn, async (l) => { if (l) { checkIfFavorite(); if (!isCacheFresh('evaluation', stockInfo.value.code)) { loadingEvaluation.value = true; await loadAIEvaluation(false); } } });
@@ -1380,6 +1668,7 @@ export default {
       }
       if (nv === 'mid') {
         setTimeout(() => {
+          renderIndustryHealthChart();
           if (hasForecastChartData.value && forecastData.value) {
             if (forecastChartInstance) {
               forecastChartInstance.resize();
@@ -1401,8 +1690,9 @@ export default {
       if (!isCacheFresh('evaluation', currentCode)) { loadingEvaluation.value = true; loadAIEvaluation(false); }
       setupAutoRefresh(); window.addEventListener('resize', handleWindowResize); window.scrollTo(0, 0);
       setTimeout(() => { if (activeView.value === 'short') renderCapitalFlowChart(); }, 200);
+      setTimeout(() => { if (activeView.value === 'mid') renderIndustryHealthChart(); }, 200);
     });
-    onBeforeUnmount(() => { clearAutoRefreshTimers(); window.removeEventListener('resize', handleWindowResize); if (forecastChartInstance) { forecastChartInstance.dispose(); forecastChartInstance = null; } if (capitalFlowChartInstance) { capitalFlowChartInstance.dispose(); capitalFlowChartInstance = null; } disposeHistoryTimelineChart(); cancelFlowAnimationFrames(); });
+    onBeforeUnmount(() => { clearAutoRefreshTimers(); window.removeEventListener('resize', handleWindowResize); if (forecastChartInstance) { forecastChartInstance.dispose(); forecastChartInstance = null; } if (capitalFlowChartInstance) { capitalFlowChartInstance.dispose(); capitalFlowChartInstance = null; } disposeIndustryHealthChart(); disposeHistoryTimelineChart(); cancelFlowAnimationFrames(); });
 
     const clampPercent = (value) => {
       if (!Number.isFinite(value)) return 0;
@@ -1526,23 +1816,23 @@ export default {
 
     const getScoreClass = (score) => {
       const s = Number(score) || 0;
-      if (s >= 75) return 'is-high';
-      if (s >= 60) return 'is-mid';
+      if (s >= 82) return 'is-high';
+      if (s >= 58) return 'is-mid';
       return 'is-low';
     };
 
     const getScoreLabel = (score) => {
       const s = Number(score) || 0;
-      if (s >= 75) return '高潜力';
-      if (s >= 60) return '中等潜力';
-      return '潜力较低';
+      if (s >= 82) return '十倍股高相似度';
+      if (s >= 58) return '十倍股中等相似度';
+      return '十倍股低相似度';
     };
 
     const getScoreDescription = (score) => {
       const s = Number(score) || 0;
-      if (s >= 75) return '综合评分超过75分，符合历史10倍股核心特征';
-      if (s >= 60) return '综合评分中等，部分维度需进一步观察';
-      return '综合评分偏低，存在明显短板需谨慎';
+      if (s >= 82) return '十倍股相似度较高，符合高弹性成长样本特征';
+      if (s >= 58) return '具备倍数空间，但距离十倍股样本仍有差距';
+      return '更接近趋势修复或稳健成长，不按十倍股处理';
     };
 
     const getScoreRingStyle = (score) => {
@@ -1557,6 +1847,7 @@ export default {
 
     return {
       activeView, viewTabs, stockInfo, isLoggedIn, isFavorite, addingToFavorites,
+      stockCycle, onStockCycleChange,
       stockNews, analysisResult, currentNewsDetail, newsDetailDialogVisible,
       totalNews, hasMoreNews, loadingMoreNews, loadMoreNews,
       refreshAIEvaluation, loadingEvaluation, evaluationErrorMessage, evaluationProgressText,
@@ -1567,10 +1858,11 @@ export default {
       openHistoryDialog, openingHistoryDialog, openHistoryDetail, reloadHistoryPage, handleHistoryPageChange,
       getHistoryConclusionClass, viewNewsDetail,
       forecastChartRef, forecastData, forecastSummary, loadingForecast, refreshForecast,
-      hasForecastChartData, capitalFlowChartRef,
+      hasForecastChartData, capitalFlowChartRef, industryHealthChartRef,
+      midMockData, midAiAnalysis, longMockData, longAiAnalysis, shouldShowTenxModel, tenxModel, capitalFlowMock,
       toggleFavorite, getEvaluationClass, goToTagBoard, formatRatioText,
       mergedStructureChart, priceTrendClass,
-      formatSignedPercent, formatSignedPrice,
+      formatSignedPercent, formatSignedPrice, formatFlowValue,
       getScoreClass, getScoreLabel, getScoreDescription, getScoreRingStyle
     };
   },
@@ -1592,7 +1884,8 @@ export default {
         .code-separator { color: #999; margin: 0 2px; }
       }
       .stock-price-info { margin-left: auto; margin-right: 16px; .current-price { font-size: 1.4rem; font-weight: bold; margin-right: 8px; } .stock-up { color: var(--danger-color); } .stock-down { color: var(--success-color); } }
-      @media (max-width: 576px) { flex-wrap: wrap; align-items: flex-start; gap: 8px; h1 { width: 100%; font-size: 1.3rem; .stock-code-container { font-size: 0.85rem; margin-left: 6px; padding: 2px 6px; } } .stock-price-info { margin-left: 0; margin-right: 0; .current-price { font-size: 1.2rem; } } > .el-button { margin-left: auto; } }
+      > .el-button { margin-left: 5px; margin-right: 5px; }
+      @media (max-width: 576px) { flex-wrap: wrap; align-items: flex-start; gap: 8px; h1 { width: 100%; font-size: 1.3rem; .stock-code-container { font-size: 0.85rem; margin-left: 6px; padding: 2px 6px; } } .stock-price-info { margin-left: 0; margin-right: 0; .current-price { font-size: 1.2rem; } } > .el-button { margin-left: auto; margin-right: 5px; } }
     }
     .stock-tags { display: flex; gap: 8px; flex-wrap: wrap; .tag-item.is-clickable { cursor: pointer; user-select: none; } }
     .stock-capital-charts {
@@ -1657,7 +1950,6 @@ export default {
       h3 { margin: 0; font-size: 1.1rem; font-weight: 600; color: #1e293b; }
       .card-actions { display: flex; align-items: center; gap: 8px; }
       .card-badge { font-size: 0.7rem; padding: 2px 8px; border-radius: 999px; }
-      .mock-badge { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; } // Mock样式，待接入API后可删除
     }
     .card-body { padding: 16px 20px; position: relative; &.is-loading { .ai-logic, .ai-risk { opacity: 0.35; } } &.chart-body { padding: 0; } }
   }
@@ -1744,7 +2036,107 @@ export default {
     height: 1px; background: #e5e7eb; margin: 24px -20px;
   }
   .ai-logic { margin-bottom: 12px; .markdown-content { line-height: 1.6; color: var(--text-secondary); :deep(p) { margin-bottom: 8px; } :deep(*) { overflow-wrap: break-word; } } }
-  .ai-risk { h4 { font-size: 0.9rem; color: #64748b; margin: 0 0 6px; } .markdown-content { line-height: 1.6; color: #94a3b8; font-size: 0.9rem; } }
+  .ai-logic > p {
+    margin: 0;
+    line-height: 1.7;
+    color: var(--text-secondary);
+  }
+  .ai-basis {
+    margin: 12px 0 14px;
+    padding: 12px 14px;
+    background: #f8fafc;
+    border: 1px solid #e8eef6;
+    border-radius: 8px;
+
+    h4 {
+      margin: 0 0 8px;
+      color: #334155;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 8px;
+    }
+
+    li {
+      position: relative;
+      padding-left: 18px;
+      color: #475569;
+      font-size: 0.9rem;
+      line-height: 1.65;
+
+      &::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0.72em;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #4f7cff;
+      }
+    }
+  }
+  .ai-risk {
+    h4 {
+      font-size: 0.92rem;
+      color: #334155;
+      margin: 0 0 8px;
+      font-weight: 700;
+    }
+
+    .risk-title {
+      margin-top: 12px;
+      color: #7f1d1d;
+    }
+
+    .markdown-content {
+      line-height: 1.7;
+      color: #334155;
+      font-size: 0.92rem;
+    }
+
+    .ai-advice-list,
+    .ai-risk-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 7px;
+    }
+
+    li {
+      position: relative;
+      padding-left: 18px;
+      color: #334155;
+      font-size: 0.92rem;
+      line-height: 1.65;
+
+      &::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0.72em;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #4f7cff;
+      }
+    }
+
+    .ai-risk-list li {
+      color: #475569;
+
+      &::before {
+        background: #ef4444;
+      }
+    }
+  }
   .analysis-error-message { color: #f56c6c; font-size: 0.9rem; margin-bottom: 12px; padding: 8px 12px; background: #fef0f0; border-radius: 6px; }
   .analysis-loading-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; border-radius: 0 0 10px 10px; .analysis-loading-text { margin-top: 16px; color: #64748b; font-size: 0.9rem; } }
   .analysis-stream-status { text-align: center; padding: 8px; color: #94a3b8; font-size: 0.8rem; border-top: 1px solid #f0f0f0; margin-top: 8px; }
@@ -1882,23 +2274,159 @@ export default {
     .cf-trend-chart { height: 200px; }
   }
 
-  // Mock样式：财报分析，待接入API后可删除
-  // .finance-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; @media (max-width: 576px) { grid-template-columns: repeat(2, 1fr); } .finance-item { text-align: center; padding: 12px; background: #f8fafc; border-radius: 8px; .finance-label { display: block; font-size: 0.8rem; color: #64748b; margin-bottom: 4px; } .finance-value { display: block; font-size: 1.2rem; font-weight: 600; color: #1e293b; margin-bottom: 2px; } .finance-change { display: block; font-size: 0.75rem; color: #94a3b8; &.is-up { color: #ef4444; } &.is-down { color: #22c55e; } } } }
+  .finance-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; @media (max-width: 576px) { grid-template-columns: repeat(2, 1fr); } .finance-item { text-align: center; padding: 12px; background: #f8fafc; border-radius: 8px; .finance-label { display: block; font-size: 0.8rem; color: #64748b; margin-bottom: 4px; } .finance-value { display: block; font-size: 1.2rem; font-weight: 600; color: #1e293b; margin-bottom: 2px; } .finance-change { display: block; font-size: 0.75rem; color: #94a3b8; &.is-up { color: #ef4444; } &.is-down { color: #22c55e; } } } }
 
   .forecast-summary-card { background: #f0f7ff; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; .summary-text { font-size: 0.9rem; line-height: 1.6; color: #334155; } }
   .forecast-charts-container { .forecast-chart { height: 400px; } }
 
-  // Mock样式：行业景气指数，待接入API后可删除
-  // .industry-health { display: flex; align-items: center; gap: 24px; .health-score { text-align: center; .score-value { display: block; font-size: 2.5rem; font-weight: 700; &.is-up { color: #ef4444; } &.is-down { color: #22c55e; } } .score-label { font-size: 0.8rem; color: #64748b; } } .health-tags { display: flex; flex-wrap: wrap; gap: 8px; } }
+  .industry-card-body { padding: 0 !important; }
+  .industry-health {
+    border-radius: 0 0 10px 10px;
+    overflow: hidden;
+    background: #fff;
 
-  // Mock样式：行业政策，待接入API后可删除
-  // .policy-list { .policy-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f5f5f5; &:last-child { border-bottom: none; } .policy-tag { font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; font-weight: 600; white-space: nowrap; &.is-good { background: #fef2f2; color: #dc2626; } &.is-bad { background: #f0fdf4; color: #16a34a; } &.is-neutral { background: #f8fafc; color: #64748b; } } .policy-text { font-size: 0.9rem; color: #334155; line-height: 1.5; } } }
+    .industry-health-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 20px;
+      border-bottom: 1px solid #eef2f7;
+    }
 
-  // Mock样式：公司护城河，待接入API后可删除
-  // .moat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; @media (max-width: 576px) { grid-template-columns: 1fr; } .moat-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: #f8fafc; border-radius: 8px; .moat-icon { font-size: 1.5rem; flex-shrink: 0; } .moat-info { .moat-title { display: block; font-size: 0.95rem; font-weight: 600; color: #1e293b; margin-bottom: 2px; } .moat-desc { display: block; font-size: 0.8rem; color: #64748b; } } } }
+    .industry-health-title {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
 
-  // Mock样式：年报对比，待接入API后可删除
-  // .annual-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; @media (max-width: 576px) { grid-template-columns: repeat(2, 1fr); } .annual-item { text-align: center; padding: 12px; background: #f8fafc; border-radius: 8px; .annual-label { display: block; font-size: 0.8rem; color: #64748b; margin-bottom: 4px; } .annual-value { display: block; font-size: 1rem; font-weight: 600; color: #1e293b; margin-bottom: 2px; } .annual-note { display: block; font-size: 0.75rem; color: #94a3b8; &.is-up { color: #ef4444; } &.is-down { color: #22c55e; } } } }
+    .industry-pill {
+      display: inline-flex;
+      align-items: center;
+      height: 24px;
+      padding: 0 12px;
+      border-radius: 999px;
+      background: #e9f8e6;
+      color: #215c2f;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .industry-score-number {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+      color: #6b7280;
+      font-size: 0.86rem;
+      font-weight: 700;
+      white-space: nowrap;
+
+      strong {
+        font-size: 1.55rem;
+        line-height: 1;
+        font-weight: 800;
+      }
+
+      &.is-cold strong { color: #94a3b8; }
+      &.is-normal strong { color: #2563eb; }
+      &.is-warm strong { color: #eab308; }
+      &.is-hot strong { color: #ef4444; }
+    }
+
+    .industry-chart-wrap {
+      height: 220px;
+      padding: 14px 18px 10px;
+      border-bottom: 1px solid #eef2f7;
+    }
+
+    .industry-line-chart {
+      width: 100%;
+      height: 100%;
+    }
+
+    .industry-detail-title {
+      padding: 16px 20px 10px;
+      color: #10251e;
+      font-size: 0.98rem;
+      font-weight: 800;
+    }
+
+    .industry-detail-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      padding: 0 20px 18px;
+    }
+
+    .industry-detail-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      padding: 14px 16px;
+      border: 1px solid #eef1f5;
+      border-radius: 10px;
+      background: #fff;
+
+      .detail-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        background: #eef4ff;
+        color: #2563eb;
+        font-size: 0.8rem;
+        font-weight: 800;
+        flex-shrink: 0;
+      }
+
+      div {
+        min-width: 0;
+        flex: 1;
+      }
+
+      strong,
+      span {
+        display: block;
+      }
+
+      strong {
+        color: #10251e;
+        font-size: 0.92rem;
+      }
+
+      div span {
+        color: #6b7280;
+        font-size: 0.8rem;
+      }
+
+      .detail-arrow {
+        color: #9ca3af;
+        font-size: 1.5rem;
+        line-height: 1;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .industry-health-head {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .industry-detail-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  }
+
+  .policy-list { .policy-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f5f5f5; &:last-child { border-bottom: none; } .policy-tag { font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; font-weight: 600; white-space: nowrap; &.is-good { background: #fef2f2; color: #dc2626; } &.is-bad { background: #f0fdf4; color: #16a34a; } &.is-neutral { background: #f8fafc; color: #64748b; } } .policy-text { font-size: 0.9rem; color: #334155; line-height: 1.5; } } }
+
+  .moat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; @media (max-width: 576px) { grid-template-columns: 1fr; } .moat-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: #f8fafc; border-radius: 8px; .moat-icon { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; background: #eef4ff; color: #2563eb; font-size: 0.86rem; font-weight: 800; flex-shrink: 0; } .moat-info { .moat-title { display: block; font-size: 0.95rem; font-weight: 600; color: #1e293b; margin-bottom: 2px; } .moat-desc { display: block; font-size: 0.8rem; color: #64748b; } } } }
+
+  .annual-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; @media (max-width: 576px) { grid-template-columns: repeat(2, 1fr); } .annual-item { text-align: center; padding: 12px; background: #f8fafc; border-radius: 8px; .annual-label { display: block; font-size: 0.8rem; color: #64748b; margin-bottom: 4px; } .annual-value { display: block; font-size: 1rem; font-weight: 600; color: #1e293b; margin-bottom: 2px; } .annual-note { display: block; font-size: 0.75rem; color: #94a3b8; &.is-up { color: #ef4444; } &.is-down { color: #22c55e; } } } }
 
   .tenx-card {
     .tenx-hero {
@@ -2032,9 +2560,6 @@ export default {
       gap: 8px;
       margin-bottom: 8px;
     }
-    .dim-icon {
-      font-size: 1rem;
-    }
     .dim-name {
       flex: 1;
       font-size: 0.88rem;
@@ -2075,9 +2600,6 @@ export default {
       align-items: center;
       gap: 6px;
       margin-bottom: 6px;
-    }
-    .insight-icon {
-      font-size: 0.9rem;
     }
     .insight-title {
       font-size: 0.8rem;

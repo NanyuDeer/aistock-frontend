@@ -46,6 +46,14 @@
                 <span v-else>{{ stock.reason || '暂无主力净流入数据' }}</span>
               </div>
             </template>
+
+            <template #extra-actions="{ stock }">
+              <CycleSelect
+                v-if="isFavorite(stock.code)"
+                :model-value="getCycle(stock.code)"
+                @update:model-value="(val) => setCycle(stock.code, val)"
+              />
+            </template>
           </StockCardList>
         </div>
       </div>
@@ -60,6 +68,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import TheNavbar from '@/components/TheNavbar.vue';
 import StockCardList from '@/components/StockCardList.vue';
+import CycleSelect from '@/components/CycleSelect.vue';
+import { useStockCycle } from '@/utils/stockCycle';
 import 'element-plus/es/components/message/style/css';
 
 const TAG_CODE_PATTERN = /^BK\d{4}$/i;
@@ -68,12 +78,14 @@ export default {
   name: 'TagView',
   components: {
     TheNavbar,
-    StockCardList
+    StockCardList,
+    CycleSelect
   },
   setup() {
     const store = useStore();
     const route = useRoute();
     const router = useRouter();
+    const { getCycle, setCycle } = useStockCycle();
 
     const stocks = ref([]);
     const loading = ref(true);
@@ -219,7 +231,9 @@ export default {
       isFavorite,
       toggleFavorite,
       viewStockDetail,
-      fetchTagStocks
+      fetchTagStocks,
+      getCycle,
+      setCycle
     };
   }
 };
