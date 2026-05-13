@@ -134,7 +134,11 @@
               <div class="curated-panel-header">
                 <h3 class="section-title">趋势龙头股</h3>
               </div>
-              <div class="curated-list trend-leader-list">
+              <div
+                class="curated-list trend-leader-list"
+                v-loading="loadingTrendLeaderQuotes"
+                element-loading-text="行情加载中..."
+              >
                 <div class="curated-list-head">
                   <span>股票</span>
                   <span>行情数据</span>
@@ -335,7 +339,7 @@ import TheNavbar from '@/components/TheNavbar.vue';
 import MarketOverview from '@/components/MarketOverview.vue';
 import NewsSlider from '@/components/NewsSlider.vue';
 import StockCardList from '@/components/StockCardList.vue';
-import { trendLeaderStocks, tenbaggerStocks } from '@/mock/curatedStocks';
+import { trendLeaderStocks as trendLeaderStockSeeds, tenbaggerStocks } from '@/mock/curatedStocks';
 import 'element-plus/es/components/message/style/css';
 
 export default {
@@ -399,6 +403,7 @@ export default {
     let headlineRefreshInterval = null;
     let favoriteNewsRefreshInterval = null; // 新增自选股资讯刷新定时器
     let hotStocksRefreshInterval = null; // 热门股票刷新定时器
+    let trendLeaderQuotesRefreshInterval = null; // 趋势龙头股行情刷新定时器
     let favoriteStocksPriceRefreshInterval = null; // 自选股价格刷新定时器
     let rankingLayoutObserver = null;
 
@@ -573,6 +578,33 @@ export default {
         ? { height: `${forecastRankingCardHeight.value}px` }
         : {}
     ));
+
+    const trendLeaderQuoteMap = ref({});
+    const loadingTrendLeaderQuotes = ref(true);
+
+    const formatPriceText = (value) => {
+      const num = toFiniteNumber(value);
+      if (num === null || num <= 0) return '--';
+      return num.toFixed(2);
+    };
+
+    const formatChangeText = (value) => {
+      const num = toFiniteNumber(value);
+      if (num === null) return '--';
+      return `${num >= 0 ? '+' : ''}${num.toFixed(2)}%`;
+    };
+
+    const trendLeaderStocks = computed(() => trendLeaderStockSeeds.map(stock => {
+      const quote = trendLeaderQuoteMap.value[stock.code] || {};
+      const realPrice = toFiniteNumber(quote.latest_price);
+      const realChange = toFiniteNumber(quote.change_percent);
+      return {
+        ...stock,
+        latestPrice: formatPriceText(realPrice),
+        changeRate: realChange ?? 0,
+        changeText: formatChangeText(realChange)
+      };
+    }));
 
     const applyForecastLayout = () => {
       if (typeof window === 'undefined') return;
@@ -750,6 +782,55 @@ export default {
           loadingHotStocks.value = false;
         }
       }
+    };
+
+    const fetchTrendLeaderQuotes = async ({ showLoading = false } = {}) => {
+      const codes = trendLeaderStockSeeds.map(stock => stock.code).filter(Boolean);
+      if (codes.length === 0) return;
+      const hadData = Object.keys(trendLeaderQuoteMap.value).length > 0;
+      const shouldShowLoading = showLoading || !hadData;
+
+      if (shouldShowLoading) {
+        loadingTrendLeaderQuotes.value = true;
+      }
+
+      const nextQuoteMap = {};
+      const groups = [];
+      const groupSize = 4;
+      for (let i = 0; i < codes.length; i += groupSize) {
+        groups.push(codes.slice(i, i + groupSize).join(','));
+      }
+
+      await Promise.allSettled(groups.map(group => (
+        stockApi.getStockCoreQuotes(group)
+          .then((response) => {
+            if (response?.code !== 200) return;
+            const quotes = response?.data?.行情 || [];
+            quotes.forEach(quote => {
+              const code = quote?.股票代码;
+              if (!code) return;
+              const latestPrice = toFiniteNumber(quote?.最新价);
+              const changePercent = toFiniteNumber(quote?.涨跌幅);
+              nextQuoteMap[code] = {
+                latest_price: latestPrice,
+                change_percent: changePercent
+              };
+            });
+          })
+          .catch((error) => {
+            console.warn('[HomeView] 获取趋势龙头股真实行情失败:', error);
+          })
+      )));
+
+      const hasNewQuotes = Object.keys(nextQuoteMap).length > 0;
+      if (hasNewQuotes) {
+        trendLeaderQuoteMap.value = {
+          ...trendLeaderQuoteMap.value,
+          ...nextQuoteMap
+        };
+      }
+
+      loadingTrendLeaderQuotes.value = !(hasNewQuotes || hadData);
     };
 
     const parseYoy = (value) => {
@@ -1098,6 +1179,7 @@ export default {
 
       // 获取热门股票
       fetchHotStocks({ showLoading: true });
+      fetchTrendLeaderQuotes({ showLoading: true });
       fetchForecastRanking({ showLoading: true });
       updateForecastLayout();
 
@@ -1119,6 +1201,11 @@ export default {
         console.log('[HomeView] 定时刷新热门股票价格');
         fetchHotStocks();
       }, 5 * 60 * 1000);
+
+      trendLeaderQuotesRefreshInterval = setInterval(() => {
+        console.log('[HomeView] 定时刷新趋势龙头股真实行情');
+        fetchTrendLeaderQuotes();
+      }, 5 * 60 * 1000);
       
       // 登录态可能在挂载后才恢复（Cookie 认证异步），所以这里仅处理当前已登录场景
       if (isLoggedIn.value) {
@@ -1132,6 +1219,7 @@ export default {
       clearInterval(foreignRefreshInterval);
       clearInterval(headlineRefreshInterval);
       clearInterval(hotStocksRefreshInterval); // 清除热门股票刷新定时器
+      clearInterval(trendLeaderQuotesRefreshInterval); // 清除趋势龙头股行情刷新定时器
       stopFavoriteAutoRefresh();
 
       window.removeEventListener('resize', updateForecastLayout);
@@ -1170,6 +1258,7 @@ export default {
       forecastRankingCardStyle,
       forecastTableMaxHeight,
       trendLeaderStocks,
+      loadingTrendLeaderQuotes,
       tenbaggerStocks,
       viewCuratedStock,
       isCuratedFavorite,
