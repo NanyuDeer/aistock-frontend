@@ -127,6 +127,111 @@
             <h3 class="section-title">市场概览</h3>
             <MarketOverview />
           </div>
+
+          <!-- 趋势龙头股 + 十倍潜力股 -->
+          <div class="curated-stock-sections">
+            <section class="curated-panel trend-leader-panel">
+              <div class="curated-panel-header">
+                <h3 class="section-title">趋势龙头股</h3>
+              </div>
+              <div
+                class="curated-list trend-leader-list"
+                v-loading="loadingTrendLeaderQuotes"
+                element-loading-text="行情加载中..."
+              >
+                <div class="curated-list-head">
+                  <span>股票</span>
+                  <span>行情数据</span>
+                  <span>龙头依据</span>
+                  <span>操作</span>
+                </div>
+                <div
+                  v-for="stock in trendLeaderStocks"
+                  :key="stock.code"
+                  class="curated-list-row trend-leader-row"
+                  @click="viewCuratedStock(stock)"
+                >
+                  <div class="stock-identity">
+                    <div class="stock-title-wrap">
+                      <h4>{{ stock.name }}</h4>
+                      <span class="stock-code-line">{{ stock.code }}</span>
+                    </div>
+                    <span class="industry-tag">{{ stock.track }}</span>
+                  </div>
+                  <div class="stock-metrics">
+                    <span class="stock-price">{{ stock.latestPrice }}</span>
+                    <span :class="['change-rate', stock.changeRate >= 0 ? 'up' : 'down']">
+                      {{ stock.changeText }}
+                    </span>
+                  </div>
+                  <el-tooltip
+                    :content="stock.leaderBasis"
+                    placement="top"
+                    effect="light"
+                    :show-after="200"
+                  >
+                    <p class="leader-basis">{{ stock.leaderBasis }}</p>
+                  </el-tooltip>
+                  <el-button
+                    class="curated-follow-btn"
+                    size="small"
+                    :type="isCuratedFavorite(stock) ? 'info' : 'primary'"
+                    :plain="!isCuratedFavorite(stock)"
+                    :loading="curatedFavoriteLoading[stock.code]"
+                    @click.stop="toggleCuratedFavorite(stock)"
+                  >
+                    {{ isCuratedFavorite(stock) ? '已关注' : '加关注' }}
+                  </el-button>
+                </div>
+              </div>
+            </section>
+
+            <section class="curated-panel tenbagger-panel">
+              <div class="curated-panel-header">
+                <h3 class="section-title">十倍潜力股</h3>
+              </div>
+              <div class="curated-list tenbagger-list">
+                <div class="curated-list-head">
+                  <span>行业</span>
+                  <span>代表股票</span>
+                  <span>核心因子</span>
+                  <span>操作</span>
+                </div>
+                <div
+                  v-for="stock in tenbaggerStocks"
+                  :key="stock.code"
+                  class="curated-list-row tenbagger-row"
+                  @click="viewCuratedStock(stock)"
+                >
+                  <div class="tenbagger-industry">
+                    <span class="industry-tag is-emphasis">{{ stock.sector }}</span>
+                  </div>
+                  <div class="stock-identity">
+                    <div class="stock-title-wrap">
+                      <h4>{{ stock.name }}</h4>
+                      <span class="stock-code-line">{{ stock.code }}</span>
+                    </div>
+                  </div>
+                  <div class="tenbagger-factor">
+                    <span class="stock-multiple" :class="getPotentialClass(stock.expectedMultiple)">
+                      {{ stock.expectedMultiple }}
+                    </span>
+                    <span class="stock-ai-score">评分{{ stock.aiScore }}</span>
+                  </div>
+                  <el-button
+                    class="curated-follow-btn"
+                    size="small"
+                    :type="isCuratedFavorite(stock) ? 'info' : 'primary'"
+                    :plain="!isCuratedFavorite(stock)"
+                    :loading="curatedFavoriteLoading[stock.code]"
+                    @click.stop="toggleCuratedFavorite(stock)"
+                  >
+                    {{ isCuratedFavorite(stock) ? '已关注' : '加关注' }}
+                  </el-button>
+                </div>
+              </div>
+            </section>
+          </div>
           
           <!-- 热门股票 + 预测盈利排行榜 -->
           <div class="hot-stocks-row">
@@ -234,6 +339,7 @@ import TheNavbar from '@/components/TheNavbar.vue';
 import MarketOverview from '@/components/MarketOverview.vue';
 import NewsSlider from '@/components/NewsSlider.vue';
 import StockCardList from '@/components/StockCardList.vue';
+import { trendLeaderStocks as trendLeaderStockSeeds, tenbaggerStocks } from '@/mock/curatedStocks';
 import 'element-plus/es/components/message/style/css';
 
 export default {
@@ -297,6 +403,7 @@ export default {
     let headlineRefreshInterval = null;
     let favoriteNewsRefreshInterval = null; // 新增自选股资讯刷新定时器
     let hotStocksRefreshInterval = null; // 热门股票刷新定时器
+    let trendLeaderQuotesRefreshInterval = null; // 趋势龙头股行情刷新定时器
     let favoriteStocksPriceRefreshInterval = null; // 自选股价格刷新定时器
     let rankingLayoutObserver = null;
 
@@ -458,6 +565,7 @@ export default {
     // 自选股相关
     const myFavoriteStocks = ref([]);
     const loadingFavorites = ref(false);
+    const curatedFavoriteLoading = ref({});
     const isLoggedIn = computed(() => store.getters.isLoggedIn);
 
     // 显示前 8 条自选股
@@ -470,6 +578,33 @@ export default {
         ? { height: `${forecastRankingCardHeight.value}px` }
         : {}
     ));
+
+    const trendLeaderQuoteMap = ref({});
+    const loadingTrendLeaderQuotes = ref(true);
+
+    const formatPriceText = (value) => {
+      const num = toFiniteNumber(value);
+      if (num === null || num <= 0) return '--';
+      return num.toFixed(2);
+    };
+
+    const formatChangeText = (value) => {
+      const num = toFiniteNumber(value);
+      if (num === null) return '--';
+      return `${num >= 0 ? '+' : ''}${num.toFixed(2)}%`;
+    };
+
+    const trendLeaderStocks = computed(() => trendLeaderStockSeeds.map(stock => {
+      const quote = trendLeaderQuoteMap.value[stock.code] || {};
+      const realPrice = toFiniteNumber(quote.latest_price);
+      const realChange = toFiniteNumber(quote.change_percent);
+      return {
+        ...stock,
+        latestPrice: formatPriceText(realPrice),
+        changeRate: realChange ?? 0,
+        changeText: formatChangeText(realChange)
+      };
+    }));
 
     const applyForecastLayout = () => {
       if (typeof window === 'undefined') return;
@@ -647,6 +782,55 @@ export default {
           loadingHotStocks.value = false;
         }
       }
+    };
+
+    const fetchTrendLeaderQuotes = async ({ showLoading = false } = {}) => {
+      const codes = trendLeaderStockSeeds.map(stock => stock.code).filter(Boolean);
+      if (codes.length === 0) return;
+      const hadData = Object.keys(trendLeaderQuoteMap.value).length > 0;
+      const shouldShowLoading = showLoading || !hadData;
+
+      if (shouldShowLoading) {
+        loadingTrendLeaderQuotes.value = true;
+      }
+
+      const nextQuoteMap = {};
+      const groups = [];
+      const groupSize = 4;
+      for (let i = 0; i < codes.length; i += groupSize) {
+        groups.push(codes.slice(i, i + groupSize).join(','));
+      }
+
+      await Promise.allSettled(groups.map(group => (
+        stockApi.getStockCoreQuotes(group)
+          .then((response) => {
+            if (response?.code !== 200) return;
+            const quotes = response?.data?.行情 || [];
+            quotes.forEach(quote => {
+              const code = quote?.股票代码;
+              if (!code) return;
+              const latestPrice = toFiniteNumber(quote?.最新价);
+              const changePercent = toFiniteNumber(quote?.涨跌幅);
+              nextQuoteMap[code] = {
+                latest_price: latestPrice,
+                change_percent: changePercent
+              };
+            });
+          })
+          .catch((error) => {
+            console.warn('[HomeView] 获取趋势龙头股真实行情失败:', error);
+          })
+      )));
+
+      const hasNewQuotes = Object.keys(nextQuoteMap).length > 0;
+      if (hasNewQuotes) {
+        trendLeaderQuoteMap.value = {
+          ...trendLeaderQuoteMap.value,
+          ...nextQuoteMap
+        };
+      }
+
+      loadingTrendLeaderQuotes.value = !(hasNewQuotes || hadData);
     };
 
     const parseYoy = (value) => {
@@ -829,6 +1013,68 @@ export default {
       goToStockDetailByCode(row?.code);
     };
 
+    const viewCuratedStock = (stock) => {
+      if (!stock?.code) return;
+      router.push(`/stock/${stock.code}`);
+    };
+
+    const isCuratedFavorite = (stock) => {
+      if (!stock?.code) return false;
+      return (store.getters.favoriteStocks || []).some(item => String(item.code) === String(stock.code));
+    };
+
+    const toggleCuratedFavorite = async (stock) => {
+      if (!stock?.code) return;
+      if (!isLoggedIn.value) {
+        ElMessage.warning('请先登录后才能添加自选股');
+        router.push('/login');
+        return;
+      }
+
+      curatedFavoriteLoading.value = {
+        ...curatedFavoriteLoading.value,
+        [stock.code]: true
+      };
+
+      try {
+        if (isCuratedFavorite(stock)) {
+          const result = await store.dispatch('removeFavoriteStocks', [stock.code]);
+          if (result) {
+            ElMessage.success(`已将 ${stock.name} 从自选股中移除`);
+          } else {
+            ElMessage.error(`移除 ${stock.name} 失败`);
+          }
+        } else {
+          const result = await store.dispatch('addFavoriteStocks', [
+            { code: stock.code, name: stock.name }
+          ]);
+          if (result) {
+            ElMessage.success(`成功添加 ${stock.name} 到自选股`);
+          } else {
+            ElMessage.error(`添加 ${stock.name} 到自选股失败`);
+          }
+        }
+        await fetchMyFavoriteStocks({ forceRefresh: true });
+      } catch (error) {
+        console.error('操作精选股票关注失败:', error);
+        ElMessage.error('操作失败，请稍后再试');
+      } finally {
+        curatedFavoriteLoading.value = {
+          ...curatedFavoriteLoading.value,
+          [stock.code]: false
+        };
+      }
+    };
+
+    const getPotentialClass = (value) => {
+      const multiple = Number(String(value || '').replace('倍', '').trim());
+      if (multiple >= 10) return 'multiple-10';
+      if (multiple >= 5) return 'multiple-5';
+      if (multiple >= 3) return 'multiple-3';
+      if (multiple >= 2) return 'multiple-2';
+      return 'multiple-1';
+    };
+
     const goToForecastPage = () => {
       router.push('/forecast');
     };
@@ -933,6 +1179,7 @@ export default {
 
       // 获取热门股票
       fetchHotStocks({ showLoading: true });
+      fetchTrendLeaderQuotes({ showLoading: true });
       fetchForecastRanking({ showLoading: true });
       updateForecastLayout();
 
@@ -954,6 +1201,11 @@ export default {
         console.log('[HomeView] 定时刷新热门股票价格');
         fetchHotStocks();
       }, 5 * 60 * 1000);
+
+      trendLeaderQuotesRefreshInterval = setInterval(() => {
+        console.log('[HomeView] 定时刷新趋势龙头股真实行情');
+        fetchTrendLeaderQuotes();
+      }, 5 * 60 * 1000);
       
       // 登录态可能在挂载后才恢复（Cookie 认证异步），所以这里仅处理当前已登录场景
       if (isLoggedIn.value) {
@@ -967,6 +1219,7 @@ export default {
       clearInterval(foreignRefreshInterval);
       clearInterval(headlineRefreshInterval);
       clearInterval(hotStocksRefreshInterval); // 清除热门股票刷新定时器
+      clearInterval(trendLeaderQuotesRefreshInterval); // 清除趋势龙头股行情刷新定时器
       stopFavoriteAutoRefresh();
 
       window.removeEventListener('resize', updateForecastLayout);
@@ -1004,6 +1257,14 @@ export default {
       forecastRankingCardRef,
       forecastRankingCardStyle,
       forecastTableMaxHeight,
+      trendLeaderStocks,
+      loadingTrendLeaderQuotes,
+      tenbaggerStocks,
+      viewCuratedStock,
+      isCuratedFavorite,
+      toggleCuratedFavorite,
+      curatedFavoriteLoading,
+      getPotentialClass,
       
       // 自选股相关
       myFavoriteStocks,
@@ -1260,6 +1521,280 @@ export default {
           }
         }
       }
+    }
+  }
+
+  .curated-stock-sections {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.9fr);
+    gap: 20px;
+    margin: 24px 0 26px;
+
+    .curated-panel {
+      background: #fff;
+      border-radius: 12px;
+      padding: 18px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+      min-width: 0;
+    }
+
+    .curated-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+
+      .section-title {
+        margin: 0;
+      }
+    }
+
+    .curated-list {
+      border: 1px solid #edf1f7;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .curated-list-head,
+    .curated-list-row {
+      display: grid;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .trend-leader-list .curated-list-head,
+    .trend-leader-row {
+      grid-template-columns: minmax(116px, 0.8fr) minmax(112px, 0.7fr) minmax(170px, 1.35fr) 78px;
+    }
+
+    .tenbagger-list .curated-list-head,
+    .tenbagger-row {
+      grid-template-columns: minmax(76px, 0.75fr) minmax(96px, 0.9fr) minmax(98px, 0.9fr) 72px;
+    }
+
+    .curated-list-head {
+      min-height: 34px;
+      padding: 0 12px;
+      background: #f8fafc;
+      border-bottom: 1px solid #edf1f7;
+      color: var(--text-tertiary);
+      font-size: 0.74rem;
+      font-weight: 700;
+    }
+
+    .curated-list-row {
+      min-height: 58px;
+      padding: 9px 12px;
+      background: #fff;
+      cursor: pointer;
+      border-bottom: 1px solid #f0f3f8;
+      transition: background 0.2s ease, box-shadow 0.2s ease;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      &:hover {
+        background: #fbfdff;
+        box-shadow: inset 3px 0 0 #4f7cff;
+      }
+    }
+
+    .stock-identity,
+    .stock-metrics,
+    .tenbagger-factor {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+    }
+
+    .stock-identity {
+      .stock-title-wrap {
+        min-width: 0;
+      }
+
+      h4 {
+        margin: 0 0 3px;
+        color: var(--text-primary);
+        font-size: 0.92rem;
+        line-height: 1.3;
+      }
+
+      .stock-code-line {
+        display: block;
+        color: var(--text-tertiary);
+        font-size: 0.72rem;
+      }
+    }
+
+    .industry-tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      max-width: 98px;
+      min-height: 22px;
+      padding: 2px 9px;
+      border-radius: 999px;
+      background: #eaf2ff;
+      color: #1d4ed8;
+      border: 1px solid #bcd2ff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex-shrink: 0;
+
+      &.is-emphasis {
+        max-width: 86px;
+        min-width: 64px;
+        background: #e6f7f1;
+        color: #047857;
+        border-color: #a7f3d0;
+      }
+    }
+
+    .tenbagger-industry {
+      min-width: 0;
+    }
+
+    .stock-multiple {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 42px;
+      height: 21px;
+      padding: 0 7px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .multiple-1 {
+      color: #9a6700;
+      background: #fff8d6;
+      border: 1px solid #ffe58f;
+    }
+
+    .multiple-2 {
+      color: #ad4e00;
+      background: #fff1d6;
+      border: 1px solid #ffd591;
+    }
+
+    .multiple-3 {
+      color: #d4380d;
+      background: #fff2e8;
+      border: 1px solid #ffbb96;
+    }
+
+    .multiple-5 {
+      color: #c41d7f;
+      background: #fff0f6;
+      border: 1px solid #ffadd2;
+    }
+
+    .multiple-10 {
+      color: #cf1322;
+      background: #fff1f0;
+      border: 1px solid #ffa39e;
+      box-shadow: 0 0 0 2px rgba(255, 77, 79, 0.06);
+    }
+
+    .stock-price {
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .change-rate {
+      font-weight: 700;
+      font-size: 0.74rem;
+
+      &.up { color: #f56c6c; }
+      &.down { color: #67c23a; }
+    }
+
+    .signal-tag,
+    .stock-ai-score {
+      display: inline-flex;
+      align-items: center;
+      min-height: 21px;
+      padding: 0 7px;
+      border-radius: 999px;
+      background: #f1f5f9;
+      color: var(--text-secondary);
+      font-size: 0.72rem;
+      font-weight: 700;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .tenbagger-factor {
+      justify-content: flex-start;
+      overflow: hidden;
+    }
+
+    .leader-basis {
+      margin: 0;
+      min-width: 0;
+      color: var(--text-secondary);
+      font-size: 0.76rem;
+      line-height: 1.45;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .curated-follow-btn {
+      width: 64px;
+      justify-self: end;
+      padding: 5px 8px;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 1180px) {
+      grid-template-columns: 1fr;
+    }
+
+    @media (max-width: 720px) {
+      .curated-panel {
+        padding: 14px;
+      }
+
+      .curated-panel-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .curated-list-head {
+        display: none;
+      }
+
+      .trend-leader-row,
+      .tenbagger-row {
+        grid-template-columns: 1fr;
+        gap: 8px;
+        align-items: flex-start;
+      }
+
+      .stock-identity,
+      .stock-metrics,
+      .tenbagger-factor {
+        flex-wrap: wrap;
+      }
+
+      .curated-follow-btn {
+        justify-self: start;
+      }
+
     }
   }
 

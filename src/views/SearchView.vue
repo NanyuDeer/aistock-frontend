@@ -203,6 +203,11 @@
                 />
                 {{ isFavorite(stock.code) ? '已关注' : (isLoggedIn ? '关注' : '登录后关注') }}
               </el-button>
+              <CycleSelect
+                v-if="isFavorite(stock.code)"
+                :model-value="getCycle(stock.code)"
+                @update:model-value="(val) => setCycle(stock.code, val)"
+              />
             </div>
           </div>
           
@@ -224,10 +229,13 @@ import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
+import CycleSelect from '@/components/CycleSelect.vue';
+import { useStockCycle } from '@/utils/stockCycle';
 import 'element-plus/es/components/message/style/css';
 
 export default {
   name: 'SearchView',
+  components: { CycleSelect },
   setup() {
     const MAX_IMAGE_COUNT = 8;
     const MAX_SINGLE_IMAGE_MB = 10;
@@ -237,6 +245,7 @@ export default {
 
     const store = useStore();
     const router = useRouter();
+    const { getCycle, setCycle } = useStockCycle();
     
     // 登录状态
     const isLoggedIn = computed(() => store.getters.isLoggedIn);
@@ -647,7 +656,9 @@ export default {
       handleSelectionChange,
       addRecognizedStocks,
       removeImage,
-      processImage
+      processImage,
+      getCycle,
+      setCycle
     };
   }
 };

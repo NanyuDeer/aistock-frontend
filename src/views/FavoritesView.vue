@@ -37,7 +37,7 @@
               <span>{{ scope.row.code }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="name" label="名称" min-width="150" align="center" />
+          <el-table-column prop="name" label="名称" min-width="100" align="center" />
           <el-table-column label="最新价" align="center" min-width="100">
             <template #default="scope">
               <span class="price-value">{{ formatPrice(scope.row.price) }}</span>
@@ -51,7 +51,7 @@
             </template>
           </el-table-column>
           <el-table-column prop="industry" label="所属行业" min-width="140" align="center" />
-          <el-table-column label="操作" fixed="right" width="200" align="center">
+          <el-table-column label="操作" fixed="right" width="320" align="center">
             <template #default="scope">
               <div class="action-buttons">
                 <el-button 
@@ -74,6 +74,10 @@
                     </el-button>
                   </template>
                 </el-popconfirm>
+                <CycleSelect
+                  :model-value="getCycle(scope.row.code)"
+                  @update:model-value="(val) => setCycle(scope.row.code, val)"
+                />
               </div>
             </template>
           </el-table-column>
@@ -111,6 +115,10 @@
                 <img src="@/assets/view.svg" alt="详情" class="button-icon" />
                 详情
               </el-button>
+              <CycleSelect
+                :model-value="getCycle(stock.code)"
+                @update:model-value="(val) => setCycle(stock.code, val)"
+              />
               <el-popconfirm
                 title="确定取消关注该股票吗？"
                 @confirm="removeFromFavorite(stock)"
@@ -145,13 +153,17 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { ElMessage } from 'element-plus';
+import CycleSelect from '@/components/CycleSelect.vue';
+import { useStockCycle } from '@/utils/stockCycle';
 import { useScrollReset } from '@/utils/scrollUtils';
 
 export default {
   name: 'FavoritesView',
+  components: { CycleSelect },
   setup() {
     const store = useStore();
     const router = useRouter();
+    const { getCycle, setCycle } = useStockCycle();
     
     const loading = ref(true);
     const refreshing = ref(false);
@@ -298,7 +310,9 @@ export default {
       goToSearch,
       formatPrice,
       formatPercent,
-      formatMarketCap
+      formatMarketCap,
+      getCycle,
+      setCycle
     };
   }
 };
