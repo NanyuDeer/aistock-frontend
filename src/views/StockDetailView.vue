@@ -1,4 +1,4 @@
-<template>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
   <div class="stock-detail-page">
     <div class="page-container">
       <div class="stock-header">
@@ -277,41 +277,28 @@
                 <p class="cf-narrative-main">{{ capitalFlowMock.narrative }}</p>
                 <p class="cf-narrative-risk">风险：{{ capitalFlowMock.risk }}</p>
               </div>
-            </div>
-
-            <div class="cf-block cf-core-data">
-              <div class="cf-hero-col">
-                <span class="cf-hero-label">主力净流入</span>
-                <span :class="['cf-hero-value', capitalFlowMock.mainInflow >= 0 ? 'is-up' : 'is-down']">
+              <div class="cf-hero-card">
+                <span class="cf-hero-card-label">主力净流入</span>
+                <span :class="['cf-hero-card-value', capitalFlowMock.mainInflow >= 0 ? 'is-up' : 'is-down']">
                   {{ formatFlowValue(capitalFlowMock.mainInflow) }}
                 </span>
-                <div class="cf-hero-tags">
-                  <span v-for="tag in capitalFlowMock.tags" :key="tag" class="cf-hero-tag">{{ tag }}</span>
-                </div>
-              </div>
-              <div class="cf-split-col">
-                <div class="cf-bidi-chart">
-                  <div v-for="item in capitalFlowMock.orders" :key="item.label" class="cf-bidi-row">
-                    <span class="cf-bidi-label">{{ item.label }}</span>
-                    <div class="cf-bidi-track-left">
-                      <div class="cf-bidi-bar cf-bidi-bar-left" :style="{ width: `${item.value < 0 ? item.width : 0}%` }"></div>
-                    </div>
-                    <div class="cf-bidi-axis"></div>
-                    <div class="cf-bidi-track-right">
-                      <div class="cf-bidi-bar cf-bidi-bar-right" :style="{ width: `${item.value >= 0 ? item.width : 0}%` }"></div>
-                    </div>
-                    <span :class="['cf-bidi-value', item.value >= 0 ? 'is-up' : 'is-down']">{{ formatFlowValue(item.value) }}</span>
-                  </div>
-                </div>
               </div>
             </div>
 
-            <div class="cf-block cf-trend">
-              <div class="cf-trend-header">
-                <span class="cf-trend-title">10日资金趋势</span>
-                <span class="cf-trend-badge">{{ capitalFlowMock.trendBadge }}</span>
+            <div class="cf-block cf-data-row">
+              <div class="cf-split-col">
+                <div class="cf-split-header">
+                  <span class="cf-split-title">资金拆解</span>
+                </div>
+                <div ref="capitalSplitChartRef" class="cf-split-chart"></div>
               </div>
-              <div ref="capitalFlowChartRef" class="cf-trend-chart"></div>
+              <div class="cf-trend">
+                <div class="cf-trend-header">
+                  <span class="cf-trend-title">10日资金趋势</span>
+                  <span class="cf-trend-badge">{{ capitalFlowMock.trendBadge }}</span>
+                </div>
+                <div ref="capitalFlowChartRef" class="cf-trend-chart"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -576,51 +563,82 @@
             <h3>倍数潜力模型</h3>
           </div>
           <div class="card-body">
-            <div class="tenx-hero" :class="getScoreClass(tenxModel.score)">
-              <div class="tenx-score-ring">
-                <svg viewBox="0 0 120 120" class="score-svg">
-                  <defs>
-                    <linearGradient id="scoreGradientHigh" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" style="stop-color:#22c55e"/>
-                      <stop offset="100%" style="stop-color:#16a34a"/>
-                    </linearGradient>
-                    <linearGradient id="scoreGradientMid" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" style="stop-color:#eab308"/>
-                      <stop offset="100%" style="stop-color:#ca8a04"/>
-                    </linearGradient>
-                    <linearGradient id="scoreGradientLow" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" style="stop-color:#ef4444"/>
-                      <stop offset="100%" style="stop-color:#dc2626"/>
-                    </linearGradient>
-                  </defs>
-                  <circle cx="60" cy="60" r="52" class="score-bg"/>
-                  <circle cx="60" cy="60" r="52" class="score-fill" :class="getScoreClass(tenxModel.score)" :style="getScoreRingStyle(tenxModel.score)"/>
-                </svg>
-                <div class="score-center" :class="getScoreClass(tenxModel.score)">
-                  <span class="score-value">{{ tenxModel.score }}</span>
-                  <span class="score-label">{{ tenxModel.expectedMultiple }}</span>
+            <div v-if="tenxModel.error" class="tenx-error-block">
+              <i class="el-icon-warning-outline" style="font-size:32px;color:#f56c6c;"></i>
+              <p style="color:#f56c6c;font-size:14px;margin-top:8px;">评分获取失败，请稍后重试</p>
+            </div>
+            <div v-else class="tenx-hero" :class="getScoreClass(tenxModel.score)">
+              <div class="tenx-radar-center-wrap">
+                <canvas ref="tenxRadarCanvas" class="tenx-radar-canvas"></canvas>
+                <div class="tenx-radar-score-overlay" :class="getScoreClass(tenxModel.score)">
+                  <span class="tenx-radar-score-value">{{ tenxModel.score }}</span>
+                  <span class="tenx-radar-score-label">{{ tenxModel.expectedMultiple }}</span>
                 </div>
               </div>
               <div class="tenx-verdict">
                 <span class="verdict-tag" :class="getScoreClass(tenxModel.score)">{{ tenxModel.label }}</span>
                 <p class="verdict-text">{{ tenxModel.description }}</p>
-                <div class="tenx-insight-inline">
-                  <div class="insight-header">
-                    <span class="insight-title">AI洞察</span>
+                <div class="tenx-ai-conclusion">
+                  <div class="tenx-ai-conclusion-header">
+                    <i class="el-icon-chat-dot-round"></i>
+                    <span>AI结论</span>
                   </div>
-                  <p class="insight-content">{{ tenxModel.insight }}</p>
+                  <p class="tenx-ai-conclusion-text">{{ tenxModel.aiConclusion }}</p>
                 </div>
               </div>
             </div>
+            <div class="tenx-dim-section-header">
+              <span class="tenx-dim-section-title">八维因子详情</span>
+              <button class="tenx-dim-toggle-btn" @click="tenxToggleAll">
+                {{ tenxAllOpen ? '全部收起' : '全部展开' }}
+              </button>
+            </div>
             <div class="tenx-dimensions-grid">
-              <div v-for="item in tenxModel.dimensions" :key="item.name" class="dimension-item" :class="getScoreClass(item.score)">
-                <div class="dim-header">
-                  <span class="dim-name">{{ item.name }}</span>
-                  <span class="dim-score" :class="getScoreClass(item.score)">{{ item.score }}</span>
+              <template v-for="(dim, i) in tenxModel.dimensions" :key="dim.name">
+                <div v-if="i === 4" class="tenx-dim-group-divider">
+                  <span class="tenx-dim-group-label">后四维 · 能走多远</span>
+                  <div class="tenx-dim-group-line"></div>
                 </div>
-                <div class="dim-bar"><div class="dim-fill" :class="getScoreClass(item.score)" :style="{ width: `${item.score}%` }"></div></div>
-                <div class="dim-detail">{{ item.detail }}</div>
-              </div>
+                <div
+                  class="tenx-dim-item"
+                  :class="{ 'is-expanded': tenxExpandedDims.has(i), [getScoreClass(dim.score)]: true }"
+                >
+                  <div class="tenx-dim-head" @click="tenxToggleDim(i)">
+                    <div class="tenx-dim-head-left">
+                      <i :class="dim.iconClass" class="tenx-dim-icon" :style="{ color: tenxSColor(dim.score) }"></i>
+                      <div>
+                        <span class="tenx-dim-name">{{ dim.name }}</span>
+                        <span class="tenx-dim-weight">{{ dim.weight }}%</span>
+                        <div class="tenx-dim-question">{{ dim.question }}</div>
+                      </div>
+                    </div>
+                    <div class="tenx-dim-head-right">
+                      <span class="tenx-dim-score" :style="{ color: tenxSColor(dim.score) }">{{ dim.score }}</span>
+                      <i class="el-icon-arrow-down tenx-dim-chevron" :class="{ open: tenxExpandedDims.has(i) }"></i>
+                    </div>
+                  </div>
+                  <div class="tenx-dim-bar">
+                    <div class="tenx-dim-bar-fill" :style="{ width: `${dim.score}%`, background: tenxSGrad(dim.score) }"></div>
+                  </div>
+                  <div class="tenx-dim-details" :class="{ open: tenxExpandedDims.has(i) }">
+                    <div class="tenx-dim-details-inner">
+                      <div v-for="(ind, j) in dim.indicators" :key="ind.name" class="tenx-ind-row">
+                        <span class="tenx-ind-name">{{ ind.name }}</span>
+                        <div class="tenx-ind-right">
+                          <span class="tenx-ind-value">{{ ind.value }}</span>
+                          <div class="tenx-ind-bar-track">
+                            <div class="tenx-ind-bar-fill" :style="{ width: `${ind.score}%`, background: tenxSGrad(ind.score) }"></div>
+                          </div>
+                          <span class="tenx-ind-score" :style="{ color: tenxSColor(ind.score) }">{{ ind.score }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+            <div class="tenx-data-source">
+              <span class="source-label">数据来源：</span>模型基于历史数据，不构成投资建议
             </div>
           </div>
         </div>
@@ -739,7 +757,7 @@
 </template>
 
 <script>
-import { ref, onMounted, watch, onBeforeUnmount, computed, nextTick } from 'vue';
+import { ref, onMounted, watch, onBeforeUnmount, computed, nextTick, reactive } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { ElMessage } from 'element-plus';
@@ -749,6 +767,7 @@ import CycleSelect from '@/components/CycleSelect.vue';
 import { useStockCycle } from '@/utils/stockCycle';
 import { ttsApi } from '@/services/api';
 import { getCuratedStockProfile } from '@/mock/curatedStocks';
+import { tenxApi } from '@/services/api';
 import 'element-plus/es/components/message/style/css';
 import * as echarts from 'echarts/core';
 
@@ -1180,33 +1199,208 @@ export default {
       };
     });
 
+    // TenX 八维定义（与 TenxScoreView 一致）
+    const TENX_DIMS = [
+      { name: '成长性', iconClass: 'el-icon-top', weight: 20, question: '能长多大？', indNames: ['营收3年CAGR','净利润3年CAGR','扣非净利3年CAGR','盈利质量提升(净利增速-营收增速)'] },
+      { name: '盈利能力', iconClass: 'el-icon-coin', weight: 15, question: '赚钱效率？', indNames: ['ROE(3年均)','ROIC(3年均)','毛利率(3年均)','净利率(3年均)'] },
+      { name: '估值潜力', iconClass: 'el-icon-data-analysis', weight: 15, question: '贵不贵？', indNames: ['PEG','PE分位数(5年)','PB分位数(5年)','市值规模'] },
+      { name: '行业赛道', iconClass: 'el-icon-aim', weight: 12, question: '赛道宽不宽？', indNames: ['行业景气指数','行业渗透率/市场空间','政策支持评分','集中度提升空间'] },
+      { name: '财务健康', iconClass: 'el-icon-first-aid-kit', weight: 12, question: '资金链安全吗？', indNames: ['流动比率/速动比率','利息保障倍数','自由现金流(3年均)','资产负债率(反)'] },
+      { name: '竞争壁垒', iconClass: 'el-icon-lock', weight: 12, question: '护城河宽不宽？', indNames: ['市占率','毛利率稳定性(3年)','研发投入占比(3年均)','无形资产占比(品牌/专利)'] },
+      { name: '管理层治理', iconClass: 'el-icon-user', weight: 7, question: '人靠不靠谱？', indNames: ['大股东质押比(反)','高管增减持净比','管理层持股比例','分红率(3年均)'] },
+      { name: '催化剂强度', iconClass: 'el-icon-sunny', weight: 7, question: '什么时候爆发？', indNames: ['业绩加速信号','订单/合同负债增速','分析师预期上修比例','事件催化密度评分'] }
+    ];
+
+    function tenxSColor(s) {
+      if (s >= 70) return '#22c55e';
+      if (s >= 50) return '#eab308';
+      return '#ef4444';
+    }
+    function tenxSGrad(s) {
+      if (s >= 70) return 'linear-gradient(90deg,#16a34a,#22c55e)';
+      if (s >= 50) return 'linear-gradient(90deg,#ca8a04,#eab308)';
+      return 'linear-gradient(90deg,#dc2626,#ef4444)';
+    }
+
+    const tenxExpandedDims = reactive(new Set());
+    const tenxAllOpen = ref(false);
+    const tenxRadarCanvas = ref(null);
+    let tenxRadarChart = null;
+
+    function tenxToggleDim(i) {
+      if (tenxExpandedDims.has(i)) tenxExpandedDims.delete(i);
+      else tenxExpandedDims.add(i);
+    }
+    function tenxToggleAll() {
+      tenxAllOpen.value = !tenxAllOpen.value;
+      TENX_DIMS.forEach((_, i) => {
+        if (tenxAllOpen.value) tenxExpandedDims.add(i);
+        else tenxExpandedDims.delete(i);
+      });
+    }
+
+    function tenxGetRadarColors(score) {
+      if (score >= 70) return { bg: 'rgba(34,197,94,0.10)', border: 'rgba(34,197,94,0.7)', point: 'rgba(34,197,94,0.9)' };
+      if (score >= 50) return { bg: 'rgba(234,179,8,0.10)', border: 'rgba(234,179,8,0.7)', point: 'rgba(234,179,8,0.9)' };
+      return { bg: 'rgba(239,68,68,0.10)', border: 'rgba(239,68,68,0.7)', point: 'rgba(239,68,68,0.9)' };
+    }
+
+    function tenxLoadChartJs() {
+      return new Promise((resolve) => {
+        if (window.Chart) { resolve(true); return; }
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+        s.onload = () => resolve(true);
+        s.onerror = () => resolve(false);
+        document.head.appendChild(s);
+      });
+    }
+
+    async function tenxUpdateRadar(data) {
+      if (!tenxRadarCanvas.value) return;
+      const loaded = await tenxLoadChartJs();
+      if (!loaded) return;
+      const Chart = window.Chart;
+      if (!Chart) return;
+      const ctx = tenxRadarCanvas.value.getContext('2d');
+      const score = tenxModel.value ? tenxModel.value.score : 0;
+      const colors = tenxGetRadarColors(score);
+      if (tenxRadarChart) {
+        tenxRadarChart.data.datasets[0].data = data;
+        tenxRadarChart.data.datasets[0].backgroundColor = colors.bg;
+        tenxRadarChart.data.datasets[0].borderColor = colors.border;
+        tenxRadarChart.data.datasets[0].pointBackgroundColor = colors.point;
+        tenxRadarChart.data.datasets[0].pointBorderColor = colors.border;
+        tenxRadarChart.update();
+        return;
+      }
+      // Set explicit canvas size
+      const wrap = tenxRadarCanvas.value.parentElement;
+      const w = wrap ? wrap.offsetWidth || 300 : 300;
+      const h = wrap ? wrap.offsetHeight || 260 : 260;
+      tenxRadarCanvas.value.width = w;
+      tenxRadarCanvas.value.height = h;
+      // Start from 0 for expand animation
+      const zeroData = data.map(() => 0);
+      tenxRadarChart = new Chart(ctx, {
+        type: 'radar',
+        data: {
+          labels: TENX_DIMS.map(d => d.name),
+          datasets: [{
+            data: zeroData, fill: true,
+            backgroundColor: colors.bg,
+            borderColor: colors.border,
+            borderWidth: 2,
+            pointBackgroundColor: colors.point,
+            pointBorderColor: colors.border,
+            pointRadius: 4,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: false,
+          scales: {
+            r: {
+              min: 0, max: 100,
+              ticks: { stepSize: 25, color: 'rgba(144,147,153,0.4)', backdropColor: 'transparent', font: { size: 10 } },
+              grid: { color: 'rgba(220,223,230,0.6)' },
+              angleLines: { color: 'rgba(220,223,230,0.5)' },
+              pointLabels: { color: '#606266', font: { size: 11, weight: '500' } }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#fff', borderColor: '#dcdfe6', borderWidth: 1,
+              titleColor: '#303133', bodyColor: '#606266', padding: 8, cornerRadius: 6,
+              callbacks: { label: ctx => ctx.label + ': ' + ctx.raw + '分' }
+            }
+          },
+          animation: { duration: 0 }
+        }
+      });
+      // Trigger expand animation: from 0 to actual values
+      requestAnimationFrame(() => {
+        tenxRadarChart.data.datasets[0].data = data;
+        tenxRadarChart.options.animation = { duration: 1400, easing: 'easeOutQuart' };
+        tenxRadarChart.update();
+      });
+    }
+
     const shouldShowTenxModel = computed(() => Boolean(curatedProfile.value) && expectedMultipleNumber.value >= 1.5);
 
+    // 十倍股评分 — 从后端API获取
+    const tenxApiData = ref(null);
+    const tenxApiLoading = ref(false);
+    const tenxApiError = ref(false);
+
+    async function fetchTenxScore(symbol) {
+      if (!symbol) return;
+      tenxApiLoading.value = true;
+      tenxApiError.value = false;
+      try {
+        const res = await tenxApi.getScore(symbol);
+        if (res.code === 200 && res.data) {
+          tenxApiData.value = res.data;
+          tenxApiError.value = false;
+        } else {
+          try {
+            const refreshRes = await tenxApi.refreshScore(symbol);
+            if (refreshRes.code === 200 && refreshRes.data) {
+              tenxApiData.value = refreshRes.data;
+              tenxApiError.value = false;
+            } else {
+              tenxApiError.value = true;
+            }
+          } catch {
+            tenxApiError.value = true;
+          }
+        }
+      } catch {
+        tenxApiError.value = true;
+      }
+      tenxApiLoading.value = false;
+    }
+
     const tenxModel = computed(() => {
-      const score = getTenbaggerSimilarityScore(profileScore.value, expectedMultipleNumber.value);
-      const multiple = expectedMultipleText.value;
-      const profile = curatedProfile.value || {};
-      const focus = profile.longTermFocus || ['产业空间', '核心壁垒', '成长弹性'];
-      const multipleNumber = expectedMultipleNumber.value;
-      const tenxLike = multipleNumber >= 10;
-      const scoreAdjust = score - 70;
-      const dimensions = [
-        { name: '赛道景气', score: Math.min(98, Math.max(35, Math.round(score + (tenxLike ? 2 : 4)))), detail: `${profileTheme.value}景气度和产业催化决定倍数弹性的上限。` },
-        { name: '成长动能', score: Math.min(96, Math.max(32, Math.round(score + scoreAdjust * 0.12))), detail: `${focus[2] || '成长曲线'}决定业绩能否从主题兑现到利润。` },
-        { name: '竞争壁垒', score: Math.min(95, Math.max(30, Math.round(score - (tenxLike ? 4 : 8)))), detail: `${focus[1] || '核心壁垒'}决定长期份额和定价能力。` },
-        { name: '财务质量', score: Math.min(92, Math.max(28, Math.round(score - (tenxLike ? 8 : 12)))), detail: '毛利率、ROE和现金流质量决定十倍股评分能否站稳。' }
-      ];
-      const strongest = [...dimensions].sort((a, b) => b.score - a.score)[0];
-      const weakest = [...dimensions].sort((a, b) => a.score - b.score)[0];
+      if (tenxApiData.value) {
+        const apiData = tenxApiData.value;
+        const dimensions = apiData.dimensions || apiData.indicators || [];
+        const dimScores = apiData.dim_scores || dimensions.map(d => d.score);
+        return {
+          score: apiData.score || 0,
+          expectedMultiple: apiData.expected_multiple || '',
+          label: apiData.label || '',
+          description: apiData.description || '',
+          aiConclusion: apiData.ai_conclusion || '',
+          dimensions: dimensions.map(d => ({
+            name: d.name,
+            iconClass: TENX_DIMS.find(t => t.name === d.name)?.iconClass || 'el-icon-data-line',
+            weight: d.weight,
+            question: TENX_DIMS.find(t => t.name === d.name)?.question || '',
+            score: d.score,
+            indicators: d.indicators.map(ind => ({ name: ind.name, value: ind.value, score: ind.score }))
+          })),
+          dimScores
+        };
+      }
+      // 后端获取失败
       return {
-        score,
-        expectedMultiple: multiple,
-        label: tenxLike ? '10倍股高相似度' : `${multiple}股相似度`,
-        description: tenxLike
-          ? '十倍股相似度处于高分区，模型认为赛道空间、成长弹性与护城河正在形成共振。'
-          : `该股具备${multiple}空间，但与十倍股样本相比仍有差距，因此评分不会进入高分区。`,
-        insight: `${profileName.value}的四项因子中，“${strongest.name}”得分最高，说明当前最强支撑来自${strongest.detail.replace('。', '')}。“${weakest.name}”得分相对靠后，后续需要看${weakest.detail.replace('。', '')}；若这项补强，整体倍数弹性会更扎实。`,
-        dimensions
+        score: 0,
+        expectedMultiple: '--',
+        label: '获取失败',
+        description: '评分获取失败，请稍后重试',
+        aiConclusion: '无法连接评分服务，请检查网络后刷新重试。',
+        dimensions: TENX_DIMS.map(dim => ({
+          name: dim.name,
+          iconClass: dim.iconClass,
+          weight: dim.weight,
+          question: dim.question,
+          score: 0,
+          indicators: dim.indNames.map(name => ({ name, value: '--', score: 0 }))
+        })),
+        dimScores: [0,0,0,0,0,0,0,0],
+        error: true
       };
     });
 
@@ -1336,6 +1530,8 @@ export default {
     let historyTimelineChartInstance = null;
     const capitalFlowChartRef = ref(null);
     let capitalFlowChartInstance = null;
+    const capitalSplitChartRef = ref(null);
+    let capitalSplitChartInstance = null;
     const industryHealthChartRef = ref(null);
     let industryHealthChartInstance = null;
     const HISTORY_SCORE_MAP = Object.freeze({ '重大利好': 2, '利好': 1, '中性': 0, '利空': -1, '重大利空': -2 });
@@ -1565,6 +1761,64 @@ export default {
         ]
       });
     };
+    const renderCapitalSplitChart = () => {
+      const el = capitalSplitChartRef.value;
+      if (!el) return;
+      if (el.clientWidth === 0 || el.clientHeight === 0) {
+        setTimeout(() => { renderCapitalSplitChart(); }, 150);
+        return;
+      }
+      if (capitalSplitChartInstance) { capitalSplitChartInstance.dispose(); capitalSplitChartInstance = null; }
+      capitalSplitChartInstance = echarts.init(el);
+      var orders = capitalFlowMock.value.orders || [];
+      var labels = orders.map(item => item.label);
+      var values = orders.map(item => Number(item.value) || 0);
+      var colors = values.map(v => v >= 0 ? '#dc2626' : '#16a34a');
+      capitalSplitChartInstance.setOption({
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: { type: 'shadow' },
+          formatter: function(params) {
+            var p = params[0];
+            return p.name + '<br/>' + (p.value >= 0 ? '+' : '') + p.value + '亿';
+          }
+        },
+        grid: { left: 50, right: 20, top: 20, bottom: 30 },
+        xAxis: {
+          type: 'category',
+          data: labels,
+          axisLabel: { color: '#475569', fontSize: 11 },
+          axisLine: { lineStyle: { color: '#e2e8f0' } },
+          axisTick: { show: false }
+        },
+        yAxis: {
+          type: 'value',
+          name: '亿',
+          nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+          axisLabel: { color: '#94a3b8', fontSize: 11 },
+          splitLine: { lineStyle: { type: 'dashed', color: '#f1f5f9' } },
+          axisLine: { show: false },
+          axisTick: { show: false }
+        },
+        series: [{
+          type: 'bar',
+          data: values.map((v, i) => ({ value: v, itemStyle: { color: colors[i], borderRadius: v >= 0 ? [3, 3, 0, 0] : [0, 0, 3, 3] } })),
+          barWidth: '40%',
+          label: {
+            show: true,
+            position: 'outside',
+            fontSize: 10,
+            color: '#475569',
+            formatter: function(p) { return (p.value >= 0 ? '+' : '') + p.value + '亿'; }
+          },
+          markLine: {
+            silent: true,
+            symbol: 'none',
+            data: [{ yAxis: 0, lineStyle: { color: '#94a3b8', type: 'solid', width: 1 }, label: { show: false } }]
+          }
+        }]
+      });
+    };
     const loadForecast = async (refresh = false) => {
       if (loadingForecast.value) return; loadingForecast.value = true;
       try { const r = await store.dispatch('fetchStockForecast', { stockCode: stockInfo.value.code, refresh }); if (r && (r.symbol || r['股票代码'])) { forecastData.value = r; generateForecastSummary(); setTimeout(() => { renderForecastChart(); }, 0); } else { forecastData.value = {}; forecastSummary.value = ''; } }
@@ -1636,10 +1890,21 @@ export default {
     const priceUpdateTimer = ref(null); const newsUpdateTimer = ref(null);
     const setupAutoRefresh = () => { clearAutoRefreshTimers(); priceUpdateTimer.value = setInterval(() => { loadStockData(); }, 5 * 60 * 1000); newsUpdateTimer.value = setInterval(() => { loadNewsAndAnalysis(); }, 10 * 60 * 1000); };
     const clearAutoRefreshTimers = () => { if (priceUpdateTimer.value) { clearInterval(priceUpdateTimer.value); priceUpdateTimer.value = null; } if (newsUpdateTimer.value) { clearInterval(newsUpdateTimer.value); newsUpdateTimer.value = null; } };
-    const handleWindowResize = () => { if (forecastChartInstance) forecastChartInstance.resize(); if (historyTimelineChartInstance) historyTimelineChartInstance.resize(); if (capitalFlowChartInstance) capitalFlowChartInstance.resize(); if (industryHealthChartInstance) industryHealthChartInstance.resize(); };
+    const handleWindowResize = () => { if (forecastChartInstance) forecastChartInstance.resize(); if (historyTimelineChartInstance) historyTimelineChartInstance.resize(); if (capitalFlowChartInstance) capitalFlowChartInstance.resize(); if (capitalSplitChartInstance) capitalSplitChartInstance.resize(); if (industryHealthChartInstance) industryHealthChartInstance.resize(); };
+    watch(shouldShowTenxModel, (v) => {
+      if (v) {
+        fetchTenxScore(stockInfo.value.code);
+        nextTick(() => tenxUpdateRadar(tenxModel.value.dimScores));
+      }
+    });
+    // Also trigger radar when stockData loads and tenxModel becomes available
+    watch(tenxModel, (m) => {
+      if (m && m.dimScores) nextTick(() => tenxUpdateRadar(m.dimScores));
+    });
     watch(() => route.params.code, (nc) => {
       if (nc && nc !== stockInfo.value.code) {
         invalidateCache(stockInfo.value.code);
+        tenxApiData.value = null;
         stockInfo.value.code = nc; stockNews.value = []; totalNews.value = 0; newsCursor.value = 0;
         forecastData.value = {}; forecastSummary.value = '';
         historyDialogVisible.value = false; historyDetailDialogVisible.value = false; historyErrorMessage.value = '';
@@ -1652,7 +1917,7 @@ export default {
         if (!isCacheFresh('evaluation', nc)) { loadingEvaluation.value = true; loadAIEvaluation(false); }
         setupAutoRefresh(); window.scrollTo(0, 0);
         if (activeView.value === 'short') {
-          setTimeout(() => { renderCapitalFlowChart(); }, 160);
+          setTimeout(() => { renderCapitalFlowChart(); renderCapitalSplitChart(); }, 160);
         }
         if (activeView.value === 'mid') {
           setTimeout(() => { renderIndustryHealthChart(); }, 160);
@@ -1664,7 +1929,7 @@ export default {
     watch(activeView, async (nv) => {
       await nextTick();
       if (nv === 'short') {
-        setTimeout(() => { renderCapitalFlowChart(); }, 100);
+        setTimeout(() => { renderCapitalFlowChart(); renderCapitalSplitChart(); }, 100);
       }
       if (nv === 'mid') {
         setTimeout(() => {
@@ -1689,10 +1954,16 @@ export default {
       if (isLoggedIn.value) checkIfFavorite();
       if (!isCacheFresh('evaluation', currentCode)) { loadingEvaluation.value = true; loadAIEvaluation(false); }
       setupAutoRefresh(); window.addEventListener('resize', handleWindowResize); window.scrollTo(0, 0);
-      setTimeout(() => { if (activeView.value === 'short') renderCapitalFlowChart(); }, 200);
+      setTimeout(() => { if (activeView.value === 'short') { renderCapitalFlowChart(); renderCapitalSplitChart(); } }, 200);
       setTimeout(() => { if (activeView.value === 'mid') renderIndustryHealthChart(); }, 200);
+      // Initialize tenx radar after data loads
+      setTimeout(() => {
+        if (shouldShowTenxModel.value && tenxModel.value && tenxModel.value.dimScores) {
+          tenxUpdateRadar(tenxModel.value.dimScores);
+        }
+      }, 800);
     });
-    onBeforeUnmount(() => { clearAutoRefreshTimers(); window.removeEventListener('resize', handleWindowResize); if (forecastChartInstance) { forecastChartInstance.dispose(); forecastChartInstance = null; } if (capitalFlowChartInstance) { capitalFlowChartInstance.dispose(); capitalFlowChartInstance = null; } disposeIndustryHealthChart(); disposeHistoryTimelineChart(); cancelFlowAnimationFrames(); });
+    onBeforeUnmount(() => { clearAutoRefreshTimers(); window.removeEventListener('resize', handleWindowResize); if (tenxRadarChart) { tenxRadarChart.destroy(); tenxRadarChart = null; } if (forecastChartInstance) { forecastChartInstance.dispose(); forecastChartInstance = null; } if (capitalFlowChartInstance) { capitalFlowChartInstance.dispose(); capitalFlowChartInstance = null; } if (capitalSplitChartInstance) { capitalSplitChartInstance.dispose(); capitalSplitChartInstance = null; } disposeIndustryHealthChart(); disposeHistoryTimelineChart(); cancelFlowAnimationFrames(); });
 
     const clampPercent = (value) => {
       if (!Number.isFinite(value)) return 0;
@@ -1858,8 +2129,9 @@ export default {
       openHistoryDialog, openingHistoryDialog, openHistoryDetail, reloadHistoryPage, handleHistoryPageChange,
       getHistoryConclusionClass, viewNewsDetail,
       forecastChartRef, forecastData, forecastSummary, loadingForecast, refreshForecast,
-      hasForecastChartData, capitalFlowChartRef, industryHealthChartRef,
+      hasForecastChartData, capitalFlowChartRef, capitalSplitChartRef, industryHealthChartRef,
       midMockData, midAiAnalysis, longMockData, longAiAnalysis, shouldShowTenxModel, tenxModel, capitalFlowMock,
+      TENX_DIMS, tenxSColor, tenxSGrad, tenxExpandedDims, tenxAllOpen, tenxRadarCanvas, tenxToggleDim, tenxToggleAll,
       toggleFavorite, getEvaluationClass, goToTagBoard, formatRatioText,
       mergedStructureChart, priceTrendClass,
       formatSignedPercent, formatSignedPrice, formatFlowValue,
@@ -2178,100 +2450,54 @@ export default {
   }
 
   .cf-ai-conclusion {
-    background: #f8fafc;
+    background: #f8fafc; display: flex; align-items: flex-start; gap: 20px;
     .cf-ai-narrative {
-      line-height: 1.6; font-size: 0.82rem;
+      flex: 1; line-height: 1.6; font-size: 0.82rem; min-width: 0;
       .cf-narrative-main { color: #1e293b; margin: 0 0 4px; }
       .cf-narrative-risk { color: #dc2626; margin: 0; }
     }
+    .cf-hero-card {
+      flex-shrink: 0; width: 140px; background: #fff; border-radius: 10px; border: 1px solid #e2e8f0; padding: 14px 16px; display: flex; flex-direction: column; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+      .cf-hero-card-label { font-size: 0.72rem; color: #94a3b8; margin-bottom: 4px; }
+      .cf-hero-card-value { font-size: 1.6rem; font-weight: 800; line-height: 1.1;
+        &.is-up { color: #dc2626; }
+        &.is-down { color: #16a34a; }
+      }
+    }
+    @media (max-width: 640px) {
+      flex-direction: column;
+      .cf-hero-card { width: 100%; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 14px;
+        .cf-hero-card-label { margin-bottom: 0; }
+        .cf-hero-card-value { margin-bottom: 0; font-size: 1.3rem; }
+      }
+    }
   }
 
-  .cf-core-data {
+  .cf-data-row {
     display: flex; gap: 0;
-    .cf-hero-col {
-      width: 40%; padding: 16px 20px; background: rgba(220,38,38,0.03); display: flex; flex-direction: column; justify-content: center;
-      .cf-hero-label { font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px; }
-      .cf-hero-value { font-size: 2rem; font-weight: 800; line-height: 1.1; margin-bottom: 10px;
-        &.is-up { color: #dc2626; }
-        &.is-down { color: #16a34a; }
-      }
-      .cf-hero-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-      .cf-hero-tag {
-        font-size: 0.7rem; padding: 2px 8px; border: 1px solid #e2e8f0; border-radius: 4px; color: #475569; background: #fff; white-space: nowrap;
-      }
-    }
     .cf-split-col {
-      width: 60%; padding: 16px 20px; background: #fff;
-      .cf-bidi-chart {
-        display: flex; flex-direction: column; gap: 8px;
+      flex: 1; padding: 16px 20px; background: #fff; min-width: 0;
+      .cf-split-header {
+        display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
+        .cf-split-title { font-size: 0.85rem; font-weight: 600; color: #1e293b; }
       }
-      .cf-bidi-row {
-        display: grid;
-        grid-template-columns: 48px 1fr 1px 1fr 56px;
-        align-items: center;
-        gap: 0;
-        height: 28px;
-      }
-      .cf-bidi-label {
-        font-size: 0.75rem;
-        color: #475569;
-        font-weight: 500;
-        text-align: left;
-        padding-right: 6px;
-      }
-      .cf-bidi-axis {
-        width: 1px;
-        height: 100%;
-        background: #cbd5e1;
-        flex-shrink: 0;
-      }
-      .cf-bidi-track-left {
-        height: 16px;
-        position: relative;
-        overflow: hidden;
-      }
-      .cf-bidi-track-right {
-        height: 16px;
-        position: relative;
-        overflow: hidden;
-      }
-      .cf-bidi-bar {
-        height: 100%;
-        border-radius: 2px;
-        transition: width 0.4s ease;
-        position: absolute;
-        top: 0;
-      }
-      .cf-bidi-bar-right {
-        left: 0;
-        background: #dc2626;
-        border-radius: 0 2px 2px 0;
-      }
-      .cf-bidi-bar-left {
-        right: 0;
-        background: #16a34a;
-        border-radius: 2px 0 0 2px;
-      }
-      .cf-bidi-value {
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-align: right;
-        padding-left: 6px;
-        &.is-up { color: #dc2626; }
-        &.is-down { color: #16a34a; }
-      }
+      .cf-split-chart { height: 200px; }
     }
-  }
-
-  .cf-trend {
-    .cf-trend-header {
-      display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
-      .cf-trend-title { font-size: 0.85rem; font-weight: 600; color: #1e293b; }
-      .cf-trend-badge {
-        font-size: 0.72rem; font-weight: 600; color: #92400e; background: #fef3c7; padding: 2px 10px; border-radius: 4px;
+    .cf-trend {
+      flex: 1.2; padding: 16px 20px; background: #fff; border-left: 1px solid #f1f5f9; min-width: 0;
+      .cf-trend-header {
+        display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
+        .cf-trend-title { font-size: 0.85rem; font-weight: 600; color: #1e293b; }
+        .cf-trend-badge {
+          font-size: 0.72rem; font-weight: 600; color: #92400e; background: #fef3c7; padding: 2px 10px; border-radius: 4px;
+        }
       }
+      .cf-trend-chart { height: 200px; }
     }
-    .cf-trend-chart { height: 200px; }
+    @media (max-width: 800px) {
+      flex-direction: column;
+      .cf-trend { border-left: none; border-top: 1px solid #f1f5f9; }
+    }
   }
 
   .finance-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; @media (max-width: 576px) { grid-template-columns: repeat(2, 1fr); } .finance-item { text-align: center; padding: 12px; background: #f8fafc; border-radius: 8px; .finance-label { display: block; font-size: 0.8rem; color: #64748b; margin-bottom: 4px; } .finance-value { display: block; font-size: 1.2rem; font-weight: 600; color: #1e293b; margin-bottom: 2px; } .finance-change { display: block; font-size: 0.75rem; color: #94a3b8; &.is-up { color: #ef4444; } &.is-down { color: #22c55e; } } } }
@@ -2429,63 +2655,57 @@ export default {
   .annual-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; @media (max-width: 576px) { grid-template-columns: repeat(2, 1fr); } .annual-item { text-align: center; padding: 12px; background: #f8fafc; border-radius: 8px; .annual-label { display: block; font-size: 0.8rem; color: #64748b; margin-bottom: 4px; } .annual-value { display: block; font-size: 1rem; font-weight: 600; color: #1e293b; margin-bottom: 2px; } .annual-note { display: block; font-size: 0.75rem; color: #94a3b8; &.is-up { color: #ef4444; } &.is-down { color: #22c55e; } } } }
 
   .tenx-card {
+    .tenx-error-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
     .tenx-hero {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 24px;
       padding: 20px 0;
       margin-bottom: 16px;
       border-bottom: 1px solid #f1f5f9;
       @media (max-width: 576px) {
         flex-direction: column;
+        align-items: center;
         text-align: center;
       }
     }
-    .tenx-score-ring {
+    /* 雷达图 + 中心分数 */
+    .tenx-radar-center-wrap {
       position: relative;
-      width: 100px;
-      height: 100px;
+      width: 300px;
+      height: 260px;
       flex-shrink: 0;
     }
-    .score-svg {
-      width: 100%;
-      height: 100%;
-      transform: rotate(-90deg);
+    .tenx-radar-canvas {
+      display: block;
     }
-    .score-bg {
-      fill: none;
-      stroke: #f1f5f9;
-      stroke-width: 6;
-    }
-    .score-fill {
-      fill: none;
-      stroke-width: 6;
-      stroke-linecap: round;
-      transition: stroke-dashoffset 1s ease, stroke 0.3s ease;
-      &.is-high { stroke: #22c55e; }
-      &.is-mid { stroke: #eab308; }
-      &.is-low { stroke: #ef4444; }
-    }
-    .score-center {
+    .tenx-radar-score-overlay {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
       text-align: center;
-      &.is-high .score-value { color: #22c55e; }
-      &.is-mid .score-value { color: #eab308; }
-      &.is-low .score-value { color: #ef4444; }
+      pointer-events: none;
+      &.is-high .tenx-radar-score-value { color: #22c55e; }
+      &.is-mid .tenx-radar-score-value { color: #eab308; }
+      &.is-low .tenx-radar-score-value { color: #ef4444; }
     }
-    .score-value {
+    .tenx-radar-score-value {
       display: block;
-      font-size: 2rem;
+      font-size: 2.2rem;
       font-weight: 700;
       line-height: 1;
       transition: color 0.3s ease;
     }
-    .score-label {
+    .tenx-radar-score-label {
       display: block;
-      font-size: 0.7rem;
+      font-size: 0.75rem;
       color: #94a3b8;
       margin-top: 4px;
     }
@@ -2493,7 +2713,11 @@ export default {
       flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
+      min-height: 260px;
+      @media (max-width: 576px) {
+        min-height: 0;
+      }
     }
     .verdict-tag {
       display: inline-flex;
@@ -2504,21 +2728,9 @@ export default {
       font-weight: 600;
       width: fit-content;
       transition: all 0.3s ease;
-      &.is-high {
-        background: transparent;
-        color: #22c55e;
-        border: 1px solid #22c55e;
-      }
-      &.is-mid {
-        background: transparent;
-        color: #eab308;
-        border: 1px solid #eab308;
-      }
-      &.is-low {
-        background: transparent;
-        color: #ef4444;
-        border: 1px solid #ef4444;
-      }
+      &.is-high { background: transparent; color: #22c55e; border: 1px solid #22c55e; }
+      &.is-mid { background: transparent; color: #eab308; border: 1px solid #eab308; }
+      &.is-low { background: transparent; color: #ef4444; border: 1px solid #ef4444; }
     }
     .verdict-text {
       font-size: 0.88rem;
@@ -2526,92 +2738,224 @@ export default {
       margin: 0;
       line-height: 1.6;
     }
-    .tenx-insight-inline {
-      padding: 10px 14px;
-      border-radius: 6px;
-      background: transparent;
-      border: 1px solid #e2e8f0;
-      transition: all 0.3s ease;
-      flex-shrink: 0;
+
+    /* AI结论 */
+    .tenx-ai-conclusion {
+      width: 100%;
+      margin-top: 4px;
+      padding: 10px 12px;
+      background: #f5f7fa;
+      border-radius: 8px;
+      border: 1px solid #e4e7ed;
+      flex: 1;
     }
+    .tenx-ai-conclusion-header {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #409eff;
+      i { font-size: 13px; }
+    }
+    .tenx-ai-conclusion-text {
+      font-size: 11px;
+      color: #606266;
+      line-height: 1.7;
+      margin: 0;
+    }
+
+    /* 因子详情区 */
+    .tenx-dim-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .tenx-dim-section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #606266;
+    }
+    .tenx-dim-toggle-btn {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid #dcdfe6;
+      background: #fff;
+      color: #606266;
+      cursor: pointer;
+      font-family: inherit;
+      transition: border-color 0.2s;
+      &:hover { border-color: #409eff; color: #409eff; }
+    }
+
+    /* 因子网格 */
     .tenx-dimensions-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 10px;
-      margin-bottom: 16px;
-    }
-    .dimension-item {
-      padding: 12px 16px;
-      border-radius: 6px;
-      background: transparent;
-      border: 1px solid #f1f5f9;
-      transition: all 0.3s ease;
-      &.is-high { border-left: 3px solid #22c55e; }
-      &.is-mid { border-left: 3px solid #eab308; }
-      &.is-low { border-left: 3px solid #ef4444; }
-      &:hover {
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-        transform: translateY(-2px);
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+      @media (max-width: 576px) {
+        grid-template-columns: 1fr;
       }
     }
-    .dim-header {
+
+    /* 因子分组分隔线 */
+    .tenx-dim-group-divider {
+      grid-column: 1 / -1;
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-bottom: 8px;
+      padding: 4px 0 2px;
     }
-    .dim-name {
+    .tenx-dim-group-label {
+      font-size: 10px;
+      color: #c0c4cc;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+    .tenx-dim-group-line {
       flex: 1;
-      font-size: 0.88rem;
-      font-weight: 600;
-      color: #334155;
+      height: 1px;
+      background: #e4e7ed;
     }
-    .dim-score {
-      font-size: 0.9rem;
-      font-weight: 700;
-      padding: 1px 8px;
-      border-radius: 4px;
-      transition: all 0.3s ease;
-      &.is-high { color: #22c55e; background: transparent; }
-      &.is-mid { color: #eab308; background: transparent; }
-      &.is-low { color: #ef4444; background: transparent; }
+
+    /* 单个因子卡片 */
+    .tenx-dim-item {
+      background: #fff;
+      border: 1px solid #e4e7ed;
+      border-radius: 10px;
+      transition: all 0.25s;
+      cursor: pointer;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+      &:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.06); border-color: #c0c4cc; }
+      &.is-expanded { border-color: #409eff; box-shadow: 0 4px 12px rgba(64,158,255,0.08); }
+      &.is-high { border-left: 3px solid #22c55e; }
+      &.is-mid { border-left: 3px solid #eab308; }
+      &.is-low { border-left: 3px solid #ef4444; }
     }
-    .dim-bar {
-      height: 4px;
-      background: #f1f5f9;
-      border-radius: 2px;
-      overflow: hidden;
-      margin-bottom: 6px;
+
+    /* 因子头部 */
+    .tenx-dim-head {
+      padding: 8px 14px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
     }
-    .dim-fill {
-      height: 100%;
-      border-radius: 2px;
-      transition: width 0.6s ease;
-      &.is-high { background: #22c55e; }
-      &.is-mid { background: #eab308; }
-      &.is-low { background: #ef4444; }
+    .tenx-dim-head-left {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
     }
-    .dim-detail {
-      font-size: 0.78rem;
-      color: #94a3b8;
+    .tenx-dim-icon {
+      font-size: 14px;
+      margin-top: 2px;
     }
-    .insight-header {
+    .tenx-dim-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: #303133;
+    }
+    .tenx-dim-weight {
+      font-size: 10px;
+      color: #c0c4cc;
+      margin-left: 4px;
+    }
+    .tenx-dim-question {
+      font-size: 9px;
+      color: #409eff;
+      opacity: 0.7;
+      margin-top: 2px;
+    }
+    .tenx-dim-head-right {
       display: flex;
       align-items: center;
-      gap: 6px;
-      margin-bottom: 6px;
+      gap: 8px;
+      flex-shrink: 0;
     }
-    .insight-title {
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: #64748b;
+    .tenx-dim-score {
+      font-size: 17px;
+      font-weight: 700;
     }
-    .insight-content {
-      font-size: 0.78rem;
-      color: #64748b;
-      line-height: 1.6;
-      margin: 0;
+    .tenx-dim-chevron {
+      font-size: 10px;
+      color: #c0c4cc;
+      transition: transform 0.3s;
+      &.open { transform: rotate(180deg); }
     }
+
+    /* 因子进度条 */
+    .tenx-dim-bar {
+      height: 4px;
+      background: #f2f3f5;
+      border-radius: 3px;
+      overflow: hidden;
+      margin: 0 14px 8px;
+    }
+    .tenx-dim-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    /* 因子展开详情 */
+    .tenx-dim-details {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.35s ease;
+    }
+    .tenx-dim-details.open {
+      max-height: 400px;
+    }
+    .tenx-dim-details-inner {
+      padding: 8px 14px 12px;
+      border-top: 1px solid #f2f3f5;
+      margin-top: 0;
+    }
+
+    /* 指标行 */
+    .tenx-ind-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid #fafafa;
+      &:last-child { border-bottom: none; }
+    }
+    .tenx-ind-name {
+      font-size: 11px;
+      color: #909399;
+    }
+    .tenx-ind-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tenx-ind-value {
+      font-size: 11px;
+      color: #606266;
+    }
+    .tenx-ind-bar-track {
+      width: 40px;
+      height: 3px;
+      border-radius: 2px;
+      background: #f2f3f5;
+      overflow: hidden;
+    }
+    .tenx-ind-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.7s cubic-bezier(0.4,0,0.2,1);
+    }
+    .tenx-ind-score {
+      font-size: 11px;
+      font-weight: 700;
+      width: 20px;
+      text-align: right;
+    }
+
     .tenx-data-source {
       font-size: 0.72rem;
       color: #cbd5e1;

@@ -761,4 +761,23 @@ async function fetchMonitorData(startTime, endTime) {
 }
 
 export { fetchMonitorData };
+
+// 十倍股评分 API
+export const tenxApi = {
+  /** 获取股票最新十倍股评分 */
+  getScore: (symbol) => api.get(`/api/cn/stocks/${symbol}/tenx-score`, {
+    validateStatus: (status) => status < 500, // 404 等客户端错误正常返回，不抛异常
+  }),
+
+  /** 获取股票历史评分 */
+  getScoreHistory: (symbol, page = 1, pageSize = 20) =>
+    api.get(`/api/cn/stocks/${symbol}/tenx-score/history`, { params: { page, pageSize } }),
+
+  /** 强制刷新评分（重新计算） */
+  refreshScore: (symbol) => api.post(`/api/cn/stocks/${symbol}/tenx-score/refresh`, null, {
+    timeout: 60000,
+    'axios-retry': { retries: 0 }
+  }),
+};
+
 export default api;

@@ -9,6 +9,7 @@ const FavoritesView = () => import('@/views/FavoritesView.vue')
 const WechatMessageView = () => import('@/views/WechatMessageView.vue')
 const UpdateLogsView = () => import('@/views/UpdateLogsView.vue')
 const PerformanceForecastView = () => import('@/views/PerformanceForecastView.vue')
+const TenxScoreView = () => import('@/views/TenxScoreView.vue')
 
 const routes = [
   {
@@ -68,6 +69,14 @@ const routes = [
     component: PerformanceForecastView,
     meta: {
       title: '股票资讯AI智能分析 - 业绩预测'
+    }
+  },
+  {
+    path: '/tenx',
+    name: 'tenxScore',
+    component: TenxScoreView,
+    meta: {
+      title: '股票资讯AI智能分析 - 十倍股评分'
     }
   },
   {
