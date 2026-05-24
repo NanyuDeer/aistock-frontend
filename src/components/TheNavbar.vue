@@ -16,6 +16,7 @@
         <router-link to="/" class="menu-item" @click="closeMobileMenu">首页</router-link>
         <router-link to="/search" class="menu-item" @click="closeMobileMenu">搜索股票</router-link>
         <router-link to="/forecast" class="menu-item" @click="closeMobileMenu">业绩预测</router-link>
+        <router-link to="/tenx" class="menu-item" @click="closeMobileMenu">十倍股评分</router-link>
         <router-link v-if="isLoggedIn" to="/favorites" class="menu-item" @click="closeMobileMenu">我的自选股</router-link>
         <template v-if="isLoggedIn">
           <router-link to="/profile" class="menu-item" @click="closeMobileMenu">个人信息</router-link>
@@ -29,6 +30,7 @@
         <router-link to="/" class="nav-item" @click="closeMobileMenu">首页</router-link>
         <router-link to="/search" class="nav-item" @click="closeMobileMenu">搜索股票</router-link>
         <router-link to="/forecast" class="nav-item" @click="closeMobileMenu">业绩预测</router-link>
+        <router-link to="/tenx" class="nav-item" @click="closeMobileMenu">十倍股评分</router-link>
         <router-link v-if="isLoggedIn" to="/favorites" class="nav-item" @click="closeMobileMenu">我的自选股</router-link>
       </div>
       <div class="user-area">

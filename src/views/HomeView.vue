@@ -154,9 +154,9 @@
                   <div class="stock-identity">
                     <div class="stock-title-wrap">
                       <h4>{{ stock.name }}</h4>
+                      <span class="industry-tag">{{ stock.track }}</span>
                       <span class="stock-code-line">{{ stock.code }}</span>
                     </div>
-                    <span class="industry-tag">{{ stock.track }}</span>
                   </div>
                   <div class="stock-metrics">
                     <span class="stock-price">{{ stock.latestPrice }}</span>
@@ -164,14 +164,16 @@
                       {{ stock.changeText }}
                     </span>
                   </div>
-                  <el-tooltip
-                    :content="stock.leaderBasis"
-                    placement="top"
-                    effect="light"
-                    :show-after="200"
-                  >
-                    <p class="leader-basis">{{ stock.leaderBasis }}</p>
-                  </el-tooltip>
+                  <div class="leader-basis-wrap">
+                    <el-tooltip
+                      :content="stock.leaderBasis"
+                      placement="top"
+                      effect="light"
+                      :show-after="200"
+                    >
+                      <p class="leader-basis">{{ stock.leaderBasis }}</p>
+                    </el-tooltip>
+                  </div>
                   <el-button
                     class="curated-follow-btn"
                     size="small"
@@ -1570,6 +1572,31 @@ export default {
       grid-template-columns: minmax(116px, 0.8fr) minmax(112px, 0.7fr) minmax(170px, 1.35fr) 78px;
     }
 
+    .trend-leader-row .stock-identity {
+      display: block;
+    }
+
+    .trend-leader-row .stock-title-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 2px 6px;
+      min-width: 0;
+    }
+
+    .trend-leader-row .stock-title-wrap h4 {
+      margin: 0;
+      min-width: 0;
+      flex: 0 1 auto;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .trend-leader-row .stock-title-wrap .stock-code-line {
+      flex: 0 0 100%;
+    }
+
     .tenbagger-list .curated-list-head,
     .tenbagger-row {
       grid-template-columns: minmax(76px, 0.75fr) minmax(96px, 0.9fr) minmax(98px, 0.9fr) 72px;
@@ -1752,6 +1779,10 @@ export default {
       text-overflow: ellipsis;
     }
 
+    .leader-basis-wrap {
+      min-width: 0;
+    }
+
     .curated-follow-btn {
       width: 64px;
       justify-self: end;
@@ -1778,21 +1809,67 @@ export default {
         display: none;
       }
 
-      .trend-leader-row,
-      .tenbagger-row {
-        grid-template-columns: 1fr;
-        gap: 8px;
-        align-items: flex-start;
+      .trend-leader-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+          "info action"
+          "metrics metrics"
+          "basis basis";
+        gap: 6px 8px;
+        align-items: center;
       }
 
-      .stock-identity,
-      .stock-metrics,
-      .tenbagger-factor {
-        flex-wrap: wrap;
+      .trend-leader-row .stock-identity {
+        grid-area: info;
+        display: block;
+        min-width: 0;
+      }
+
+      .trend-leader-row .stock-title-wrap {
+        width: 100%;
+        justify-content: flex-start;
+      }
+
+      .trend-leader-row .curated-follow-btn {
+        grid-area: action;
+        justify-self: end;
+        margin-left: 0;
+      }
+
+      .trend-leader-row .stock-metrics {
+        grid-area: metrics;
+        flex-wrap: nowrap;
+      }
+
+      .trend-leader-row .leader-basis-wrap {
+        grid-area: basis;
+      }
+
+      .tenbagger-row {
+        grid-template-columns: minmax(56px, 0.65fr) minmax(0, 0.95fr) minmax(0, 1.3fr) auto;
+        gap: 6px 8px;
+        align-items: center;
+      }
+
+      .tenbagger-row .tenbagger-industry,
+      .tenbagger-row .stock-identity,
+      .tenbagger-row .tenbagger-factor {
+        min-width: 0;
+      }
+
+      .tenbagger-row .stock-identity {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .tenbagger-row .tenbagger-factor {
+        flex-wrap: nowrap;
+        overflow: hidden;
       }
 
       .curated-follow-btn {
-        justify-self: start;
+        justify-self: end;
       }
 
     }
