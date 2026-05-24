@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
   <div class="stock-detail-page">
     <div class="page-container">
       <div class="stock-header">
@@ -1327,7 +1327,7 @@ export default {
       });
     }
 
-    const shouldShowTenxModel = computed(() => Boolean(curatedProfile.value) && expectedMultipleNumber.value >= 1.5);
+    const shouldShowTenxModel = computed(() => Boolean(stockInfo.value?.code));
 
     // 十倍股评分 — 从后端API获取
     const tenxApiData = ref(null);
@@ -1891,12 +1891,6 @@ export default {
     const setupAutoRefresh = () => { clearAutoRefreshTimers(); priceUpdateTimer.value = setInterval(() => { loadStockData(); }, 5 * 60 * 1000); newsUpdateTimer.value = setInterval(() => { loadNewsAndAnalysis(); }, 10 * 60 * 1000); };
     const clearAutoRefreshTimers = () => { if (priceUpdateTimer.value) { clearInterval(priceUpdateTimer.value); priceUpdateTimer.value = null; } if (newsUpdateTimer.value) { clearInterval(newsUpdateTimer.value); newsUpdateTimer.value = null; } };
     const handleWindowResize = () => { if (forecastChartInstance) forecastChartInstance.resize(); if (historyTimelineChartInstance) historyTimelineChartInstance.resize(); if (capitalFlowChartInstance) capitalFlowChartInstance.resize(); if (capitalSplitChartInstance) capitalSplitChartInstance.resize(); if (industryHealthChartInstance) industryHealthChartInstance.resize(); };
-    watch(shouldShowTenxModel, (v) => {
-      if (v) {
-        fetchTenxScore(stockInfo.value.code);
-        nextTick(() => tenxUpdateRadar(tenxModel.value.dimScores));
-      }
-    });
     // Also trigger radar when stockData loads and tenxModel becomes available
     watch(tenxModel, (m) => {
       if (m && m.dimScores) nextTick(() => tenxUpdateRadar(m.dimScores));
@@ -1915,6 +1909,7 @@ export default {
         if (!isCacheFresh('news', nc)) loadNewsAndAnalysis();
         if (!isCacheFresh('forecast', nc)) loadForecast();
         if (!isCacheFresh('evaluation', nc)) { loadingEvaluation.value = true; loadAIEvaluation(false); }
+        fetchTenxScore(nc);
         setupAutoRefresh(); window.scrollTo(0, 0);
         if (activeView.value === 'short') {
           setTimeout(() => { renderCapitalFlowChart(); renderCapitalSplitChart(); }, 160);
@@ -1953,6 +1948,7 @@ export default {
       if (!isCacheFresh('forecast', currentCode)) loadForecast();
       if (isLoggedIn.value) checkIfFavorite();
       if (!isCacheFresh('evaluation', currentCode)) { loadingEvaluation.value = true; loadAIEvaluation(false); }
+      fetchTenxScore(currentCode);
       setupAutoRefresh(); window.addEventListener('resize', handleWindowResize); window.scrollTo(0, 0);
       setTimeout(() => { if (activeView.value === 'short') { renderCapitalFlowChart(); renderCapitalSplitChart(); } }, 200);
       setTimeout(() => { if (activeView.value === 'mid') renderIndustryHealthChart(); }, 200);

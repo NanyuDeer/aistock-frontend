@@ -559,6 +559,22 @@ export default {
       }
     }
 
+    /** 页面加载时自动从后端获取所有股票的最新评分 */
+    async function autoRefreshAllScores() {
+      if (myStocks.value.length === 0) return
+      for (const stock of myStocks.value) {
+        try {
+          const sd = await fetchStockScore(stock.code)
+          if (sd) {
+            scoreCache[stock.code] = sd
+            delete scoreErrors[stock.code]
+          }
+        } catch { /* 忽略 */ }
+      }
+      persistData()
+      nextTick(() => updateRadar(dimScores.value))
+    }
+
     function removeStock(idx) {
       delete scoreCache[myStocks.value[idx].code]
       myStocks.value.splice(idx, 1)
@@ -780,6 +796,8 @@ export default {
         })
       }
       curIdx.value = 0
+      // 自动从后端获取所有股票的最新评分数据
+      autoRefreshAllScores()
     })
 
     watch(dimScores, (v) => {
