@@ -76,7 +76,7 @@
           <button class="score-all-btn" :class="{ loading: isScoring }" @click="startScoring">
             <i :class="isScoring ? 'el-icon-loading' : 'el-icon-lightning'"></i>
             一键评分
-            <span class="score-all-sub">{{ isScoring ? '逐维度计算中' : '点击开始评分' }}</span>
+            <span class="score-all-sub">{{ isScoring ? '重新计算中，请耐心等待' : '重新获取数据评分' }}</span>
           </button>
         </div>
       </aside>
@@ -551,7 +551,17 @@ export default {
 
     async function autoScoreStock(stock) {
       if (scoreCache[stock.code]) return
-      const sd = await fetchStockScore(stock.code)
+      // 先尝试从D1缓存获取
+      let sd = await fetchCachedScore(stock.code)
+      if (!sd) {
+        // 缓存无数据，调用refresh重新计算
+        try {
+          const res = await tenxApi.refreshScore(stock.code)
+          if (res.code === 200 && res.data) {
+            sd = transformScore(res.data)
+          }
+        } catch { /* 忽略 */ }
+      }
       if (sd) {
         scoreCache[stock.code] = sd
         delete scoreErrors[stock.code]
@@ -564,12 +574,12 @@ export default {
       }
     }
 
-    /** 页面加载时自动从后端获取所有股票的最新评分 */
+    /** 页面加载时自动从后端D1缓存获取所有股票的评分（不触发重新计算） */
     async function autoRefreshAllScores() {
       if (myStocks.value.length === 0) return
       for (const stock of myStocks.value) {
         try {
-          const sd = await fetchStockScore(stock.code)
+          const sd = await fetchCachedScore(stock.code)
           if (sd) {
             scoreCache[stock.code] = sd
             delete scoreErrors[stock.code]
@@ -637,11 +647,16 @@ export default {
       const stock = currentStock.value
       if (!stock || isRefreshing.value) return
       isRefreshing.value = true
-      const sd = await fetchStockScore(stock.code)
-      if (sd) {
-        scoreCache[stock.code] = sd
-        delete scoreErrors[stock.code]
-      } else {
+      try {
+        const res = await tenxApi.refreshScore(stock.code)
+        if (res.code === 200 && res.data) {
+          const sd = transformScore(res.data)
+          scoreCache[stock.code] = sd
+          delete scoreErrors[stock.code]
+        } else {
+          scoreErrors[stock.code] = true
+        }
+      } catch {
         scoreErrors[stock.code] = true
       }
       isRefreshing.value = false
@@ -656,18 +671,19 @@ export default {
       const curStock = myStocks.value[curIdx.value]
       if (!curStock) { isScoring.value = false; return }
 
-      // 评分当前股票（带动画）
+      // 评分当前股票（带动画）— 调用refresh接口重新计算
       try {
-        const sd = await fetchStockScore(curStock.code)
-        if (sd) {
+        const res = await tenxApi.refreshScore(curStock.code)
+        if (res.code === 200 && res.data) {
+          const sd = transformScore(res.data)
           scoreCache[curStock.code] = sd
           delete scoreErrors[curStock.code]
           let loaded = 0
           function stepDim() {
             if (loaded >= 8) {
               updateRadar(sd.dimScores)
-              isScoring.value = false
-              persistData()
+              // 当前股票动画完成后，继续评分其余股票
+              scoreRemaining()
               return
             }
             loaded++
@@ -684,17 +700,21 @@ export default {
         }
       } catch {
         scoreErrors[curStock.code] = true
-        isScoring.value = false
+        // 仍然继续评分其余股票
+        scoreRemaining()
       }
+    }
 
-      // 批量评分其余股票
-      for (const s of myStocks.value) {
-        if (s.code === curStock.code) continue
-        if (scoreCache[s.code]) continue
+    /** 串行评分剩余股票，每只间隔2秒避免Tushare频率超限 */
+    async function scoreRemaining() {
+      const curStock = myStocks.value[curIdx.value]
+      for (let i = 0; i < myStocks.value.length; i++) {
+        const s = myStocks.value[i]
+        if (s.code === curStock?.code) continue
         try {
-          const sd = await fetchStockScore(s.code)
-          if (sd) {
-            scoreCache[s.code] = sd
+          const res = await tenxApi.refreshScore(s.code)
+          if (res.code === 200 && res.data) {
+            scoreCache[s.code] = transformScore(res.data)
             delete scoreErrors[s.code]
           } else {
             scoreErrors[s.code] = true
@@ -702,28 +722,23 @@ export default {
         } catch {
           scoreErrors[s.code] = true
         }
+        // 非最后一只，等待2秒
+        if (i < myStocks.value.length - 1) {
+          await new Promise(r => setTimeout(r, 2000))
+        }
       }
+      isScoring.value = false
       persistData()
     }
 
-    /** 获取单只股票评分：先查缓存，再查后端，最后刷新计算 */
-    async function fetchStockScore(code) {
-      // 先尝试从后端获取已有评分
+    /** 从后端D1缓存获取评分（不触发重新计算） */
+    async function fetchCachedScore(code) {
       try {
         const res = await tenxApi.getScore(code)
         if (res.code === 200 && res.data) {
           return transformScore(res.data)
         }
-      } catch { /* 忽略，尝试刷新 */ }
-
-      // 后端无数据或查询失败，尝试刷新计算
-      try {
-        const refreshRes = await tenxApi.refreshScore(code)
-        if (refreshRes.code === 200 && refreshRes.data) {
-          return transformScore(refreshRes.data)
-        }
       } catch { /* 忽略 */ }
-
       return null
     }
 

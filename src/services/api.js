@@ -764,18 +764,30 @@ export { fetchMonitorData };
 
 // 十倍股评分 API
 export const tenxApi = {
-  /** 获取股票最新十倍股评分 */
+  /** 获取股票最新十倍股评分(从D1缓存) */
   getScore: (symbol) => api.get(`/api/cn/stocks/${symbol}/tenx-score`, {
-    validateStatus: (status) => status < 500, // 404 等客户端错误正常返回，不抛异常
+    validateStatus: (status) => status < 500,
   }),
 
   /** 获取股票历史评分 */
   getScoreHistory: (symbol, page = 1, pageSize = 20) =>
     api.get(`/api/cn/stocks/${symbol}/tenx-score/history`, { params: { page, pageSize } }),
 
-  /** 强制刷新评分（重新计算） */
-  refreshScore: (symbol) => api.post(`/api/cn/stocks/${symbol}/tenx-score/refresh`, null, {
+  /** 强制刷新评分（重新获取数据并计算）
+   *  mode: 'quick' → 只重新获取动态数据(估值/质押/增减持)，复用缓存的财报数据
+   *  mode: undefined → 全量重新获取所有数据
+   */
+  refreshScore: (symbol, mode = 'quick') => api.post(`/api/cn/stocks/${symbol}/tenx-score/refresh?mode=${mode}`, null, {
     timeout: 60000,
+    'axios-retry': { retries: 0 }
+  }),
+
+  /** 批量刷新评分（带频率控制，串行处理）
+   *  mode: 'quick' → 只重新获取动态数据，1秒间隔
+   *  mode: undefined → 全量获取，2秒间隔
+   */
+  batchRefresh: (symbols, mode = 'quick') => api.post(`/api/cn/stocks/tenx-score/batch`, { symbols, mode }, {
+    timeout: 600000,
     'axios-retry': { retries: 0 }
   }),
 };
