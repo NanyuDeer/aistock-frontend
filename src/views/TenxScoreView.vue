@@ -374,7 +374,12 @@ function transformScore(apiData) {
   const dimensions = apiData.indicators || apiData.dimensions || []
   const dimScores = apiData.dim_scores || dimensions.map(d => d.score)
   const indScores = dimensions.map(d => d.indicators.map(i => i.score))
-  const indVals = dimensions.map(d => d.indicators.map(i => i.value))
+  const indVals = dimensions.map(d => d.indicators.map(i => {
+    const v = i.value
+    // 0.0%、0.0、0等明显无意义的默认值显示为 --
+    if (v === '0.0%' || v === '0.00%' || v === '0%' || v === '0.0' || v === '0' || v === '-') return '--'
+    return v
+  }))
   return {
     dimScores,
     indScores,
