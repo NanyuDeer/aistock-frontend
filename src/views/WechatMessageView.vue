@@ -195,7 +195,7 @@ export default {
         query: { name: String(tagName || '').trim() }
       });
     };
-    const goToStock = (stockId) => { if (stockId) window.open(`https://aistocklink.cn/stock/${stockId}`, '_blank'); };
+    const goToStock = (stockId) => { if (stockId) window.open(`https://gupiao.yaozhineng.com/stock/${stockId}`, '_blank'); };
     const goToHome = () => router.push('/');
     const copyShareLink = () => {
       const url = window.location.href;

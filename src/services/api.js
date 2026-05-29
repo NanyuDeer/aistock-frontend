@@ -42,10 +42,10 @@ axios.interceptors.response.use(
 
 // 开发模式下使用相对路径（通过 webpack dev server 代理转发），生产模式下使用完整URL
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://extapi.aistocklink.cn' 
+  ? 'https://gupiao-api.yaozhineng.com' 
   : '';
 const EXT_API_BASE_URL = process.env.NODE_ENV === 'production'
-  ? 'https://extapi.aistocklink.cn'
+  ? 'https://gupiao-api.yaozhineng.com'
   : '';
 const PREDICTION_API_BASE_URL = process.env.NODE_ENV === 'production'
   ? 'https://yingfeng64-kronos-api.hf.space'
@@ -324,7 +324,7 @@ export const ttsApi = {
 };
 
 // 微信网页授权登录地址（用于微信浏览器内跳转）
-export const WECHAT_OAUTH_LOGIN_URL = 'https://extapi.aistocklink.cn/api/auth/wechat/login';
+export const WECHAT_OAUTH_LOGIN_URL = 'https://gupiao-api.yaozhineng.com/api/auth/wechat/login';
 
 // 股票相关API
 export const stockApi = {

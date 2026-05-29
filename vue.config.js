@@ -113,11 +113,11 @@ module.exports = {
     },
     proxy: {
       '/api': {
-        target: 'https://extapi.aistocklink.cn',
+        target: 'https://gupiao-api.yaozhineng.com',
         changeOrigin: true,
         secure: true,
         headers: {
-          Referer: 'https://extapi.aistocklink.cn'
+          Referer: 'https://gupiao-api.yaozhineng.com'
         },
         onProxyReq(proxyReq, req, res) {
           console.log('代理请求:', req.method, req.url);

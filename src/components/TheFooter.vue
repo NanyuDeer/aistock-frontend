@@ -5,7 +5,7 @@
       <div class="footer-links">
         <router-link to="/update-logs" class="footer-link">更新日志</router-link>
         <span class="divider">|</span>
-        <a href="https://status.aistocklink.cn" target="_blank" rel="noopener noreferrer">网站状态监测</a>
+        <a href="https://gupiao.yaozhineng.com" target="_blank" rel="noopener noreferrer">网站状态监测</a>
       </div>
       <div class="beian-info">
   <img src="@/assets/jnu-logo.svg" alt="暨大Logo" style="height: 1.2rem; vertical-align: middle; margin-right: 6px;" />
