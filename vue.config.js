@@ -113,12 +113,8 @@ module.exports = {
     },
     proxy: {
       '/api': {
-        target: 'https://gupiao-api.yaozhineng.com',
+        target: process.env.VUE_APP_API_TARGET || 'http://localhost:3000',
         changeOrigin: true,
-        secure: true,
-        headers: {
-          Referer: 'https://gupiao-api.yaozhineng.com'
-        },
         onProxyReq(proxyReq, req, res) {
           console.log('代理请求:', req.method, req.url);
         },
