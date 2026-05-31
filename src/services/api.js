@@ -538,6 +538,13 @@ export const stockApi = {
   getStockNews: (symbol, limit = 5, lastTime = 0) => {
     return api.get(`/api/cn/stocks/${encodeURIComponent(symbol)}/news?limit=${limit}&lastTime=${lastTime}`);
   },
+
+  // 获取个股资金流向
+  getCapitalFlow: (symbol) => {
+    return api.get(`/api/cn/stocks/${encodeURIComponent(symbol)}/capital-flow`, {
+      timeout: 10000
+    });
+  },
   
   // 获取自选股推送新闻
   getPushNews: (_page = 1, _limit = 5) => {

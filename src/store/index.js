@@ -1079,12 +1079,26 @@ export default createStore({
       }
     },
 
+    async fetchCapitalFlow(_, stockCode) {
+      if (!stockCode) return null;
+      try {
+        const response = await stockApi.getCapitalFlow(stockCode);
+        if (response.code === 200 && response.data) {
+          return response.data;
+        }
+        return null;
+      } catch (error) {
+        console.error('获取资金流向失败:', error);
+        return null;
+      }
+    },
+
     async fetchMarketOverview({ commit }) {
       try {
         // 并行请求国内和全球指数行情
         const [cnResponse, gbResponse] = await Promise.allSettled([
           stockApi.getCnIndexQuotes('000001,399001,399006'),
-          stockApi.getGbIndexQuotes('HXC,XIN9,HSTECH')
+          stockApi.getGbIndexQuotes('HSI,HSTECH,HXC')
         ]);
 
         const marketData = {};

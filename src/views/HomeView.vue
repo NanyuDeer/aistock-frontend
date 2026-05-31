@@ -128,7 +128,7 @@
             <MarketOverview />
           </div>
 
-          <!-- 趋势龙头股 + 十倍潜力股 -->
+          <!-- 趋势龙头股 -->
           <div class="curated-stock-sections">
             <section class="curated-panel trend-leader-panel">
               <div class="curated-panel-header">
@@ -173,52 +173,6 @@
                     >
                       <p class="leader-basis">{{ stock.leaderBasis }}</p>
                     </el-tooltip>
-                  </div>
-                  <el-button
-                    class="curated-follow-btn"
-                    size="small"
-                    :type="isCuratedFavorite(stock) ? 'info' : 'primary'"
-                    :plain="!isCuratedFavorite(stock)"
-                    :loading="curatedFavoriteLoading[stock.code]"
-                    @click.stop="toggleCuratedFavorite(stock)"
-                  >
-                    {{ isCuratedFavorite(stock) ? '已关注' : '加关注' }}
-                  </el-button>
-                </div>
-              </div>
-            </section>
-
-            <section class="curated-panel tenbagger-panel">
-              <div class="curated-panel-header">
-                <h3 class="section-title">十倍潜力股</h3>
-              </div>
-              <div class="curated-list tenbagger-list">
-                <div class="curated-list-head">
-                  <span>行业</span>
-                  <span>代表股票</span>
-                  <span>核心因子</span>
-                  <span>操作</span>
-                </div>
-                <div
-                  v-for="stock in tenbaggerStocks"
-                  :key="stock.code"
-                  class="curated-list-row tenbagger-row"
-                  @click="viewCuratedStock(stock)"
-                >
-                  <div class="tenbagger-industry">
-                    <span class="industry-tag is-emphasis">{{ stock.sector }}</span>
-                  </div>
-                  <div class="stock-identity">
-                    <div class="stock-title-wrap">
-                      <h4>{{ stock.name }}</h4>
-                      <span class="stock-code-line">{{ stock.code }}</span>
-                    </div>
-                  </div>
-                  <div class="tenbagger-factor">
-                    <span class="stock-multiple" :class="getPotentialClass(stock.expectedMultiple)">
-                      {{ stock.expectedMultiple }}
-                    </span>
-                    <span class="stock-ai-score">评分{{ stock.aiScore }}</span>
                   </div>
                   <el-button
                     class="curated-follow-btn"
@@ -1528,7 +1482,7 @@ export default {
 
   .curated-stock-sections {
     display: grid;
-    grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.9fr);
+    grid-template-columns: 1fr;
     gap: 20px;
     margin: 24px 0 26px;
 

@@ -52,7 +52,7 @@ export default {
     const loading = ref(true);
     let timer = null;
 
-    const INDEX_ORDER = ['000001', '399001', '399006', 'HXC', 'XIN9', 'HSTECH'];
+    const INDEX_ORDER = ['000001', '399001', '399006', 'HSI', 'HSTECH', 'HXC'];
     const hasMarketData = computed(() => Object.keys(marketData.value).length > 0);
     const displayIndexes = computed(() => {
       const ordered = INDEX_ORDER

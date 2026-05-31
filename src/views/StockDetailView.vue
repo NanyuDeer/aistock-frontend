@@ -1,4 +1,4 @@
-﻿﻿<template>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
   <div class="stock-detail-page">
     <div class="page-container">
       <div class="stock-header">
@@ -264,7 +264,7 @@
               <div class="cf-stock-info">
                 <span class="cf-stock-name">{{ stockInfo.name }}</span>
                 <span class="cf-stock-code">{{ stockInfo.code }}</span>
-                <span :class="['cf-ai-tag', capitalFlowMock.tagClass]">{{ capitalFlowMock.tag }}</span>
+                <span :class="['cf-ai-tag', capitalFlowInfo.tagClass]">{{ capitalFlowInfo.tag }}</span>
               </div>
               <div class="cf-price-info" :class="stockInfo.change >= 0 ? 'is-up' : 'is-down'">
                 <span class="cf-current-price">{{ stockInfo.price || '--' }}</span>
@@ -274,13 +274,13 @@
 
             <div class="cf-block cf-ai-conclusion">
               <div class="cf-ai-narrative">
-                <p class="cf-narrative-main">{{ capitalFlowMock.narrative }}</p>
-                <p class="cf-narrative-risk">风险：{{ capitalFlowMock.risk }}</p>
+                <p class="cf-narrative-main">{{ capitalFlowInfo.narrative }}</p>
+                <p v-if="capitalFlowInfo.risk" class="cf-narrative-risk">风险：{{ capitalFlowInfo.risk }}</p>
               </div>
               <div class="cf-hero-card">
                 <span class="cf-hero-card-label">主力净流入</span>
-                <span :class="['cf-hero-card-value', capitalFlowMock.mainInflow >= 0 ? 'is-up' : 'is-down']">
-                  {{ formatFlowValue(capitalFlowMock.mainInflow) }}
+                <span :class="['cf-hero-card-value', capitalFlowInfo.mainInflow >= 0 ? 'is-up' : 'is-down']">
+                  {{ formatFlowValue(capitalFlowInfo.mainInflow) }}
                 </span>
               </div>
             </div>
@@ -295,7 +295,7 @@
               <div class="cf-trend">
                 <div class="cf-trend-header">
                   <span class="cf-trend-title">10日资金趋势</span>
-                  <span class="cf-trend-badge">{{ capitalFlowMock.trendBadge }}</span>
+                  <span class="cf-trend-badge">{{ capitalFlowInfo.trendBadge }}</span>
                 </div>
                 <div ref="capitalFlowChartRef" class="cf-trend-chart"></div>
               </div>
@@ -936,37 +936,25 @@ export default {
       return `${amount >= 0 ? '+' : '-'}${abs.toFixed(digits)}亿`;
     };
 
-    const capitalFlowPresets = {
-      '300308': { tag: '强承接', tagClass: 'is-bull', mainInflow: 8.46, ratio: '2.8%', fiveDay: 26.4, streak: '连买5天', trendBadge: '趋势：高位抱团第5天', narrative: '主力资金继续围绕光模块核心资产集中，超大单净买入占比提升，说明高位换手后仍有机构承接。', risk: '若单日成交放大但主力净流入转负，说明抱团资金开始松动。', trend: [1.2, 2.6, 3.4, 1.9, 4.8, 5.6, 3.2, 6.1, 7.3, 8.46], orders: [{ label: '超大单', value: 4.96 }, { label: '大单', value: 3.5 }, { label: '中单', value: -1.14 }, { label: '小单', value: -1.82 }] },
-      '002371': { tag: '稳步流入', tagClass: 'is-bull', mainInflow: 4.18, ratio: '1.6%', fiveDay: 11.2, streak: '连买3天', trendBadge: '趋势：权重资金回补', narrative: '半导体设备权重资金以稳步回补为主，大单净流入强于超大单，偏机构底仓加仓节奏。', risk: '若设备板块缩量回落且大单流入降至1亿以内，短线资金面支撑会减弱。', trend: [-0.6, 0.4, 1.1, -0.2, 1.8, 2.4, 1.7, 2.9, 3.6, 4.18], orders: [{ label: '超大单', value: 1.42 }, { label: '大单', value: 2.76 }, { label: '中单', value: -0.62 }, { label: '小单', value: -0.91 }] },
-      '300058': { tag: '高换手', tagClass: 'is-bull', mainInflow: 6.72, ratio: '3.4%', fiveDay: 18.9, streak: '连买4天', trendBadge: '趋势：情绪主升第4天', narrative: 'AI应用人气资金继续涌入，超大单和大单同步净买入，但小单流出明显，说明筹码正在快速换手。', risk: '若次日高开后小单继续流出且超大单不再接力，容易出现剧烈震荡。', trend: [-1.5, 0.8, 2.6, 4.1, 3.2, -0.7, 5.4, 6.0, 4.9, 6.72], orders: [{ label: '超大单', value: 3.88 }, { label: '大单', value: 2.84 }, { label: '中单', value: -1.36 }, { label: '小单', value: -2.08 }] },
-      '600118': { tag: '主题流入', tagClass: 'is-bull', mainInflow: 3.36, ratio: '2.0%', fiveDay: 9.8, streak: '连买3天', trendBadge: '趋势：主题资金抬升', narrative: '商业航天主题资金回流明显，超大单净流入温和但持续，更多体现为事件催化下的趋势抬升。', risk: '若主题催化降温且中单转为持续流出，短线承接会变弱。', trend: [-0.4, 0.6, 1.5, 1.2, 2.0, 2.6, 1.9, 2.7, 3.1, 3.36], orders: [{ label: '超大单', value: 1.18 }, { label: '大单', value: 2.18 }, { label: '中单', value: -0.48 }, { label: '小单', value: -0.76 }] },
-      '688017': { tag: '放量抢筹', tagClass: 'is-bull', mainInflow: 5.27, ratio: '3.1%', fiveDay: 14.6, streak: '连买4天', trendBadge: '趋势：弹性资金加强', narrative: '机器人弹性资金明显增强，超大单净流入超过大单，显示资金更偏向抢筹核心零部件标的。', risk: '若机器人板块回落且超大单净流入低于1亿，高弹性资金可能快速撤离。', trend: [0.2, -0.5, 1.4, 2.3, 2.8, 3.6, 2.9, 4.2, 4.8, 5.27], orders: [{ label: '超大单', value: 3.04 }, { label: '大单', value: 2.23 }, { label: '中单', value: -0.82 }, { label: '小单', value: -1.4 }] },
-      '300750': { tag: '低位回补', tagClass: 'is-neutral', mainInflow: 2.15, ratio: '0.7%', fiveDay: 5.6, streak: '连买2天', trendBadge: '趋势：权重修复初期', narrative: '新能源权重资金以低位回补为主，净流入金额不弱但占成交比例不高，说明当前更像估值修复。', risk: '若储能催化未延续且主力净流入重新回到负值，修复趋势可能放缓。', trend: [-2.1, -1.4, -0.6, 0.5, 1.2, -0.3, 0.8, 1.6, 1.9, 2.15], orders: [{ label: '超大单', value: 0.82 }, { label: '大单', value: 1.33 }, { label: '中单', value: -0.42 }, { label: '小单', value: -0.58 }] },
-      '600406': { tag: '稳健增配', tagClass: 'is-neutral', mainInflow: 1.32, ratio: '0.9%', fiveDay: 4.1, streak: '连买3天', trendBadge: '趋势：慢速抬升', narrative: '电网权重资金呈稳健增配特征，大单流入为主，短线爆发力一般但流出压力较小。', risk: '若成交继续缩小且大单净流入转负，慢牛节奏可能进入横盘。', trend: [0.1, 0.3, 0.5, 0.4, 0.9, 1.0, 0.8, 1.1, 1.25, 1.32], orders: [{ label: '超大单', value: 0.38 }, { label: '大单', value: 0.94 }, { label: '中单', value: -0.22 }, { label: '小单', value: -0.31 }] },
-      '688205': { tag: '试探流入', tagClass: 'is-bull', mainInflow: 2.86, ratio: '4.2%', fiveDay: 7.4, streak: '连买3天', trendBadge: '趋势：小市值弹性回暖', narrative: '光通讯小市值弹性资金开始试探流入，超大单不算极端，但大单承接改善明显。', risk: '若海外订单预期落空且大单转流出，资金会快速回到观望。', trend: [-0.8, -0.3, 0.2, 0.9, 1.6, 1.4, 2.1, 2.4, 2.6, 2.86], orders: [{ label: '超大单', value: 0.96 }, { label: '大单', value: 1.9 }, { label: '中单', value: -0.34 }, { label: '小单', value: -0.62 }] },
-      '688008': { tag: '机构加仓', tagClass: 'is-bull', mainInflow: 3.94, ratio: '2.5%', fiveDay: 12.7, streak: '连买4天', trendBadge: '趋势：芯片资金回流', narrative: 'AI服务器芯片链条资金回流，超大单和大单结构均衡，显示机构加仓意愿较强。', risk: '若半导体整体冲高回落且超大单流入低于0.8亿，短线趋势会转弱。', trend: [0.5, 1.2, 0.9, 1.7, 2.2, 2.6, 3.4, 3.1, 3.8, 3.94], orders: [{ label: '超大单', value: 1.98 }, { label: '大单', value: 1.96 }, { label: '中单', value: -0.54 }, { label: '小单', value: -0.7 }] },
-      '300136': { tag: '脉冲流入', tagClass: 'is-neutral', mainInflow: 1.76, ratio: '1.8%', fiveDay: 3.9, streak: '连买2天', trendBadge: '趋势：事件驱动脉冲', narrative: '卫星通信主题带来脉冲式流入，大单净买入较明显，但超大单参与度仍需继续观察。', risk: '若事件催化减弱且小单流出扩大，短线容易回到震荡。', trend: [-0.9, -0.2, 0.6, 1.4, 0.7, -0.4, 0.8, 1.2, 1.5, 1.76], orders: [{ label: '超大单', value: 0.42 }, { label: '大单', value: 1.34 }, { label: '中单', value: -0.28 }, { label: '小单', value: -0.56 }] },
-      '002050': { tag: '白马回流', tagClass: 'is-bull', mainInflow: 4.62, ratio: '2.2%', fiveDay: 13.5, streak: '连买4天', trendBadge: '趋势：白马成长回流', narrative: '机器人链条扩散到白马成长股，机构资金回流清晰，大单和超大单同步净买入。', risk: '若机器人执行器预期降温且大单净流入小于1亿，资金会转为防守。', trend: [0.6, 1.0, 1.8, 2.2, 2.9, 3.1, 3.6, 4.0, 4.4, 4.62], orders: [{ label: '超大单', value: 2.12 }, { label: '大单', value: 2.5 }, { label: '中单', value: -0.64 }, { label: '小单', value: -0.96 }] },
-      '002015': { tag: '分歧流入', tagClass: 'is-neutral', mainInflow: 0.88, ratio: '1.1%', fiveDay: 2.6, streak: '连买2天', trendBadge: '趋势：分歧修复', narrative: '算电协同方向有资金试探，但超大单参与度偏低，当前更像分歧中的修复而非主升。', risk: '若算力项目落地节奏不清晰，试探资金可能重新流出。', trend: [-0.7, -0.4, 0.1, 0.6, -0.2, 0.4, 0.7, 0.5, 0.9, 0.88], orders: [{ label: '超大单', value: 0.16 }, { label: '大单', value: 0.72 }, { label: '中单', value: -0.18 }, { label: '小单', value: -0.35 }] },
-      '300438': { tag: '底部吸筹', tagClass: 'is-neutral', mainInflow: 1.08, ratio: '1.5%', fiveDay: 3.2, streak: '连买2天', trendBadge: '趋势：底部吸筹初期', narrative: '储能弹性资金有底部吸筹迹象，大单净流入改善，但还没有形成连续强势主升。', risk: '若电池价格继续下行且主力净流入转负，底部修复会延后。', trend: [-1.1, -0.8, -0.4, 0.2, 0.5, -0.1, 0.6, 0.9, 1.0, 1.08], orders: [{ label: '超大单', value: 0.28 }, { label: '大单', value: 0.8 }, { label: '中单', value: -0.24 }, { label: '小单', value: -0.42 }] }
-    };
+    const capitalFlowData = ref(null);
 
     const normalizeCapitalFlow = (preset) => {
       const source = preset || {
         tag: '观察',
         tagClass: 'is-neutral',
-        mainInflow: 0.62,
-        ratio: '0.6%',
-        fiveDay: 1.4,
+        mainInflow: 0,
+        ratio: '--',
+        fiveDay: 0,
         streak: '观察中',
         trendBadge: '趋势：资金温和观察',
-        narrative: '当前资金流向以温和观察为主，缺少连续主力净流入信号，短线更适合等待方向确认。',
-        risk: '若主力净流入持续为负，短线资金面会偏弱。',
-        trend: [-0.2, 0.1, 0.4, -0.1, 0.2, 0.5, 0.3, 0.7, 0.4, 0.62],
-        orders: [{ label: '超大单', value: 0.12 }, { label: '大单', value: 0.5 }, { label: '中单', value: -0.18 }, { label: '小单', value: -0.26 }]
+        narrative: '暂无资金流向数据，请稍后再试。',
+        risk: '数据加载中。',
+        trend: [],
+        orders: []
       };
-      const maxOrder = Math.max(0.01, ...source.orders.map(item => Math.abs(Number(item.value) || 0)));
+      const maxOrder = source.orders.length > 0
+        ? Math.max(0.01, ...source.orders.map(item => Math.abs(Number(item.value) || 0)))
+        : 1;
       return {
         ...source,
         tags: [`占比 ${source.ratio}`, `5日 ${formatFlowValue(source.fiveDay)}`, source.streak],
@@ -977,7 +965,22 @@ export default {
       };
     };
 
-    const capitalFlowMock = computed(() => normalizeCapitalFlow(capitalFlowPresets[String(stockInfo.value.code || '')]));
+    const capitalFlowInfo = computed(() => normalizeCapitalFlow(capitalFlowData.value));
+
+    const loadCapitalFlow = async () => {
+      try {
+        const data = await store.dispatch('fetchCapitalFlow', stockInfo.value.code);
+        if (data) {
+          capitalFlowData.value = data;
+          await nextTick();
+          if (activeView.value === 'short') {
+            setTimeout(() => { renderCapitalFlowChart(); renderCapitalSplitChart(); }, 100);
+          }
+        }
+      } catch (e) {
+        console.error('加载资金流向失败:', e);
+      }
+    };
 
     const industryHealthPresets = {
       '光通讯': { values: [70, 76, 74, 82, 87, 91, 93], details: [{ icon: '政', title: '相关政策', desc: '14项' }, { icon: '告', title: '重大公告', desc: '11条' }, { icon: '排', title: '行业股票排行', desc: '查看' }] },
@@ -1688,8 +1691,10 @@ export default {
       }
       if (capitalFlowChartInstance) { capitalFlowChartInstance.dispose(); capitalFlowChartInstance = null; }
       capitalFlowChartInstance = echarts.init(el);
-      var dates = ['04/21', '04/22', '04/23', '04/24', '04/25', '04/26', '04/27', '04/28', '04/29', '04/30'];
-      var values = capitalFlowMock.value.trend || [-1.2, -0.8, 0.5, 1.3, 2.1, 1.8, -0.3, 3.2, 4.5, 6.83];
+      var dates = capitalFlowInfo.value.trendDates && capitalFlowInfo.value.trendDates.length > 0
+        ? capitalFlowInfo.value.trendDates
+        : ['--', '--', '--', '--', '--', '--', '--', '--', '--', '--'];
+      var values = capitalFlowInfo.value.trend || [];
       var posData = [];
       var negData = [];
       for (var i = 0; i < values.length; i++) {
@@ -1775,7 +1780,7 @@ export default {
       }
       if (capitalSplitChartInstance) { capitalSplitChartInstance.dispose(); capitalSplitChartInstance = null; }
       capitalSplitChartInstance = echarts.init(el);
-      var orders = capitalFlowMock.value.orders || [];
+      var orders = capitalFlowInfo.value.orders || [];
       var labels = orders.map(item => item.label);
       var values = orders.map(item => Number(item.value) || 0);
       var colors = values.map(v => v >= 0 ? '#dc2626' : '#16a34a');
@@ -1900,10 +1905,16 @@ export default {
     watch(tenxModel, (m) => {
       if (m && m.dimScores) nextTick(() => tenxUpdateRadar(m.dimScores));
     });
+    watch(capitalFlowData, (d) => {
+      if (d && activeView.value === 'short') {
+        nextTick(() => { renderCapitalFlowChart(); renderCapitalSplitChart(); });
+      }
+    });
     watch(() => route.params.code, (nc) => {
       if (nc && nc !== stockInfo.value.code) {
         invalidateCache(stockInfo.value.code);
         tenxApiData.value = null;
+        capitalFlowData.value = null;
         stockInfo.value.code = nc; stockNews.value = []; totalNews.value = 0; newsCursor.value = 0;
         forecastData.value = {}; forecastSummary.value = '';
         historyDialogVisible.value = false; historyDetailDialogVisible.value = false; historyErrorMessage.value = '';
@@ -1915,6 +1926,7 @@ export default {
         if (!isCacheFresh('forecast', nc)) loadForecast();
         if (!isCacheFresh('evaluation', nc)) { loadingEvaluation.value = true; loadAIEvaluation(false); }
         fetchTenxScore(nc);
+        loadCapitalFlow();
         setupAutoRefresh(); window.scrollTo(0, 0);
         if (activeView.value === 'short') {
           setTimeout(() => { renderCapitalFlowChart(); renderCapitalSplitChart(); }, 160);
@@ -1954,6 +1966,7 @@ export default {
       if (isLoggedIn.value) checkIfFavorite();
       if (!isCacheFresh('evaluation', currentCode)) { loadingEvaluation.value = true; loadAIEvaluation(false); }
       fetchTenxScore(currentCode);
+      loadCapitalFlow();
       setupAutoRefresh(); window.addEventListener('resize', handleWindowResize); window.scrollTo(0, 0);
       setTimeout(() => { if (activeView.value === 'short') { renderCapitalFlowChart(); renderCapitalSplitChart(); } }, 200);
       setTimeout(() => { if (activeView.value === 'mid') renderIndustryHealthChart(); }, 200);
@@ -2131,7 +2144,7 @@ export default {
       getHistoryConclusionClass, viewNewsDetail,
       forecastChartRef, forecastData, forecastSummary, loadingForecast, refreshForecast,
       hasForecastChartData, capitalFlowChartRef, capitalSplitChartRef, industryHealthChartRef,
-      midMockData, midAiAnalysis, longMockData, longAiAnalysis, shouldShowTenxModel, tenxModel, capitalFlowMock,
+      midMockData, midAiAnalysis, longMockData, longAiAnalysis, shouldShowTenxModel, tenxModel, capitalFlowInfo,
       TENX_DIMS, tenxSColor, tenxSGrad, tenxExpandedDims, tenxAllOpen, tenxRadarCanvas, tenxToggleDim, tenxToggleAll,
       toggleFavorite, getEvaluationClass, goToTagBoard, formatRatioText,
       mergedStructureChart, priceTrendClass,
