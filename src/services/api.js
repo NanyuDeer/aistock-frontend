@@ -96,6 +96,17 @@ const parseMaybeJson = (text) => {
   }
 };
 
+const buildQueryString = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      query.append(key, String(value));
+    }
+  });
+  const text = query.toString();
+  return text ? `?${text}` : '';
+};
+
 const parseSseLine = (line) => {
   if (!line) return { field: '', value: '' };
   const index = line.indexOf(':');
@@ -330,6 +341,12 @@ export const WECHAT_OAUTH_LOGIN_URL = 'https://gupiao-api.yaozhineng.com/api/aut
 export const stockApi = {
   // 批量添加自选股票（新版 API）
   addStocks: (symbols) => api.post('/api/users/me/favorites', { symbols }),
+
+  // 获取自选股异动推送历史
+  getPushHistory: (params = {}) => api.get(`/api/users/me/push-history${buildQueryString(params)}`),
+
+  // 获取自选股异动推送榜单
+  getPushRanking: (params = {}) => api.get(`/api/users/me/push-ranking${buildQueryString(params)}`),
 
   // 批量删除自选股票（用户态 API；优先 DELETE，失败回退兼容 POST）
   removeStocks: async (symbols) => {
