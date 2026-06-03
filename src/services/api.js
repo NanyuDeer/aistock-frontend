@@ -769,6 +769,27 @@ async function fetchMonitorData(startTime, endTime) {
 
 export { fetchMonitorData };
 
+// 个股异动监测 API
+export const monitorApi = {
+  /** 查询异动事件列表 */
+  getEvents: ({ cycle = 'all', change_type, stock_code, limit = 20, offset = 0 } = {}) => {
+    const params = new URLSearchParams({ cycle, limit: String(limit), offset: String(offset) });
+    if (change_type) params.append('change_type', change_type);
+    if (stock_code) params.append('stock_code', stock_code);
+    return api.get(`/api/cn/monitor/events?${params.toString()}`, { timeout: 8000 });
+  },
+
+  /** 查询指定股票的异动事件 */
+  getEventsByStock: (stockCode, { cycle = 'all', limit = 20 } = {}) => {
+    return api.get(`/api/cn/monitor/events/${encodeURIComponent(stockCode)}?cycle=${cycle}&limit=${limit}`, { timeout: 8000 });
+  },
+
+  /** 获取异动统计概览 */
+  getStats: () => {
+    return api.get('/api/cn/monitor/stats', { timeout: 8000 });
+  },
+};
+
 // 十倍股评分 API
 export const tenxApi = {
   /** 获取股票最新十倍股评分(从D1缓存) */

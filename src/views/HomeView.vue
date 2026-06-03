@@ -122,6 +122,11 @@
             </el-dialog>
           </div>
           
+          <!-- 个股异动 -->
+          <div class="stock-monitor-section">
+            <StockMonitorCard :events="monitorEvents" />
+          </div>
+
           <!-- 国内市场概览 -->
           <div class="market-overview-section">
             <h3 class="section-title">市场概览</h3>
@@ -295,6 +300,8 @@ import TheNavbar from '@/components/TheNavbar.vue';
 import MarketOverview from '@/components/MarketOverview.vue';
 import NewsSlider from '@/components/NewsSlider.vue';
 import StockCardList from '@/components/StockCardList.vue';
+import StockMonitorCard from '@/components/StockMonitorCard.vue';
+import { monitorApi } from '@/services/api';
 import { trendLeaderStocks as trendLeaderStockSeeds, tenbaggerStocks } from '@/mock/curatedStocks';
 import 'element-plus/es/components/message/style/css';
 
@@ -304,11 +311,51 @@ export default {
     TheNavbar,
     MarketOverview,
     NewsSlider,
-    StockCardList
+    StockCardList,
+    StockMonitorCard
   },
   setup() {
     const store = useStore();
     const router = useRouter();
+
+    // 个股异动数据
+    const monitorEvents = ref([]);
+    const loadingMonitor = ref(false);
+
+    const fetchMonitorEvents = async () => {
+      loadingMonitor.value = true;
+      try {
+        const res = await monitorApi.getEvents({ cycle: 'all', limit: 8 });
+        const events = res?.data?.events || [];
+        monitorEvents.value = events.map(e => ({
+          ...e,
+          stock_code: (e.stock_code || e.symbol || '').replace(/^(SH|SZ)/, ''),
+          industry: e.industry || '',
+          change_type: e.change_type || '',
+          change_type_name: e.change_type_name || e.summary || '',
+          price: e.price ?? 0,
+          change_pct: e.change_pct ?? 0,
+          event_time_display: e.event_time_display || formatEventTime(e.event_time),
+        }));
+      } catch (err) {
+        console.warn('[HomeView] 获取异动数据失败，使用空列表:', err);
+        monitorEvents.value = [];
+      } finally {
+        loadingMonitor.value = false;
+      }
+    };
+
+    const formatEventTime = (timeStr) => {
+      if (!timeStr) return '';
+      try {
+        const d = new Date(timeStr);
+        return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      } catch {
+        return timeStr;
+      }
+    };
+
+    fetchMonitorEvents();
 
     // -------------------- 市场资讯部分 --------------------
     const domesticNews = ref([]);
@@ -1186,6 +1233,9 @@ export default {
     });
 
     return {
+      // 个股异动
+      monitorEvents,
+
       // 市场资讯相关
       domesticNews,
       foreignNews,
@@ -1242,6 +1292,15 @@ export default {
 
 <style lang="scss" scoped>
 .home-page {
+  .stock-monitor-section {
+    margin-top: 20px;
+    margin-bottom: 20px;
+    padding: 16px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  }
+
   .market-overview-section {
     margin-top: 20px; // 调整位置
     margin-bottom: 20px;
