@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
   <div class="stock-detail-page">
     <div class="page-container">
       <div class="stock-header">
@@ -1050,8 +1050,8 @@ export default {
     const getIndustryHealthClass = (score) => {
       const value = Number(score) || 0;
       if (value >= 85) return 'is-hot';
-      if (value >= 70) return 'is-warm';
-      if (value >= 50) return 'is-normal';
+      if (value >= 75) return 'is-warm';
+      if (value >= 55) return 'is-normal';
       return 'is-cold';
     };
 
@@ -1256,26 +1256,24 @@ export default {
       };
     });
 
-    // TenX 八维定义（与 TenxScoreView 一致）
+    // TenX 六维定义（前瞻爆发版百分制）
     const TENX_DIMS = [
-      { name: '成长性', iconClass: 'el-icon-top', weight: 20, question: '能长多大？', indNames: ['营收3年CAGR','净利润3年CAGR','扣非净利3年CAGR','盈利质量提升(净利增速-营收增速)'] },
-      { name: '盈利能力', iconClass: 'el-icon-coin', weight: 15, question: '赚钱效率？', indNames: ['ROE(3年均)','ROIC(3年均)','毛利率(3年均)','净利率(3年均)'] },
-      { name: '估值潜力', iconClass: 'el-icon-data-analysis', weight: 15, question: '贵不贵？', indNames: ['PEG','PE分位数(5年)','PB分位数(5年)','市值规模'] },
-      { name: '行业赛道', iconClass: 'el-icon-aim', weight: 12, question: '赛道宽不宽？', indNames: ['行业景气指数','行业渗透率/市场空间','政策支持评分','集中度提升空间'] },
-      { name: '财务健康', iconClass: 'el-icon-first-aid-kit', weight: 12, question: '资金链安全吗？', indNames: ['流动比率/速动比率','利息保障倍数','自由现金流(3年均)','资产负债率(反)'] },
-      { name: '竞争壁垒', iconClass: 'el-icon-lock', weight: 12, question: '护城河宽不宽？', indNames: ['市占率','毛利率稳定性(3年)','研发投入占比(3年均)','无形资产占比(品牌/专利)'] },
-      { name: '管理层治理', iconClass: 'el-icon-user', weight: 7, question: '人靠不靠谱？', indNames: ['大股东质押比(反)','高管增减持净比','管理层持股比例','分红率(3年均)'] },
-      { name: '催化剂强度', iconClass: 'el-icon-sunny', weight: 7, question: '什么时候爆发？', indNames: ['业绩加速信号','订单/合同负债增速','分析师预期上修比例','事件催化密度评分'] }
+      { name: '业绩爆发力', iconClass: 'el-icon-top', weight: 30, question: '增长有多猛？', indNames: ['未来2年预期净利润复合增速','最近单季营收同比增速','最近一季利润同比加速'] },
+      { name: '赛道景气度', iconClass: 'el-icon-aim', weight: 25, question: '赛道宽不宽？', indNames: ['市场认可度','行业渗透率位置','政策/产业趋势强度'] },
+      { name: '估值弹性', iconClass: 'el-icon-data-analysis', weight: 15, question: '空间大不大？', indNames: ['PEG','当前总市值(亿)','估值双击空间(倍)'] },
+      { name: '盈利质量', iconClass: 'el-icon-coin', weight: 15, question: '赚钱含金量？', indNames: ['毛利率(%)','净利率同比提升(pct)','经营现金流/净利润'] },
+      { name: '竞争壁垒', iconClass: 'el-icon-lock', weight: 10, question: '护城河深不深？', indNames: ['细分赛道市占率趋势','合同负债环比增速','行业地位不可替代性'] },
+      { name: '消息催化', iconClass: 'el-icon-chat-dot-round', weight: 5, question: '有没有催化剂？', indNames: ['近3月机构调研家数','股东户数较上期变化率','硬催化(政策/订单)'] }
     ];
 
     function tenxSColor(s) {
-      if (s >= 70) return '#22c55e';
-      if (s >= 50) return '#eab308';
+      if (s >= 75) return '#22c55e';
+      if (s >= 55) return '#eab308';
       return '#ef4444';
     }
     function tenxSGrad(s) {
-      if (s >= 70) return 'linear-gradient(90deg,#16a34a,#22c55e)';
-      if (s >= 50) return 'linear-gradient(90deg,#ca8a04,#eab308)';
+      if (s >= 75) return 'linear-gradient(90deg,#16a34a,#22c55e)';
+      if (s >= 55) return 'linear-gradient(90deg,#ca8a04,#eab308)';
       return 'linear-gradient(90deg,#dc2626,#ef4444)';
     }
 
@@ -1297,8 +1295,8 @@ export default {
     }
 
     function tenxGetRadarColors(score) {
-      if (score >= 70) return { bg: 'rgba(34,197,94,0.10)', border: 'rgba(34,197,94,0.7)', point: 'rgba(34,197,94,0.9)' };
-      if (score >= 50) return { bg: 'rgba(234,179,8,0.10)', border: 'rgba(234,179,8,0.7)', point: 'rgba(234,179,8,0.9)' };
+      if (score >= 75) return { bg: 'rgba(34,197,94,0.10)', border: 'rgba(34,197,94,0.7)', point: 'rgba(34,197,94,0.9)' };
+      if (score >= 55) return { bg: 'rgba(234,179,8,0.10)', border: 'rgba(234,179,8,0.7)', point: 'rgba(234,179,8,0.9)' };
       return { bg: 'rgba(239,68,68,0.10)', border: 'rgba(239,68,68,0.7)', point: 'rgba(239,68,68,0.9)' };
     }
 
@@ -1384,7 +1382,11 @@ export default {
       });
     }
 
-    const shouldShowTenxModel = computed(() => Boolean(stockInfo.value?.code));
+    // 十倍股否决状态
+    const tenxVetoed = ref(false);
+    const tenxVetoReasons = ref([]);
+
+    const shouldShowTenxModel = computed(() => Boolean(stockInfo.value?.code) && !tenxVetoed.value);
 
     // 十倍股评分 — 从后端API获取
     const tenxApiData = ref(null);
@@ -1395,15 +1397,31 @@ export default {
       if (!symbol) return;
       tenxApiLoading.value = true;
       tenxApiError.value = false;
+      tenxVetoed.value = false;
+      tenxVetoReasons.value = [];
       try {
         const res = await tenxApi.getScore(symbol);
         if (res.code === 200 && res.data) {
+          // 检查否决状态
+          if (res.data.vetoed) {
+            tenxVetoed.value = true;
+            tenxVetoReasons.value = res.data.reasons || [];
+            tenxApiLoading.value = false;
+            return;
+          }
           tenxApiData.value = res.data;
           tenxApiError.value = false;
         } else {
           try {
             const refreshRes = await tenxApi.refreshScore(symbol);
             if (refreshRes.code === 200 && refreshRes.data) {
+              // 检查否决状态
+              if (refreshRes.data.vetoed) {
+                tenxVetoed.value = true;
+                tenxVetoReasons.value = refreshRes.data.reasons || [];
+                tenxApiLoading.value = false;
+                return;
+              }
               tenxApiData.value = refreshRes.data;
               tenxApiError.value = false;
             } else {
@@ -2200,6 +2218,7 @@ export default {
       forecastChartRef, forecastData, forecastSummary, loadingForecast, refreshForecast,
       hasForecastChartData, capitalFlowChartRef, capitalSplitChartRef, industryHealthChartRef,
       midMockData, midAiAnalysis, longMockData, longAiAnalysis, shouldShowTenxModel, tenxModel, capitalFlowInfo,
+      tenxVetoed, tenxVetoReasons,
       TENX_DIMS, tenxSColor, tenxSGrad, tenxExpandedDims, tenxAllOpen, tenxRadarCanvas, tenxToggleDim, tenxToggleAll,
       toggleFavorite, getEvaluationClass, goToTagBoard, formatRatioText,
       mergedStructureChart, priceTrendClass,

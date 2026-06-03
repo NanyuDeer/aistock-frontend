@@ -133,14 +133,14 @@
             <MarketOverview />
           </div>
 
-          <!-- 趋势龙头股 -->
+          <!-- 近期风口板块及龙头个股 -->
           <div class="curated-stock-sections">
             <section class="curated-panel trend-leader-panel">
               <div class="curated-panel-header">
-                <h3 class="section-title">趋势龙头股</h3>
+                <h3 class="section-title">近期风口板块及龙头个股</h3>
               </div>
               <div
-                class="curated-list trend-leader-list"
+                class="curated-list trend-leader-list scrollable"
                 v-loading="loadingTrendLeaderQuotes"
                 element-loading-text="行情加载中..."
               >
@@ -1570,6 +1570,30 @@ export default {
       border-radius: 8px;
       overflow: hidden;
       background: #fff;
+    }
+
+    .curated-list.scrollable {
+      max-height: 460px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #c1c9d4 transparent;
+
+      &::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      &::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      &::-webkit-scrollbar-thumb {
+        background-color: #c1c9d4;
+        border-radius: 3px;
+      }
+
+      &::-webkit-scrollbar-thumb:hover {
+        background-color: #a0aab5;
+      }
     }
 
     .curated-list-head,

@@ -94,8 +94,8 @@
         <div v-else class="main-inner">
           <!-- 股票信息栏 -->
           <div class="stock-header">
-            <div>
-              <div class="stock-header-name">{{ currentStock.name }}</div>
+            <div class="stock-header-info" @click="goToDetail" title="点击查看股票详情">
+              <div class="stock-header-name">{{ currentStock.name }} <i class="el-icon-link stock-detail-link"></i></div>
               <div class="stock-header-sub">
                 <span class="stock-header-code">{{ currentStock.code }}</span>
                 <span class="stock-header-ind">{{ currentStock.sector }}</span>
@@ -115,6 +115,22 @@
 
           <!-- 评分环 + 雷达 -->
           <div class="score-radar-row">
+            <!-- 被否决状态 -->
+            <div v-if="isVetoed" class="veto-card">
+              <div class="veto-icon-wrap">
+                <i class="el-icon-circle-close veto-icon"></i>
+              </div>
+              <div class="veto-title">不符合十倍股基本条件</div>
+              <div class="veto-reasons">
+                <div v-for="(reason, idx) in vetoReasons" :key="idx" class="veto-reason-item">
+                  <i class="el-icon-close"></i>
+                  <span>{{ reason }}</span>
+                </div>
+              </div>
+              <div class="veto-hint">该股票未通过流动性与生存底线检查，无法进行十倍股评分</div>
+            </div>
+            <!-- 正常评分 -->
+            <template v-else>
             <div class="score-ring-card">
               <div class="score-ring-wrap">
                 <svg viewBox="0 0 150 150" width="150" height="150" style="transform:rotate(-90deg)">
@@ -163,16 +179,13 @@
                 <canvas ref="radarCanvas"></canvas>
               </div>
             </div>
+            </template>
           </div>
 
           <!-- 维度详情 -->
           <div class="dim-section-header">
             <div class="dim-section-left">
-              <span class="dim-section-title">维度详情</span>
-              <div class="dim-group-labels">
-                <span class="dim-group-label">前四维 · 能长多大</span>
-                <span class="dim-group-label">后四维 · 能走多远</span>
-              </div>
+              <span class="dim-section-title">维度详情 · 前瞻爆发版</span>
             </div>
             <button class="dim-expand-btn" @click="toggleAll">
               {{ allOpen ? '全部收起' : '全部展开' }}
@@ -180,10 +193,6 @@
           </div>
           <div class="dim-grid">
             <template v-for="(dim, i) in DIMS" :key="dim.name">
-              <div v-if="i === 4" class="dim-group-divider">
-                <span class="dim-group-divider-label">后四维 · 能走多远</span>
-                <div class="dim-group-divider-line"></div>
-              </div>
               <div
                 class="dim-card"
                 :class="{ expanded: expandedDims.has(i), 'anim-in': hasScore }"
@@ -237,10 +246,10 @@
     <div v-if="showModelOverlay" class="model-overlay" @click.self="showModelOverlay = false">
       <div class="model-panel">
         <div class="model-panel-header">
-          <h2 class="model-panel-title">TenX Model 八维评分体系</h2>
+          <h2 class="model-panel-title">TenX Model 六维评分体系</h2>
           <i class="el-icon-close model-panel-close" @click="showModelOverlay = false"></i>
         </div>
-        <p class="model-panel-desc">8个维度、32个指标综合评估十倍股潜力。</p>
+        <p class="model-panel-desc">6维度18指标前瞻爆发版，百分制综合评估十倍股潜力。</p>
         <div class="model-grid">
           <div v-for="dim in DIMS" :key="dim.name" class="model-dim-item">
             <div class="model-dim-header">
@@ -261,90 +270,65 @@
 
 <script>
 import { ref, computed, reactive, onMounted, nextTick, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import TheNavbar from '@/components/TheNavbar.vue'
 import { tenbaggerStocks } from '@/mock/curatedStocks'
 import { tenxApi, stockApi } from '@/services/api'
 
-// 维度定义
+// 维度定义：6维度18指标（前瞻爆发版百分制）
 const DIMS = [
   {
-    name: '成长性', iconClass: 'el-icon-top', weight: 20, group: 'size',
-    question: '能长多大？',
+    name: '业绩爆发力', iconClass: 'el-icon-top', weight: 30, group: 'hard',
+    question: '增长有多猛？',
     indicators: [
-      { name: '营收3年CAGR', key: 'rev_cagr' },
-      { name: '净利润3年CAGR', key: 'profit_cagr' },
-      { name: '扣非净利3年CAGR', key: 'deducted_cagr' },
-      { name: '盈利质量提升(净利增速-营收增速)', key: 'profit_quality' }
+      { name: '未来2年预期净利润复合增速', key: 'profit_forecast_cagr' },
+      { name: '最近单季营收同比增速', key: 'rev_yoy_latest' },
+      { name: '最近一季利润同比加速', key: 'earnings_accel' }
     ]
   },
   {
-    name: '盈利能力', iconClass: 'el-icon-coin', weight: 15, group: 'size',
-    question: '赚钱效率？',
-    indicators: [
-      { name: 'ROE(3年均)', key: 'roe' },
-      { name: 'ROIC(3年均)', key: 'roic' },
-      { name: '毛利率(3年均)', key: 'gross_margin' },
-      { name: '净利率(3年均)', key: 'net_margin' }
-    ]
-  },
-  {
-    name: '估值潜力', iconClass: 'el-icon-data-analysis', weight: 15, group: 'size',
-    question: '贵不贵？',
-    indicators: [
-      { name: 'PEG', key: 'peg' },
-      { name: 'PE分位数(5年)', key: 'pe_pct' },
-      { name: 'PB分位数(5年)', key: 'pb_pct' },
-      { name: '市值规模', key: 'market_cap' }
-    ]
-  },
-  {
-    name: '行业赛道', iconClass: 'el-icon-aim', weight: 12, group: 'size',
+    name: '赛道景气度', iconClass: 'el-icon-aim', weight: 25, group: 'hard',
     question: '赛道宽不宽？',
     indicators: [
-      { name: '行业景气指数', key: 'industry_boom' },
-      { name: '行业渗透率/市场空间', key: 'industry_penetration' },
-      { name: '政策支持评分', key: 'policy_score' },
-      { name: '集中度提升空间', key: 'concentration' }
+      { name: '市场认可度', key: 'market_recognition' },
+      { name: '行业渗透率位置', key: 'industry_penetration' },
+      { name: '政策/产业趋势强度', key: 'policy_trend_score' }
     ]
   },
   {
-    name: '财务健康', iconClass: 'el-icon-first-aid-kit', weight: 12, group: 'duration',
-    question: '资金链安全吗？',
+    name: '估值弹性', iconClass: 'el-icon-data-analysis', weight: 15, group: 'hard',
+    question: '空间大不大？',
     indicators: [
-      { name: '流动比率/速动比率', key: 'liquidity_ratio' },
-      { name: '利息保障倍数', key: 'interest_cover' },
-      { name: '自由现金流(3年均)', key: 'fcf' },
-      { name: '资产负债率(反)', key: 'debt_ratio' }
+      { name: 'PEG', key: 'peg' },
+      { name: '当前总市值(亿)', key: 'market_cap' },
+      { name: '估值双击空间(倍)', key: 'valuation_upside' }
     ]
   },
   {
-    name: '竞争壁垒', iconClass: 'el-icon-lock', weight: 12, group: 'duration',
-    question: '护城河宽不宽？',
+    name: '盈利质量', iconClass: 'el-icon-coin', weight: 15, group: 'hard',
+    question: '赚钱含金量？',
     indicators: [
-      { name: '市占率', key: 'market_share' },
-      { name: '毛利率稳定性(3年)', key: 'margin_stability' },
-      { name: '研发投入占比(3年均)', key: 'rd_ratio' },
-      { name: '无形资产占比(品牌/专利)', key: 'brand_patent' }
+      { name: '毛利率(%)', key: 'gross_margin' },
+      { name: '净利率同比提升(pct)', key: 'net_margin_improve' },
+      { name: '经营现金流/净利润', key: 'ocf_to_profit' }
     ]
   },
   {
-    name: '管理层治理', iconClass: 'el-icon-user', weight: 7, group: 'duration',
-    question: '人靠不靠谱？',
+    name: '竞争壁垒', iconClass: 'el-icon-lock', weight: 10, group: 'hard',
+    question: '护城河深不深？',
     indicators: [
-      { name: '大股东质押比(反)', key: 'pledge_ratio' },
-      { name: '高管增减持净比', key: 'holder_trade_ratio' },
-      { name: '管理层持股比例', key: 'mgmt_share_ratio' },
-      { name: '分红率(3年均)', key: 'dividend_ratio' }
+      { name: '细分赛道市占率趋势', key: 'market_share_trend' },
+      { name: '合同负债环比增速', key: 'contract_liab_growth' },
+      { name: '行业地位不可替代性', key: 'industry_position' }
     ]
   },
   {
-    name: '催化剂强度', iconClass: 'el-icon-sunny', weight: 7, group: 'duration',
-    question: '什么时候爆发？',
+    name: '消息催化', iconClass: 'el-icon-chat-dot-round', weight: 5, group: 'catalyst',
+    question: '有没有催化剂？',
     indicators: [
-      { name: '业绩加速信号', key: 'earnings_accel' },
-      { name: '订单/合同负债增速', key: 'contract_liab_growth' },
-      { name: '分析师预期上修比例', key: 'analyst_upgrade_ratio' },
-      { name: '事件催化密度评分', key: 'event_catalyst_score' }
+      { name: '近1月机构调研家数', key: 'research_visit_count' },
+      { name: '股东户数较上期变化率', key: 'holder_change_rate' },
+      { name: '硬催化(政策/订单)', key: 'hard_catalyst' }
     ]
   }
 ]
@@ -361,10 +345,10 @@ function sGrad(s) {
   return 'linear-gradient(90deg,#dc2626,#ef4444)'
 }
 function getRating(s) {
-  if (s >= 90) return { l: 'S', d: '十倍股种子', c: '#e6a23c', bg: 'rgba(230,162,60,0.1)' }
-  if (s >= 80) return { l: 'A', d: '高潜力标的', c: '#67c23a', bg: 'rgba(103,194,58,0.1)' }
-  if (s >= 70) return { l: 'B', d: '有亮点需催化', c: '#409eff', bg: 'rgba(64,158,255,0.1)' }
-  if (s >= 60) return { l: 'C', d: '显著短板', c: '#e6a23c', bg: 'rgba(230,162,60,0.1)' }
+  if (s >= 85) return { l: 'S', d: '十倍股种子', c: '#e6a23c', bg: 'rgba(230,162,60,0.1)' }
+  if (s >= 75) return { l: 'A', d: '高潜力标的', c: '#67c23a', bg: 'rgba(103,194,58,0.1)' }
+  if (s >= 65) return { l: 'B', d: '有亮点需催化', c: '#409eff', bg: 'rgba(64,158,255,0.1)' }
+  if (s >= 55) return { l: 'C', d: '显著短板', c: '#e6a23c', bg: 'rgba(230,162,60,0.1)' }
   return { l: 'D', d: '不符合十倍股特征', c: '#f56c6c', bg: 'rgba(245,108,108,0.1)' }
 }
 
@@ -372,7 +356,8 @@ function getRating(s) {
 /** 将后端评分结果转换为前端格式 */
 function transformScore(apiData) {
   const dimensions = apiData.indicators || apiData.dimensions || []
-  const dimScores = apiData.dim_scores || dimensions.map(d => d.score)
+  // 兼容 dim_scores（数据库返回）和 dimScores（实时计算返回）
+  let dimScores = apiData.dim_scores || apiData.dimScores || dimensions.map(d => d.score)
   const indScores = dimensions.map(d => d.indicators.map(i => i.score))
   const indVals = dimensions.map(d => d.indicators.map(i => {
     const v = i.value
@@ -380,6 +365,11 @@ function transformScore(apiData) {
     if (v === '0.0%' || v === '0.00%' || v === '0%' || v === '0.0' || v === '0' || v === '-') return '--'
     return v
   }))
+  // 如果 dimScores 长度与当前 DIMS 不一致（旧缓存数据），截取或补零
+  if (dimScores.length !== DIMS.length) {
+    const padded = DIMS.map((_, i) => dimScores[i] ?? 0)
+    dimScores = padded
+  }
   return {
     dimScores,
     indScores,
@@ -387,7 +377,7 @@ function transformScore(apiData) {
     totalScore: apiData.score || 0,
     label: apiData.label || '',
     expectedMultiple: apiData.expected_multiple || '',
-    aiConclusion: apiData.ai_conclusion || '',
+    aiConclusion: apiData.ai_conclusion || apiData.aiConclusion || '',
   }
 }
 
@@ -395,6 +385,7 @@ export default {
   name: 'TenxScoreView',
   components: { TheNavbar },
   setup() {
+    const router = useRouter()
     const searchQuery = ref('')
     const searchFocused = ref(false)
     const STORAGE_KEY = 'tenx_stocks'
@@ -406,7 +397,16 @@ export default {
         const stocks = localStorage.getItem(STORAGE_KEY)
         if (stocks) myStocks.value = JSON.parse(stocks)
         const cache = localStorage.getItem(SCORE_CACHE_KEY)
-        if (cache) Object.assign(scoreCache, JSON.parse(cache))
+        if (cache) {
+          const parsed = JSON.parse(cache)
+          // 清理旧缓存：如果维度数不是6则丢弃
+          Object.keys(parsed).forEach(key => {
+            if (parsed[key]?.dimScores?.length !== DIMS.length) {
+              delete parsed[key]
+            }
+          })
+          Object.assign(scoreCache, parsed)
+        }
       } catch { /* 忽略 */ }
     }
 
@@ -421,6 +421,7 @@ export default {
     const curIdx = ref(-1)
     const scoreCache = reactive({})
     const scoreErrors = reactive({}) // 记录评分失败的股票
+    const vetoStatus = reactive({})  // 记录被否决的股票 { code: { reasons: [], avgAmount, isSt } }
     const expandedDims = reactive(new Set())
     const allOpen = ref(false)
     const isScoring = ref(false)
@@ -429,14 +430,38 @@ export default {
     const radarCanvas = ref(null)
     let radarChart = null
 
-    // 全量股票（从模拟数据构建）
-    const allStocks = tenbaggerStocks.map(s => ({
-      code: s.code,
-      name: s.name,
-      sector: s.sector,
-      latestPrice: (Math.random() * 200 + 20).toFixed(2),
-      changeRate: (Math.random() * 10 - 5).toFixed(2)
-    }))
+    // 全量股票（优先从后端Top30获取，回退到默认数据）
+    const allStocks = ref([])
+    const allStocksLoaded = ref(false)
+
+    // 从后端获取Top30评分股票
+    async function loadTopStocks() {
+      try {
+        const res = await tenxApi.getTopStocks(30)
+        if (res.code === 200 && res.data?.length > 0) {
+          allStocks.value = res.data.map(s => ({
+            code: s.symbol,
+            name: s.name || s.symbol,
+            sector: s.label || '',
+            score: s.score,
+            label: s.label,
+            latestPrice: '--',
+            changeRate: '0'
+          }))
+          allStocksLoaded.value = true
+          return
+        }
+      } catch {}
+      // 回退：使用默认数据
+      allStocks.value = tenbaggerStocks.map(s => ({
+        code: s.code,
+        name: s.name,
+        sector: s.sector,
+        latestPrice: (Math.random() * 200 + 20).toFixed(2),
+        changeRate: (Math.random() * 10 - 5).toFixed(2)
+      }))
+      allStocksLoaded.value = true
+    }
 
     // 搜索结果（API返回）
     const searchResults = ref([])
@@ -446,7 +471,7 @@ export default {
       if (searchQuery.value.trim() && searchResults.value.length > 0) {
         return searchResults.value.slice(0, 8)
       }
-      if (!searchQuery.value.trim()) return allStocks.slice(0, 8)
+      if (!searchQuery.value.trim()) return allStocks.value.slice(0, 8)
       return []
     })
 
@@ -498,6 +523,15 @@ export default {
       return stock ? !!scoreErrors[stock.code] : false
     })
 
+    const isVetoed = computed(() => {
+      const stock = currentStock.value
+      return stock ? !!vetoStatus[stock.code] : false
+    })
+    const vetoReasons = computed(() => {
+      const stock = currentStock.value
+      return stock && vetoStatus[stock.code] ? vetoStatus[stock.code].reasons : []
+    })
+
     const totalScore = computed(() => hasScore.value ? currentScore.value.totalScore : 0)
     const totalScoreColor = computed(() => hasScore.value ? getRating(totalScore.value).c : '#409eff')
     const ratingInfo = computed(() => hasScore.value ? getRating(totalScore.value) : { l: '-', d: '待评分', c: '#909399', bg: 'rgba(144,147,153,0.1)' })
@@ -506,26 +540,28 @@ export default {
       color: ratingInfo.value.c
     }))
 
-    const dimScores = computed(() => hasScore.value ? currentScore.value.dimScores : [0,0,0,0,0,0,0,0])
-    const indScores = computed(() => hasScore.value ? currentScore.value.indScores : Array(8).fill([0,0,0,0]))
-    const indVals = computed(() => hasScore.value ? currentScore.value.indVals : Array(8).fill(['--','--','--','--']))
+    const dimScores = computed(() => hasScore.value ? currentScore.value.dimScores : [0,0,0,0,0,0])
+    const indScores = computed(() => hasScore.value ? currentScore.value.indScores : DIMS.map(d => d.indicators.map(() => 0)))
+    const indVals = computed(() => hasScore.value ? currentScore.value.indVals : DIMS.map(d => d.indicators.map(() => '--')))
 
     const aiConclusion = computed(() => {
       if (!hasScore.value) return ''
       // 优先使用后端AI结论
       if (currentScore.value?.aiConclusion) return currentScore.value.aiConclusion
-      // 回退: 前端生成
+      // 回退: 前端生成（适配6维度）
       const ds = dimScores.value
-      const strongest = DIMS[ds.indexOf(Math.max(...ds))]
-      const weakest = DIMS[ds.indexOf(Math.min(...ds))]
-      const sIdx = ds.indexOf(Math.max(...ds))
-      const wIdx = ds.indexOf(Math.min(...ds))
-      const sActive = DIMS[sIdx].indicators.filter((_, j) => indScores.value[sIdx][j] >= 60).map(i => i.name)
-      const wWeak = DIMS[wIdx].indicators.filter((_, j) => indScores.value[wIdx][j] < 50).map(i => i.name)
+      if (!ds || ds.length < 6) return ''
+      const sorted = ds.map((s, i) => ({ s, i })).sort((a, b) => b.s - a.s)
+      const strongest = DIMS[sorted[0].i]
+      const weakest = DIMS[sorted[sorted.length - 1].i]
+      const sIdx = sorted[0].i
+      const wIdx = sorted[sorted.length - 1].i
+      const sActive = DIMS[sIdx].indicators.filter((_, j) => indScores.value[sIdx]?.[j] >= 60).map(i => i.name)
+      const wWeak = DIMS[wIdx].indicators.filter((_, j) => indScores.value[wIdx]?.[j] < 50).map(i => i.name)
       let text = `${currentStock.value.name}综合评分${totalScore.value.toFixed(1)}，评级${ratingInfo.value.l}。`
       text += `最强维度"${strongest.name}"由${sActive.join('、') || '多项指标'}支撑；`
       text += `"${weakest.name}"偏弱${wWeak.length ? '，需关注' + wWeak.join('、') + '能否补强' : '，各项指标均已激活'}。`
-      if (totalScore.value >= 80) text += '整体具备十倍股核心特征，建议持续跟踪催化剂落地节奏。'
+      if (totalScore.value >= 80) text += '整体具备十倍股核心特征，建议持续跟踪消息催化落地节奏。'
       else if (totalScore.value >= 60) text += '有亮点但存在短板，需等待关键催化因素验证。'
       else text += '当前与十倍股样本差距较大，建议关注基本面拐点信号。'
       return text
@@ -551,6 +587,7 @@ export default {
 
     async function autoScoreStock(stock) {
       if (scoreCache[stock.code]) return
+      if (vetoStatus[stock.code]) return // 已被否决，不再评分
       // 先尝试从D1缓存获取
       let sd = await fetchCachedScore(stock.code)
       if (!sd) {
@@ -558,6 +595,17 @@ export default {
         try {
           const res = await tenxApi.refreshScore(stock.code)
           if (res.code === 200 && res.data) {
+            // 检查是否被否决
+            if (res.data.vetoed) {
+              vetoStatus[stock.code] = {
+                reasons: res.data.reasons || [],
+                avgAmount: res.data.avgAmount,
+                isSt: res.data.isSt,
+              }
+              delete scoreErrors[stock.code]
+              persistData()
+              return
+            }
             sd = transformScore(res.data)
           }
         } catch { /* 忽略 */ }
@@ -565,6 +613,7 @@ export default {
       if (sd) {
         scoreCache[stock.code] = sd
         delete scoreErrors[stock.code]
+        delete vetoStatus[stock.code]
       } else {
         scoreErrors[stock.code] = true
       }
@@ -622,6 +671,7 @@ export default {
     function getScoreBadgeLabel(stock) {
       const sc = scoreCache[stock.code]
       if (sc) return getRating(sc.totalScore).l
+      if (vetoStatus[stock.code]) return 'X'
       return scoreErrors[stock.code] ? '!' : '--'
     }
 
@@ -630,6 +680,9 @@ export default {
       if (sc) {
         const rt = getRating(sc.totalScore)
         return { background: rt.bg, color: rt.c }
+      }
+      if (vetoStatus[stock.code]) {
+        return { background: 'rgba(245,108,108,0.1)', color: '#f56c6c' }
       }
       return scoreErrors[stock.code]
         ? { background: 'rgba(245,108,108,0.1)', color: '#f56c6c' }
@@ -650,9 +703,21 @@ export default {
       try {
         const res = await tenxApi.refreshScore(stock.code)
         if (res.code === 200 && res.data) {
-          const sd = transformScore(res.data)
-          scoreCache[stock.code] = sd
-          delete scoreErrors[stock.code]
+          // 检查是否被否决
+          if (res.data.vetoed) {
+            vetoStatus[stock.code] = {
+              reasons: res.data.reasons || [],
+              avgAmount: res.data.avgAmount,
+              isSt: res.data.isSt,
+            }
+            delete scoreCache[stock.code]
+            delete scoreErrors[stock.code]
+          } else {
+            const sd = transformScore(res.data)
+            scoreCache[stock.code] = sd
+            delete scoreErrors[stock.code]
+            delete vetoStatus[stock.code]
+          }
         } else {
           scoreErrors[stock.code] = true
         }
@@ -668,67 +733,31 @@ export default {
       if (isScoring.value || myStocks.value.length === 0) return
       isScoring.value = true
 
-      const curStock = myStocks.value[curIdx.value]
-      if (!curStock) { isScoring.value = false; return }
-
-      // 评分当前股票（带动画）— 调用refresh接口重新计算
       try {
-        const res = await tenxApi.refreshScore(curStock.code)
-        if (res.code === 200 && res.data) {
-          const sd = transformScore(res.data)
-          scoreCache[curStock.code] = sd
-          delete scoreErrors[curStock.code]
-          let loaded = 0
-          function stepDim() {
-            if (loaded >= 8) {
-              updateRadar(sd.dimScores)
-              // 当前股票动画完成后，继续评分其余股票
-              scoreRemaining()
-              return
+        const symbols = myStocks.value.map(s => s.code)
+        const res = await tenxApi.batchRefresh(symbols)
+        if (res.code === 200 && res.data?.results) {
+          res.data.results.forEach(item => {
+            if (item.success && item.data) {
+              scoreCache[item.symbol] = transformScore(item.data)
+              delete scoreErrors[item.symbol]
+            } else {
+              scoreErrors[item.symbol] = true
             }
-            loaded++
-            const partial = sd.dimScores.slice().map((s, i) => i < loaded ? s : 0)
-            updateRadar(partial)
-            setTimeout(stepDim, 160 + Math.random() * 100)
-          }
+          })
+          const curStock = myStocks.value[curIdx.value]
+          const current = curStock ? scoreCache[curStock.code] : null
           await nextTick()
-          updateRadar([0,0,0,0,0,0,0,0])
-          setTimeout(stepDim, 300)
+          updateRadar(current?.dimScores || dimScores.value)
         } else {
-          scoreErrors[curStock.code] = true
-          isScoring.value = false
+          myStocks.value.forEach(s => { scoreErrors[s.code] = true })
         }
       } catch {
-        scoreErrors[curStock.code] = true
-        // 仍然继续评分其余股票
-        scoreRemaining()
+        myStocks.value.forEach(s => { scoreErrors[s.code] = true })
+      } finally {
+        isScoring.value = false
+        persistData()
       }
-    }
-
-    /** 串行评分剩余股票，每只间隔2秒避免Tushare频率超限 */
-    async function scoreRemaining() {
-      const curStock = myStocks.value[curIdx.value]
-      for (let i = 0; i < myStocks.value.length; i++) {
-        const s = myStocks.value[i]
-        if (s.code === curStock?.code) continue
-        try {
-          const res = await tenxApi.refreshScore(s.code)
-          if (res.code === 200 && res.data) {
-            scoreCache[s.code] = transformScore(res.data)
-            delete scoreErrors[s.code]
-          } else {
-            scoreErrors[s.code] = true
-          }
-        } catch {
-          scoreErrors[s.code] = true
-        }
-        // 非最后一只，等待2秒
-        if (i < myStocks.value.length - 1) {
-          await new Promise(r => setTimeout(r, 2000))
-        }
-      }
-      isScoring.value = false
-      persistData()
     }
 
     /** 从后端D1缓存获取评分（不触发重新计算） */
@@ -794,7 +823,7 @@ export default {
     }
 
     // 加载 Chart.js
-    onMounted(() => {
+    onMounted(async () => {
       if (!window.Chart) {
         const script = document.createElement('script')
         script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js'
@@ -803,15 +832,24 @@ export default {
       }
       // 恢复持久化数据
       loadPersisted()
+      // 从后端加载Top30股票列表
+      await loadTopStocks()
       if (myStocks.value.length === 0) {
-        // 首次访问：默认添加几只十倍潜力股
-        tenbaggerStocks.slice(0, 5).forEach(s => {
+        // 首次访问：使用后端Top30数据填充，无数据则回退到默认
+        const source = allStocks.value.length > 0 ? allStocks.value : tenbaggerStocks.map(s => ({
+          code: s.code,
+          name: s.name,
+          sector: s.sector,
+          latestPrice: (Math.random() * 200 + 20).toFixed(2),
+          changeRate: (Math.random() * 10 - 5).toFixed(2)
+        }))
+        source.slice(0, 5).forEach(s => {
           myStocks.value.push({
             code: s.code,
             name: s.name,
-            sector: s.sector,
-            latestPrice: (Math.random() * 200 + 20).toFixed(2),
-            changeRate: (Math.random() * 10 - 5).toFixed(2)
+            sector: s.sector || '',
+            latestPrice: s.latestPrice || '--',
+            changeRate: s.changeRate || '0'
           })
         })
       }
@@ -824,10 +862,18 @@ export default {
       if (hasScore.value) nextTick(() => updateRadar(v))
     }, { deep: true })
 
+    function goToDetail() {
+      const code = currentStock.value?.code
+      if (code) {
+        router.push({ name: 'stockDetail', params: { code } })
+      }
+    }
+
     return {
       DIMS,
       searchQuery, searchFocused, myStocks, curIdx,
       filteredAllStocks, currentStock, currentScore, hasScore, hasScoreError,
+      isVetoed, vetoReasons,
       totalScore, totalScoreColor, ratingInfo, ratingBadgeStyle,
       dimScores, indScores, indVals, aiConclusion,
       expandedDims, allOpen, isScoring, isRefreshing, showModelOverlay,
@@ -835,7 +881,7 @@ export default {
       onSearchBlur, addStock, removeStock, selectStock,
       toggleDim, toggleAll, startScoring, refreshSingleScore,
       getScoreBadgeLabel, getScoreBadgeStyle, formatChg,
-      sColor, sGrad
+      sColor, sGrad, goToDetail
     }
   }
 }
@@ -1009,7 +1055,17 @@ export default {
 .stock-header {
   display: flex; align-items: center; gap: 16px; margin-bottom: 24px;
 }
+.stock-header-info {
+  cursor: pointer; border-radius: 8px; padding: 4px 8px; margin: -4px -8px;
+  transition: background 0.2s;
+  &:hover { background: rgba(64,158,255,0.06); }
+  &:hover .stock-detail-link { opacity: 1; }
+}
 .stock-header-name { font-size: 22px; font-weight: 700; color: #303133; }
+.stock-detail-link {
+  font-size: 14px; color: #409eff; opacity: 0;
+  transition: opacity 0.2s; margin-left: 4px; vertical-align: middle;
+}
 .stock-header-sub {
   display: flex; align-items: center; gap: 8px; margin-top: 2px;
 }
@@ -1040,10 +1096,30 @@ export default {
   background: #fff; border: 1px solid #e4e7ed;
   border-radius: 12px; padding: 20px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  width: 220px; min-width: 220px;
+  width: 320px; min-width: 320px;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
 }
+.veto-card {
+  background: #fff; border: 1px solid #fde2e2;
+  border-radius: 12px; padding: 28px 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  width: 320px; min-width: 320px;
+  display: flex; flex-direction: column;
+  align-items: center; text-align: center;
+}
+.veto-icon-wrap { margin-bottom: 12px; }
+.veto-icon { font-size: 48px; color: #f56c6c; }
+.veto-title { font-size: 16px; font-weight: 600; color: #303133; margin-bottom: 16px; }
+.veto-reasons { width: 100%; text-align: left; margin-bottom: 16px; }
+.veto-reason-item {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 8px 12px; margin-bottom: 6px;
+  background: #fef0f0; border-radius: 8px;
+  font-size: 13px; color: #f56c6c; line-height: 1.5;
+}
+.veto-reason-item i { margin-top: 3px; flex-shrink: 0; }
+.veto-hint { font-size: 12px; color: #909399; line-height: 1.5; }
 .score-ring-wrap {
   position: relative; width: 150px; height: 150px; margin-bottom: 8px;
 }
@@ -1092,7 +1168,7 @@ export default {
   background: #fff; border: 1px solid #e4e7ed;
   border-radius: 12px; padding: 16px 20px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  flex: 1; min-width: 0;
+  flex: 1; min-width: 260px;
   display: flex; flex-direction: column;
 }
 .radar-card-title { font-size: 12px; font-weight: 500; color: #909399; margin-bottom: 8px; }

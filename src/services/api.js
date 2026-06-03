@@ -811,6 +811,8 @@ export const monitorApi = {
 export const tenxApi = {
   /** 获取股票最新十倍股评分(从D1缓存) */
   getScore: (symbol) => api.get(`/api/cn/stocks/${symbol}/tenx-score`, {
+    timeout: 90000,
+    'axios-retry': { retries: 0 },
     validateStatus: (status) => status < 500,
   }),
 
@@ -822,8 +824,8 @@ export const tenxApi = {
    *  mode: 'quick' → 只重新获取动态数据(估值/质押/增减持)，复用缓存的财报数据
    *  mode: undefined → 全量重新获取所有数据
    */
-  refreshScore: (symbol, mode = 'quick') => api.post(`/api/cn/stocks/${symbol}/tenx-score/refresh?mode=${mode}`, null, {
-    timeout: 60000,
+  refreshScore: (symbol, mode = '') => api.post(`/api/cn/stocks/${symbol}/tenx-score/refresh${mode ? `?mode=${mode}` : ''}`, null, {
+    timeout: 120000,
     'axios-retry': { retries: 0 }
   }),
 
@@ -831,9 +833,21 @@ export const tenxApi = {
    *  mode: 'quick' → 只重新获取动态数据，1秒间隔
    *  mode: undefined → 全量获取，2秒间隔
    */
-  batchRefresh: (symbols, mode = 'quick') => api.post(`/api/cn/stocks/tenx-score/batch`, { symbols, mode }, {
+  batchRefresh: (symbols, mode = '') => api.post(`/api/cn/stocks/tenx-score/batch`, { symbols, mode }, {
     timeout: 600000,
     'axios-retry': { retries: 0 }
+  }),
+
+  /** 一票否决检查 */
+  checkVeto: (symbol) => api.get(`/api/cn/stocks/${symbol}/tenx-score/veto-check`, {
+    timeout: 30000,
+    'axios-retry': { retries: 0 },
+  }),
+
+  /** 获取评分Top30股票列表 */
+  getTopStocks: (limit = 30) => api.get(`/api/cn/stocks/tenx-score/top`, {
+    params: { limit },
+    timeout: 15000,
   }),
 };
 
