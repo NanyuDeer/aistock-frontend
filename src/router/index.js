@@ -11,6 +11,7 @@ const WechatMessageView = () => import('@/views/WechatMessageView.vue')
 const UpdateLogsView = () => import('@/views/UpdateLogsView.vue')
 const PerformanceForecastView = () => import('@/views/PerformanceForecastView.vue')
 const TenxScoreView = () => import('@/views/TenxScoreView.vue')
+const MonitorView = () => import('@/views/MonitorView.vue')
 
 const routes = [
   {
@@ -87,6 +88,14 @@ const routes = [
     component: TenxScoreView,
     meta: {
       title: '股票资讯AI智能分析 - 十倍股评分'
+    }
+  },
+  {
+    path: '/monitor',
+    name: 'monitor',
+    component: MonitorView,
+    meta: {
+      title: '股票资讯AI智能分析 - 个股异动监测'
     }
   },
   {

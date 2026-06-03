@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
   <div class="stock-detail-page">
     <div class="page-container">
       <div class="stock-header">
@@ -113,6 +113,22 @@
           <span class="tab-label">{{ tab.label }}</span>
           <span class="tab-desc">{{ tab.desc }}</span>
         </button>
+      </div>
+
+      <!-- 个股异动 -->
+      <div class="stock-monitor-section">
+        <div class="card">
+          <div class="card-header">
+            <h3>个股异动</h3>
+          </div>
+          <div class="card-body">
+            <StockMonitorList
+              :events="stockMonitorEvents"
+              :show-cycle-filter="true"
+              :default-cycle="activeView === 'short' ? 'short' : activeView === 'mid' ? 'mid' : activeView === 'long' ? 'long' : 'all'"
+            />
+          </div>
+        </div>
       </div>
 
       <!-- 短线视图 -->
@@ -767,6 +783,8 @@ import CycleSelect from '@/components/CycleSelect.vue';
 import { useStockCycle } from '@/utils/stockCycle';
 import { ttsApi } from '@/services/api';
 import { getCuratedStockProfile } from '@/mock/curatedStocks';
+import { monitorApi } from '@/services/api';
+import StockMonitorList from '@/components/StockMonitorList.vue';
 import { tenxApi } from '@/services/api';
 import 'element-plus/es/components/message/style/css';
 import * as echarts from 'echarts/core';
@@ -800,7 +818,7 @@ const invalidateCache = (code) => {
 
 export default {
   name: 'StockDetailView',
-  components: { StockChart, CycleSelect },
+  components: { StockChart, CycleSelect, StockMonitorList },
   setup() {
     const route = useRoute();
     const router = useRouter();
@@ -811,6 +829,42 @@ export default {
       { key: 'mid', label: '中线', desc: '周/月' },
       { key: 'long', label: '长线', desc: '季/年' }
     ];
+
+    // 个股异动模拟数据
+    const stockMonitorEvents = ref([]);
+
+    const fetchMonitorEvents = async () => {
+      try {
+        const stockCode = route.params.code || '';
+        if (!stockCode) return;
+        const res = await monitorApi.getEventsByStock(stockCode, { cycle: 'all', limit: 20 });
+        const events = res?.data?.events || [];
+        stockMonitorEvents.value = events.map(e => ({
+          ...e,
+          stock_code: (e.stock_code || e.symbol || '').replace(/^(SH|SZ)/, ''),
+          industry: e.industry || '',
+          change_type: e.change_type || '',
+          change_type_name: e.change_type_name || e.summary || '',
+          price: e.price ?? 0,
+          change_pct: e.change_pct ?? 0,
+          event_time_display: e.event_time_display || formatEventTime(e.event_time),
+        }));
+      } catch (err) {
+        console.warn('[StockDetail] 获取异动数据失败:', err);
+      }
+    };
+
+    const formatEventTime = (timeStr) => {
+      if (!timeStr) return '';
+      try {
+        const d = new Date(timeStr);
+        return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      } catch {
+        return timeStr;
+      }
+    };
+
+    fetchMonitorEvents();
     const stockInfo = ref({
       name: '加载中...', code: route.params.code || '', market: '',
       regionBoard: '--', regionBoardTagId: '', price: '--', avgPrice: '--',
@@ -2133,6 +2187,7 @@ export default {
     return {
       activeView, viewTabs, stockInfo, isLoggedIn, isFavorite, addingToFavorites,
       stockCycle, onStockCycleChange,
+      stockMonitorEvents,
       stockNews, analysisResult, currentNewsDetail, newsDetailDialogVisible,
       totalNews, hasMoreNews, loadingMoreNews, loadMoreNews,
       refreshAIEvaluation, loadingEvaluation, evaluationErrorMessage, evaluationProgressText,
@@ -2213,6 +2268,10 @@ export default {
       .metric-ratio { font-size: 0.8rem; font-weight: 600; color: #0f172a; font-variant-numeric: tabular-nums; }
       .capital-chart-note { margin: 8px 0 0; font-size: 0.74rem; color: #64748b; }
     }
+  }
+
+  .stock-monitor-section {
+    margin-bottom: 20px;
   }
 
   .view-tabs {
