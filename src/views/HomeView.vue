@@ -133,8 +133,17 @@
             <MarketOverview />
           </div>
 
-          <!-- 近期风口板块及龙头个股 -->
-          <div class="curated-stock-sections">
+          <!-- 风口爆发股 -->
+          <HotSectorPanel
+            :sectors="hotSectors"
+            :loading="loadingHotSectors"
+            :error="hotSectorError"
+            :update-time="hotSectorUpdateTime"
+            @retry="fetchHotSectors(true)"
+          />
+
+          <!-- 近期风口板块及龙头个股（已隐藏，数据已迁移至风口爆发股） -->
+          <div class="curated-stock-sections" style="display: none;">
             <section class="curated-panel trend-leader-panel">
               <div class="curated-panel-header">
                 <h3 class="section-title">近期风口板块及龙头个股</h3>
@@ -301,7 +310,8 @@ import MarketOverview from '@/components/MarketOverview.vue';
 import NewsSlider from '@/components/NewsSlider.vue';
 import StockCardList from '@/components/StockCardList.vue';
 import StockMonitorCard from '@/components/StockMonitorCard.vue';
-import { monitorApi } from '@/services/api';
+import HotSectorPanel from '@/components/HotSectorPanel.vue';
+import { monitorApi, hotSectorApi } from '@/services/api';
 import { trendLeaderStocks as trendLeaderStockSeeds, tenbaggerStocks } from '@/mock/curatedStocks';
 import 'element-plus/es/components/message/style/css';
 
@@ -356,6 +366,46 @@ export default {
     };
 
     fetchMonitorEvents();
+
+    // -------------------- 风口爆发股部分 --------------------
+    const hotSectors = ref([]);
+    const loadingHotSectors = ref(false);
+    const hotSectorUpdateTime = ref('');
+    const hotSectorError = ref('');
+
+    const fetchHotSectors = async (forceRefresh = false) => {
+      loadingHotSectors.value = true;
+      hotSectorError.value = '';
+      try {
+        // 如果是手动重试，先触发后端刷新
+        if (forceRefresh) {
+          try {
+            await hotSectorApi.refreshAnalysis();
+          } catch (e) {
+            console.warn('[HomeView] 风口爆发股刷新请求失败，仍尝试读取缓存:', e);
+          }
+        }
+        const res = await hotSectorApi.getHotSectors(8);
+        if (res?.code === 200 && res?.data) {
+          hotSectors.value = res.data.hot_sectors || [];
+          hotSectorUpdateTime.value = res.data.update_time || '';
+        } else if (res?.code === 404) {
+          hotSectorError.value = '暂无风口爆发股数据，请稍后再试';
+          hotSectors.value = [];
+        } else {
+          hotSectorError.value = res?.message || '获取风口爆发股数据失败';
+          hotSectors.value = [];
+        }
+      } catch (err) {
+        console.warn('[HomeView] 获取风口爆发股数据失败:', err);
+        hotSectorError.value = '网络异常，无法获取风口爆发股数据';
+        hotSectors.value = [];
+      } finally {
+        loadingHotSectors.value = false;
+      }
+    };
+
+    fetchHotSectors();
 
     // -------------------- 市场资讯部分 --------------------
     const domesticNews = ref([]);
@@ -1235,6 +1285,12 @@ export default {
     return {
       // 个股异动
       monitorEvents,
+
+      // 风口爆发股
+      hotSectors,
+      loadingHotSectors,
+      hotSectorUpdateTime,
+      hotSectorError,
 
       // 市场资讯相关
       domesticNews,

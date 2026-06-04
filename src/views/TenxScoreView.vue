@@ -395,7 +395,13 @@ export default {
     function loadPersisted() {
       try {
         const stocks = localStorage.getItem(STORAGE_KEY)
-        if (stocks) myStocks.value = JSON.parse(stocks)
+        if (stocks) {
+          myStocks.value = JSON.parse(stocks).map(s => ({
+            ...s,
+            // 兼容旧数据：没有isDefault字段的视为默认股票
+            isDefault: s.isDefault !== undefined ? s.isDefault : true,
+          }))
+        }
         const cache = localStorage.getItem(SCORE_CACHE_KEY)
         if (cache) {
           const parsed = JSON.parse(cache)
@@ -576,8 +582,8 @@ export default {
         curIdx.value = myStocks.value.findIndex(s => s.code === stock.code)
         return
       }
-      myStocks.value.push({ ...stock })
-      curIdx.value = myStocks.value.length - 1
+      myStocks.value.unshift({ ...stock, isDefault: false })
+      curIdx.value = 0
       searchQuery.value = ''
       searchFocused.value = false
       persistData()
@@ -843,13 +849,14 @@ export default {
           latestPrice: (Math.random() * 200 + 20).toFixed(2),
           changeRate: (Math.random() * 10 - 5).toFixed(2)
         }))
-        source.slice(0, 5).forEach(s => {
+        source.slice(0, 20).forEach(s => {
           myStocks.value.push({
             code: s.code,
             name: s.name,
             sector: s.sector || '',
             latestPrice: s.latestPrice || '--',
-            changeRate: s.changeRate || '0'
+            changeRate: s.changeRate || '0',
+            isDefault: true,
           })
         })
       }
@@ -1010,10 +1017,10 @@ export default {
   display: flex; align-items: center; gap: 6px; margin-top: 1px;
 }
 .stock-item-remove {
-  opacity: 0; font-size: 11px; color: #f56c6c;
+  font-size: 12px; color: #f56c6c;
   cursor: pointer; transition: opacity 0.15s; padding: 4px;
+  opacity: 0.6;
 }
-.stock-item:hover .stock-item-remove { opacity: 0.5; }
 .stock-item-remove:hover { opacity: 1 !important; }
 
 .sidebar-footer {

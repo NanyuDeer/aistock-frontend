@@ -851,4 +851,17 @@ export const tenxApi = {
   }),
 };
 
+// 风口爆发股 API
+export const hotSectorApi = {
+  /** 获取风口爆发股分析结果 */
+  getHotSectors: (limit = 8) => api.get('/api/cn/hot-sectors', {
+    params: { limit },
+    timeout: 10000,
+  }),
+  /** 手动触发风口爆发股分析刷新 */
+  refreshAnalysis: () => api.post('/api/cn/hot-sectors/refresh', {}, {
+    timeout: 120000,
+  }),
+};
+
 export default api;
