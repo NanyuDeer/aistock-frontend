@@ -6,12 +6,12 @@ const ProfileView = () => import('@/views/ProfileView.vue')
 const SearchView = () => import('@/views/SearchView.vue')
 const StockDetailView = () => import('@/views/StockDetailView.vue')
 const FavoritesView = () => import('@/views/FavoritesView.vue')
-const PushHistoryView = () => import('@/views/PushHistoryView.vue')
 const WechatMessageView = () => import('@/views/WechatMessageView.vue')
 const UpdateLogsView = () => import('@/views/UpdateLogsView.vue')
 const PerformanceForecastView = () => import('@/views/PerformanceForecastView.vue')
 const TenxScoreView = () => import('@/views/TenxScoreView.vue')
 const MonitorView = () => import('@/views/MonitorView.vue')
+const PotentialStockPushHistoryView = () => import('@/views/PotentialStockPushHistoryView.vue')
 
 const routes = [
   {
@@ -66,15 +66,6 @@ const routes = [
     }
   },
   {
-    path: '/push-history',
-    name: 'pushHistory',
-    component: PushHistoryView,
-    meta: {
-      title: '股票资讯AI智能分析 - 推送历史',
-      requiresAuth: true
-    }
-  },
-  {
     path: '/forecast',
     name: 'performanceForecast',
     component: PerformanceForecastView,
@@ -96,6 +87,14 @@ const routes = [
     component: MonitorView,
     meta: {
       title: '股票资讯AI智能分析 - 个股异动监测'
+    }
+  },
+  {
+    path: '/potential-push-history',
+    name: 'potentialPushHistory',
+    component: PotentialStockPushHistoryView,
+    meta: {
+      title: '股票资讯AI智能分析 - 风口潜力股推送追踪'
     }
   },
   {
