@@ -38,10 +38,10 @@
           </div>
           <div class="event-price-info">
             <span class="price" :class="event.change_pct >= 0 ? 'up' : 'down'">
-              {{ event.price.toFixed(2) }}
+              {{ event.price != null ? Number(event.price).toFixed(2) : '--' }}
             </span>
             <span class="change" :class="event.change_pct >= 0 ? 'up' : 'down'">
-              {{ event.change_pct >= 0 ? '+' : '' }}{{ event.change_pct }}%
+              {{ event.change_pct != null ? (event.change_pct >= 0 ? '+' : '') + Number(event.change_pct).toFixed(2) + '%' : '--' }}
             </span>
           </div>
         </div>
