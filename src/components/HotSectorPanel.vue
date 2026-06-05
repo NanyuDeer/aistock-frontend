@@ -363,6 +363,7 @@ export default {
     loading: { type: Boolean, default: false },
     error: { type: String, default: '' },
     updateTime: { type: String, default: '' },
+    quoteMap: { type: Object, default: () => ({}) },
   },
   emits: ['retry'],
   setup(props) {
@@ -384,11 +385,26 @@ export default {
 
     // 展平后的股票列表
     const displayStocks = computed(() => {
+      let stocks;
       if (useBackendData.value) {
-        return flattenSectorsToStocks(props.sectors);
+        stocks = flattenSectorsToStocks(props.sectors);
+      } else {
+        // 模拟数据也按涨跌幅排序
+        stocks = [...MOCK_STOCKS].sort((a, b) => (b.changeRate || 0) - (a.changeRate || 0));
       }
-      // 模拟数据也按涨跌幅排序
-      return [...MOCK_STOCKS].sort((a, b) => (b.changeRate || 0) - (a.changeRate || 0));
+      // 合并实时行情
+      if (props.quoteMap && Object.keys(props.quoteMap).length > 0) {
+        stocks = stocks.map(s => {
+          const q = props.quoteMap[s.code];
+          if (!q) return s;
+          return {
+            ...s,
+            latestPrice: q.latest_price != null ? String(q.latest_price) : s.latestPrice,
+            changeRate: q.change_percent != null ? q.change_percent : s.changeRate,
+          };
+        });
+      }
+      return stocks;
     });
 
     // 泡泡图数据
@@ -443,7 +459,7 @@ export default {
       if (!bubbles || bubbles.length === 0) return;
 
       const maxScore = Math.max(...bubbles.map(s => s.score || 0));
-      const minR = 18, maxR = 52;
+      const minR = 13, maxR = 47;
 
       // 泡泡大小主要由板块评分决定（评分 = 频次*4 + 均涨幅*3 + 资金趋势*0.3）
       const bubbleData = bubbles.map((s, i) => {

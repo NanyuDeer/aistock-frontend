@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
   <div class="stock-detail-page">
     <div class="page-container">
       <div class="stock-header">
@@ -224,19 +224,6 @@
             <div v-if="loadingEvaluation && hasStreamDelta" class="analysis-stream-status" role="status" aria-live="polite">
               {{ evaluationProgressText || 'AI 正在生成投资建议...' }}
             </div>
-
-            <a
-              href="https://pollinations.ai/"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="analysis-powered-by"
-            >
-              <span>Powered by</span>
-              <span class="analysis-powered-logo" aria-hidden="true">
-                <img class="analysis-powered-logo-icon" src="/pollinations.svg" alt="" />
-                <img class="analysis-powered-logo-text" src="/pollinations-text.svg" alt="" />
-              </span>
-            </a>
 
             <div class="info-news-divider"></div>
 
@@ -2379,17 +2366,6 @@ export default {
 
     .news-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; @media (max-width: 576px) { flex-wrap: wrap; gap: 8px; } }
     .news-total { font-size: 0.9rem; color: var(--text-tertiary); }
-  }
-
-  .analysis-powered-by {
-    display: inline-flex; align-items: center; gap: 4px;
-    padding: 3px 8px; border-radius: 999px; border: 1px solid #d1d5db;
-    background: #ffffff; color: #374151; font-size: 11px;
-    text-decoration: none;
-    &:hover { background: #f9fafb; }
-    .analysis-powered-logo { display: inline-flex; align-items: center; gap: 3px; }
-    .analysis-powered-logo-icon { width: 14px; height: 14px; }
-    .analysis-powered-logo-text { height: 12px; }
   }
 
   .analysis-footer-section {
