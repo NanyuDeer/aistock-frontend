@@ -2,10 +2,8 @@
   <div class="hot-sector-panel">
     <!-- 标题栏 -->
     <div class="hs-header">
-      <div>
-        <div class="hs-header-title">风口爆发股</div>
-        <div class="hs-header-meta" v-if="displayUpdateTime">更新时间: {{ displayUpdateTime }}</div>
-      </div>
+      <h3 class="section-title">风口爆发股</h3>
+      <span class="hs-header-meta" v-if="displayUpdateTime">更新时间: {{ displayUpdateTime }}</span>
     </div>
 
     <!-- 一级窗口：龙头股列表 + 泡泡图 -->
@@ -18,7 +16,7 @@
             <span>股票</span>
             <span>板块</span>
             <span>行情数据</span>
-            <span>龙头依据</span>
+            <span class="hs-col-reason">龙头依据</span>
             <span>操作</span>
           </div>
           <div
@@ -42,7 +40,10 @@
                 {{ formatChange(stock.changeRate) }}
               </span>
             </div>
-            <div class="hs-col-reason" :title="stock.leaderBasis">{{ stock.leaderBasis }}</div>
+            <div class="hs-col-reason" :title="stock.leaderBasis">
+              <span v-for="tag in stock.limitTags" :key="tag" class="hs-limit-tag">{{ tag }}</span>
+              {{ stock.leaderBasis }}
+            </div>
             <el-button
               class="hs-follow-btn"
               size="small"
@@ -50,7 +51,7 @@
               :plain="!isFollowed(stock.code)"
               @click.stop="toggleFollow(stock.code)"
             >
-              {{ isFollowed(stock.code) ? '已关注' : '加关注' }}
+              {{ isFollowed(stock.code) ? '已关注' : '关注' }}
             </el-button>
           </div>
         </div>
@@ -127,17 +128,20 @@
               <div class="hs-detail-thead">
                 <span>名称</span><span>行业</span><span class="col-price">价格</span><span class="col-pnl">盈亏</span><span>理由</span>
               </div>
-              <div v-for="s in currentSector.main_stocks" :key="s.code" class="hs-detail-row">
+              <div v-for="s in currentSector.main_stocks" :key="s.code" class="hs-detail-row clickable" @click="goToStockByCode(s.code)">
                 <span class="hs-detail-name">{{ s.name }}</span>
                 <span class="hs-detail-industry">
                   <span v-if="s.in_concept" class="hs-concept-tag">概念</span>
-                  <span class="hs-industry-tag">{{ s.industry }}</span>
+                  <span class="hs-industry-tag">{{ s.industry?.replace(/\(A股\)|A股/g, '') }}</span>
                 </span>
                 <span class="col-price">{{ s.price != null ? Number(s.price).toFixed(2) : '--' }}</span>
                 <span :class="['col-pnl', s.change_pct > 0 ? 'pnl-up' : s.change_pct < 0 ? 'pnl-down' : 'pnl-flat']">
                   {{ s.change_pct != null ? (s.change_pct > 0 ? '+' : '') + Number(s.change_pct).toFixed(2) + '%' : '--' }}
                 </span>
-                <span class="hs-detail-reason" :title="s.reason">{{ s.reason || '' }}</span>
+                <span class="hs-detail-reason" :title="s.reason">
+                  <span v-for="tag in (s.limit_tags || [])" :key="tag" class="hs-limit-tag">{{ tag }}</span>
+                  {{ s.reason || '' }}
+                </span>
               </div>
             </div>
             <div v-else class="hs-detail-empty">暂无</div>
@@ -148,17 +152,20 @@
               <div class="hs-detail-thead">
                 <span>名称</span><span>行业</span><span class="col-price">价格</span><span class="col-pnl">盈亏</span><span>理由</span>
               </div>
-              <div v-for="s in currentSector.upstream_stocks" :key="s.code" class="hs-detail-row">
+              <div v-for="s in currentSector.upstream_stocks" :key="s.code" class="hs-detail-row clickable" @click="goToStockByCode(s.code)">
                 <span class="hs-detail-name">{{ s.name }}</span>
                 <span class="hs-detail-industry">
                   <span v-if="s.in_concept" class="hs-concept-tag">概念</span>
-                  <span class="hs-industry-tag">{{ s.industry }}</span>
+                  <span class="hs-industry-tag">{{ s.industry?.replace(/\(A股\)|A股/g, '') }}</span>
                 </span>
                 <span class="col-price">{{ s.price != null ? Number(s.price).toFixed(2) : '--' }}</span>
                 <span :class="['col-pnl', s.change_pct > 0 ? 'pnl-up' : s.change_pct < 0 ? 'pnl-down' : 'pnl-flat']">
                   {{ s.change_pct != null ? (s.change_pct > 0 ? '+' : '') + Number(s.change_pct).toFixed(2) + '%' : '--' }}
                 </span>
-                <span class="hs-detail-reason" :title="s.reason">{{ s.reason || '' }}</span>
+                <span class="hs-detail-reason" :title="s.reason">
+                  <span v-for="tag in (s.limit_tags || [])" :key="tag" class="hs-limit-tag">{{ tag }}</span>
+                  {{ s.reason || '' }}
+                </span>
               </div>
             </div>
             <div v-else class="hs-detail-empty">暂无</div>
@@ -169,17 +176,20 @@
               <div class="hs-detail-thead">
                 <span>名称</span><span>行业</span><span class="col-price">价格</span><span class="col-pnl">盈亏</span><span>理由</span>
               </div>
-              <div v-for="s in currentSector.downstream_stocks" :key="s.code" class="hs-detail-row">
+              <div v-for="s in currentSector.downstream_stocks" :key="s.code" class="hs-detail-row clickable" @click="goToStockByCode(s.code)">
                 <span class="hs-detail-name">{{ s.name }}</span>
                 <span class="hs-detail-industry">
                   <span v-if="s.in_concept" class="hs-concept-tag">概念</span>
-                  <span class="hs-industry-tag">{{ s.industry }}</span>
+                  <span class="hs-industry-tag">{{ s.industry?.replace(/\(A股\)|A股/g, '') }}</span>
                 </span>
                 <span class="col-price">{{ s.price != null ? Number(s.price).toFixed(2) : '--' }}</span>
                 <span :class="['col-pnl', s.change_pct > 0 ? 'pnl-up' : s.change_pct < 0 ? 'pnl-down' : 'pnl-flat']">
                   {{ s.change_pct != null ? (s.change_pct > 0 ? '+' : '') + Number(s.change_pct).toFixed(2) + '%' : '--' }}
                 </span>
-                <span class="hs-detail-reason" :title="s.reason">{{ s.reason || '' }}</span>
+                <span class="hs-detail-reason" :title="s.reason">
+                  <span v-for="tag in (s.limit_tags || [])" :key="tag" class="hs-limit-tag">{{ tag }}</span>
+                  {{ s.reason || '' }}
+                </span>
               </div>
             </div>
             <div v-else class="hs-detail-empty">暂无</div>
@@ -297,6 +307,7 @@ const MOCK_BUBBLES = [
  */
 function flattenSectorsToStocks(sectors) {
   const seen = new Set();
+  const MAX_PER_SECTOR = 2;
   const stocks = [];
 
   for (const sector of sectors) {
@@ -304,17 +315,31 @@ function flattenSectorsToStocks(sectors) {
     const driver = sector.driver || '';
     const aiAnalysis = sector.ai_analysis || {};
 
-    // 合并所有股票：核心 + 上游 + 下游，按评分排序后每个概念最多取3支
-    const allStocks = [
-      ...(sector.main_stocks || []).map(s => ({ ...s, chainPosition: s.chain_position || '核心' })),
-      ...(sector.upstream_stocks || []).map(s => ({ ...s, chainPosition: s.chain_position || '上游' })),
-      ...(sector.downstream_stocks || []).map(s => ({ ...s, chainPosition: s.chain_position || '下游' })),
-    ].sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 3);
+    // 合并 main_stocks + upstream_stocks + downstream_stocks，按评分排序
+    // 优先选 main_stocks，不够时从上下游补充，确保每个板块都有代表
+    const allSectorStocks = [
+      ...(sector.main_stocks || []).map(s => ({ ...s, chainPosition: s.chain_position || '核心', _priority: 0 })),
+      ...(sector.upstream_stocks || []).map(s => ({ ...s, chainPosition: s.chain_position || '上游', _priority: 1 })),
+      ...(sector.downstream_stocks || []).map(s => ({ ...s, chainPosition: s.chain_position || '下游', _priority: 1 })),
+    ].sort((a, b) => {
+      // 优先选 main_stocks（_priority=0），同优先级按评分排序
+      if (a._priority !== b._priority) return a._priority - b._priority;
+      return (b.score || 0) - (a.score || 0);
+    });
 
-    for (const s of allStocks) {
-      const key = s.code;
-      if (seen.has(key)) continue;
-      seen.add(key);
+    let picked = 0;
+    for (const s of allSectorStocks) {
+      if (picked >= MAX_PER_SECTOR) break;
+      if (seen.has(s.code)) continue; // 已被其他板块选走，跳过找下一只
+
+      seen.add(s.code);
+      picked++;
+
+      // 如果该股票是板块龙头股，优先使用 leading_stock_info 的龙头依据
+      const leadInfo = sector.leading_stock_info;
+      const isLeading = leadInfo && leadInfo.code === s.code;
+      const leaderBasis = isLeading ? (leadInfo.reason || s.reason || '') : (s.reason || '');
+      const limitTags = isLeading ? (leadInfo.limit_tags || s.limit_tags || []) : (s.limit_tags || []);
 
       stocks.push({
         code: s.code,
@@ -322,14 +347,13 @@ function flattenSectorsToStocks(sectors) {
         track: sectorName,
         latestPrice: s.price != null ? String(s.price) : '--',
         changeRate: s.change_pct != null ? s.change_pct : 0,
-        leaderBasis: s.reason || '',
-        // 额外字段（弹窗用）
+        leaderBasis,
         score: s.score,
         chainPosition: s.chainPosition || s.chain_position,
         reasonTag: s.reason_tag || '',
+        limitTags,
         inConcept: s.in_concept,
         driver: driver,
-        // AI分析
         persistence: aiAnalysis.persistence || '',
         persistenceReason: aiAnalysis.persistence_reason || '',
         heatTransfer: aiAnalysis.heat_transfer,
@@ -339,16 +363,16 @@ function flattenSectorsToStocks(sectors) {
     }
   }
 
-  // 按涨跌幅排序（收益率从高到低）
-  stocks.sort((a, b) => (b.changeRate || 0) - (a.changeRate || 0));
+  // 按评分排名（综合评分高的排前面）
+  stocks.sort((a, b) => (b.score || 0) - (a.score || 0));
   return stocks;
 }
 
 /**
- * 从后端sector数据中提取泡泡图数据（最多7个概念板块）
+ * 从后端sector数据中提取泡泡图数据（最多8个概念板块）
  */
 function extractBubblesFromSectors(sectors) {
-  return sectors.slice(0, 7).map(s => ({
+  return sectors.slice(0, 8).map(s => ({
     name: s.name,
     change: s.today_change || 0,
     frequency: s.frequency || 0,
@@ -449,23 +473,25 @@ export default {
       const svg = d3.select(bubbleSvg.value);
 
       const rect = bubbleWrap.value.getBoundingClientRect();
-      const size = Math.min(rect.width, rect.height) || 280;
-      const width = size;
-      const height = size;
+      const width = rect.width || 280;
+      const height = rect.height || 280;
 
       svg.attr('width', width).attr('height', height);
 
       const bubbles = displayBubbles.value;
       if (!bubbles || bubbles.length === 0) return;
 
-      const maxScore = Math.max(...bubbles.map(s => s.score || 0));
-      const minR = 13, maxR = 47;
+      const scores = bubbles.map(s => s.score || 0);
+      const maxScore = Math.max(...scores);
+      const minScore = Math.min(...scores);
+      const minR = 28, maxR = 40;
 
       // 泡泡大小主要由板块评分决定（评分 = 频次*4 + 均涨幅*3 + 资金趋势*0.3）
       const bubbleData = bubbles.map((s, i) => {
-        const scoreNorm = maxScore > 0 ? (s.score || 0) / maxScore : 0;
-        // 用平方根增强区分度：低评分泡泡更小，高评分泡泡更大
-        const r = minR + (maxR - minR) * Math.pow(scoreNorm, 0.6);
+        const raw = s.score || 0;
+        // min-max归一化，确保评分差异充分放大
+        const scoreNorm = (maxScore > minScore) ? (raw - minScore) / (maxScore - minScore) : 0.5;
+        const r = minR + (maxR - minR) * scoreNorm;
         return { ...s, idx: i, r };
       });
 
@@ -602,7 +628,9 @@ export default {
       const padding = 12;
       const nodeWidths = {};
       nodes.forEach(n => {
-        nodeWidths[n.id] = n.label.length * charW + padding;
+        const cleanLabel = n.label.replace(/\(A股\)$/, '');
+        n._cleanLabel = cleanLabel;
+        nodeWidths[n.id] = cleanLabel.length * charW + padding;
       });
       const nw = id => nodeWidths[id] || 56;
 
@@ -745,7 +773,7 @@ export default {
           .style('text-anchor', 'middle')
           .style('dominant-baseline', 'central')
           .style('font-weight', '600')
-          .text(node.label);
+          .text(node._cleanLabel || node.label);
       });
     };
 
@@ -800,11 +828,11 @@ export default {
 }
 
 .hs-header {
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; align-items: baseline; justify-content: space-between;
   padding: 0 0 10px; border-bottom: 1px solid #e5e7eb; margin-bottom: 12px;
 }
-.hs-header-title { font-size: 18px; font-weight: 700; color: #1a56db; }
-.hs-header-meta { font-size: 12px; color: #9ca3af; }
+.hs-header .section-title { font-size: 1.4rem; font-weight: 700; color: var(--text-primary, #1a56db); margin: 0; }
+.hs-header-meta { font-size: 12px; color: #9ca3af; white-space: nowrap; }
 
 /* 一级窗口 */
 .hs-primary-card {
@@ -829,23 +857,25 @@ export default {
 
 .hs-list-head {
   display: grid;
-  grid-template-columns: 0.9fr 1.1fr 1.2fr 1.5fr 0.7fr;
+  grid-template-columns: 0.8fr 1fr 1.2fr 1.5fr 0.6fr;
   align-items: center;
   padding: 6px 12px;
   font-size: 11px; color: #9ca3af; font-weight: 500;
   border-bottom: 1px solid #e5e7eb;
   background: #fafbfc;
   position: sticky; top: 0; z-index: 1;
+  white-space: nowrap;
 }
 .hs-list-row {
   display: grid;
-  grid-template-columns: 0.9fr 1.1fr 1.2fr 1.5fr 0.7fr;
+  grid-template-columns: 0.8fr 1fr 1.2fr 1.5fr 0.6fr;
   align-items: center;
   padding: 9px 12px;
   border-bottom: 1px solid #f0f3f8;
   cursor: pointer;
   transition: background 0.2s ease, box-shadow 0.2s ease;
   min-height: 48px;
+  white-space: nowrap;
 }
 .hs-list-row:hover { background: #fbfdff; box-shadow: inset 3px 0 0 #4f7cff; }
 .hs-list-row:last-child { border-bottom: none; }
@@ -876,7 +906,7 @@ export default {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-.hs-follow-btn { flex-shrink: 0; }
+.hs-follow-btn { flex-shrink: 0; min-width: auto; padding-left: 8px; padding-right: 8px; }
 
 /* 右侧泡泡图 */
 .hs-primary-right { flex: 0 0 280px; display: flex; flex-direction: column; flex-shrink: 0; align-items: center; }
@@ -884,7 +914,7 @@ export default {
   padding: 10px 14px 6px; font-size: 14px; font-weight: 700; color: #111827;
   border-bottom: 1px solid #f0f0f0; flex-shrink: 0;
 }
-.hs-bubble-wrap { width: 280px; height: 280px; position: relative; overflow: hidden; flex-shrink: 0; }
+.hs-bubble-wrap { width: 280px; height: 280px; position: relative; overflow: hidden; flex-shrink: 0; margin: 0 auto; }
 .hs-bubble-wrap svg { width: 100%; height: 100%; display: block; }
 
 /* 二级弹窗 */
@@ -940,7 +970,7 @@ export default {
 .persistence-long { background: #f0fdf4; color: #16a34a; }
 
 /* 层级流向图 */
-.hs-flow-chart { width: 100%; height: auto; min-height: 80px; }
+.hs-flow-chart { width: 100%; height: auto; min-height: 80px; overflow-x: auto; display: flex; justify-content: center; }
 
 /* 弹窗内股票表格 */
 .hs-detail-stock-table {
@@ -948,24 +978,28 @@ export default {
 }
 .hs-detail-thead {
   display: grid;
-  grid-template-columns: 15% 14% 18% 12% 41%;
+  grid-template-columns: minmax(50px, 10%) minmax(80px, 22%) minmax(45px, 10%) minmax(50px, 10%) 1fr;
   color: #9ca3af; font-weight: 500; font-size: 10px;
   padding: 2px 4px 3px; border-bottom: 1px solid #f0f0f0; white-space: nowrap;
 }
-.hs-detail-thead .col-price, .hs-detail-thead .col-pnl { text-align: right; }
+.hs-detail-thead .col-price { text-align: right; }
+.hs-detail-thead .col-pnl { text-align: center; }
 .hs-detail-row {
   display: grid;
-  grid-template-columns: 15% 14% 18% 12% 41%;
+  grid-template-columns: minmax(50px, 10%) minmax(80px, 22%) minmax(45px, 10%) minmax(50px, 10%) 1fr;
   padding: 3px 4px; border-bottom: 1px solid #f8f8f8;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .hs-detail-row:hover { background: #f9fafb; }
+.hs-detail-row.clickable { cursor: pointer; }
+.hs-detail-row.clickable:hover { background: #eef2ff; }
 .hs-detail-name { font-weight: 600; color: #111827; }
-.hs-detail-industry { display: flex; align-items: center; gap: 2px; }
-.hs-industry-tag { font-size: 10px; color: #2563eb; padding: 0px 3px; background: #eff6ff; border-radius: 3px; }
-.hs-concept-tag { font-size: 10px; color: #dc2626; padding: 0px 3px; background: #fef2f2; border-radius: 3px; }
+.hs-detail-industry { display: flex; align-items: center; gap: 2px; min-width: 0; overflow: hidden; }
+.hs-industry-tag { font-size: 10px; color: #2563eb; padding: 0px 3px; background: #eff6ff; border-radius: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1; min-width: 0; }
+.hs-concept-tag { font-size: 10px; color: #dc2626; padding: 0px 3px; background: #fef2f2; border-radius: 3px; flex-shrink: 0; }
+.hs-limit-tag { font-size: 10px; color: #fff; padding: 0px 4px; background: #dc2626; border-radius: 3px; margin-right: 3px; white-space: nowrap; font-weight: 600; }
 .hs-detail-row .col-price { text-align: right; }
-.hs-detail-row .col-pnl { text-align: right; }
+.hs-detail-row .col-pnl { text-align: center; }
 .pnl-up { color: #dc2626; }
 .pnl-down { color: #16a34a; }
 .pnl-flat { color: #9ca3af; }
@@ -1002,16 +1036,16 @@ export default {
     order: -1;
     align-items: center;
   }
-  .hs-bubble-wrap { width: 260px; height: 260px; }
+  .hs-bubble-wrap { width: 100%; max-width: 360px; height: 280px; }
   .hs-primary-left { border-right: none; }
   .hs-list-wrap { max-height: 280px; }
   .hs-sector-row { flex-direction: column; }
   .hs-sector-left { flex: none; width: 100%; border-right: none; border-bottom: 1px solid #f0f0f0; }
 }
 @media (max-width: 520px) {
-  .hs-bubble-wrap { width: 220px; height: 220px; }
+  .hs-bubble-wrap { width: 100%; max-width: 300px; height: 280px; }
   .hs-list-head, .hs-list-row {
-    grid-template-columns: 1fr 0.8fr 0.8fr 0.7fr;
+    grid-template-columns: 0.8fr 0.8fr 1fr 0.6fr;
   }
   .hs-col-reason { display: none; }
 }
