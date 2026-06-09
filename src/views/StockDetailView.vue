@@ -115,11 +115,11 @@
         </button>
       </div>
 
-      <!-- 个股异动 -->
+      <!-- 趋势风口 -->
       <div class="stock-monitor-section">
         <div class="card">
           <div class="card-header">
-            <h3>个股异动</h3>
+            <h3>趋势风口</h3>
           </div>
           <div class="card-body">
             <StockMonitorList
@@ -770,7 +770,7 @@ import CycleSelect from '@/components/CycleSelect.vue';
 import { useStockCycle } from '@/utils/stockCycle';
 import { ttsApi } from '@/services/api';
 import { getCuratedStockProfile } from '@/mock/curatedStocks';
-import { monitorApi } from '@/services/api';
+import { trendHotspotApi } from '@/services/api';
 import StockMonitorList from '@/components/StockMonitorList.vue';
 import { tenxApi } from '@/services/api';
 import 'element-plus/es/components/message/style/css';
@@ -817,14 +817,14 @@ export default {
       { key: 'long', label: '长线', desc: '季/年' }
     ];
 
-    // 个股异动模拟数据
+    // 趋势风口数据
     const stockMonitorEvents = ref([]);
 
     const fetchMonitorEvents = async () => {
       try {
         const stockCode = route.params.code || '';
         if (!stockCode) return;
-        const res = await monitorApi.getEventsByStock(stockCode, { cycle: 'all', limit: 20 });
+        const res = await trendHotspotApi.getEventsByStock(stockCode, { cycle: 'all', limit: 20 });
         const events = res?.data?.events || [];
         stockMonitorEvents.value = events.map(e => ({
           ...e,
@@ -837,7 +837,7 @@ export default {
           event_time_display: e.event_time_display || formatEventTime(e.event_time),
         }));
       } catch (err) {
-        console.warn('[StockDetail] 获取异动数据失败:', err);
+        console.warn('[StockDetail] 获取趋势风口数据失败:', err);
       }
     };
 

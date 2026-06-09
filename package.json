@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
-    "build": "VUE_APP_VERSION=$(date +%s) vue-cli-service build",
-    "build:prod": "VUE_APP_VERSION=$(date +%s) NODE_ENV=production vue-cli-service build",
+    "build": "node scripts/build.js",
+    "build:prod": "node scripts/build.js production",
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
