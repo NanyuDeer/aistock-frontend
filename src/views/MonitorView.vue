@@ -4,8 +4,8 @@
     <div class="page-container">
       <div class="container">
         <div class="page-header">
-          <h2 class="page-title">个股异动监测</h2>
-          <p class="page-desc">实时追踪全市场个股异动，捕捉交易机会</p>
+          <h2 class="page-title">趋势风口</h2>
+          <p class="page-desc">聚合外部爬虫返回的公告和新闻研判，发现个股趋势线索</p>
         </div>
 
         <!-- 统计概览 -->
@@ -16,7 +16,7 @@
           </div>
         </div>
 
-        <!-- 异动列表 -->
+        <!-- 趋势风口列表 -->
         <div class="monitor-content">
           <StockMonitorList
             :events="allEvents"
@@ -33,7 +33,7 @@
 import { ref, computed, onMounted } from 'vue'
 import TheNavbar from '@/components/TheNavbar.vue'
 import StockMonitorList from '@/components/StockMonitorList.vue'
-import { monitorApi } from '@/services/api'
+import { trendHotspotApi } from '@/services/api'
 
 export default {
   name: 'MonitorView',
@@ -43,7 +43,7 @@ export default {
 
     const fetchEvents = async () => {
       try {
-        const res = await monitorApi.getEvents({ cycle: 'all', limit: 100 })
+        const res = await trendHotspotApi.getEvents({ cycle: 'all', limit: 100 })
         const events = res?.data?.events || []
         allEvents.value = events.map(e => ({
           ...e,
@@ -56,7 +56,7 @@ export default {
           event_time_display: e.event_time_display || formatEventTime(e.event_time),
         }))
       } catch (err) {
-        console.warn('[MonitorView] 获取异动数据失败:', err)
+        console.warn('[MonitorView] 获取趋势风口数据失败:', err)
       }
     }
 
@@ -76,17 +76,17 @@ export default {
 
     const stats = computed(() => {
       const events = allEvents.value
-      const limitUp = events.filter(e => e.change_type === '4').length
-      const limitDown = events.filter(e => e.change_type === '8').length
-      const rocket = events.filter(e => e.change_type === '8193').length
-      const dive = events.filter(e => e.change_type === '8194').length
+      const announcement = events.filter(e => e.info_type === 'announcement' || e.change_type === 'announcement').length
+      const news = events.filter(e => e.info_type === 'news' || e.change_type === 'news').length
+      const positive = events.filter(e => ['重大利好', '利好'].includes(e.ai_impact || e.level)).length
+      const negative = events.filter(e => ['重大利空', '利空'].includes(e.ai_impact || e.level)).length
       const total = events.length
       return [
-        { label: '异动总数', value: total, cls: '' },
-        { label: '涨停', value: limitUp, cls: 'up' },
-        { label: '跌停', value: limitDown, cls: 'down' },
-        { label: '火箭发射', value: rocket, cls: 'up' },
-        { label: '加速下跌', value: dive, cls: 'down' },
+        { label: '风口总数', value: total, cls: '' },
+        { label: '公告', value: announcement, cls: 'up' },
+        { label: '新闻', value: news, cls: 'up' },
+        { label: '利好', value: positive, cls: 'up' },
+        { label: '利空', value: negative, cls: 'down' },
       ]
     })
 

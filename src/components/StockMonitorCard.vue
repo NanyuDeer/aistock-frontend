@@ -1,7 +1,7 @@
 <template>
   <div class="stock-monitor-card">
     <div class="monitor-header">
-      <h3 class="section-title">个股异动</h3>
+      <h3 class="section-title">趋势风口</h3>
       <div class="header-right">
         <div class="cycle-filter">
           <button
@@ -13,7 +13,7 @@
             {{ opt.label }}
           </button>
         </div>
-        <router-link to="/monitor" class="monitor-more-link">
+        <router-link to="/trend-hotspots" class="monitor-more-link">
           查看全部 <span class="arrow">&rarr;</span>
         </router-link>
       </div>
@@ -22,10 +22,10 @@
     <div class="monitor-list">
       <div class="monitor-list-head">
         <span>股票</span>
-        <span>行情数据</span>
-        <span>异动数据</span>
-        <span>异动信息</span>
-        <span>级别</span>
+        <span>来源</span>
+        <span>影响</span>
+        <span>研判摘要</span>
+        <span>周期</span>
         <span>时间</span>
       </div>
       <div
@@ -42,42 +42,25 @@
           </div>
         </div>
         <div class="stock-metrics">
-          <span class="stock-price" :class="event.change_pct >= 0 ? 'up' : 'down'">
-            {{ event.price != null ? Number(event.price).toFixed(2) : '--' }}
-          </span>
-          <span :class="['change-rate', event.change_pct >= 0 ? 'up' : 'down']">
-            {{ event.change_pct != null ? (event.change_pct >= 0 ? '+' : '') + Number(event.change_pct).toFixed(2) + '%' : '--' }}
+          <span class="info-type-tag" :style="{ color: getInfoTypeColor(event.change_type), borderColor: getInfoTypeColor(event.change_type) + '60' }">
+            {{ getInfoTypeLabel(event.change_type) }}
           </span>
         </div>
         <div class="event-metrics">
-          <span class="event-price" :class="event.change_pct >= 0 ? 'up' : 'down'">
-            {{ event.price != null ? Number(event.price).toFixed(2) : '--' }}
-          </span>
-          <span :class="['event-change', event.change_pct >= 0 ? 'up' : 'down']">
-            {{ event.change_pct != null ? (event.change_pct >= 0 ? '+' : '') + Number(event.change_pct).toFixed(2) + '%' : '--' }}
+          <span class="impact-tag" :style="{ color: getImpactColor(event.level), borderColor: getImpactColor(event.level) + '60' }">
+            {{ event.level }}
           </span>
         </div>
         <div class="change-info">
-          <span
-            class="change-tag"
-            :style="{
-              backgroundColor: getChangeTypeColor(event.change_type) + '18',
-              color: getChangeTypeColor(event.change_type),
-              borderColor: getChangeTypeColor(event.change_type) + '40'
-            }"
-          >
-            {{ event.change_type_name }}
-          </span>
+          <p class="trend-summary">{{ event.summary || event.title || event.change_type_name }}</p>
         </div>
         <div class="level-cell">
-          <span class="level-badge" :style="{ color: getLevelColor(event.level), borderColor: getLevelColor(event.level) + '60' }">
-            {{ event.level }}
-          </span>
+          <span class="level-badge">{{ event.ai_horizon || event.cycle }}</span>
         </div>
         <div class="time-cell">{{ event.event_time_display }}</div>
       </div>
       <div v-if="filteredEvents.length === 0" class="empty-row">
-        暂无异动数据
+        暂无趋势风口数据
       </div>
     </div>
   </div>
@@ -88,10 +71,11 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   CYCLE_OPTIONS,
-  getChangeTypeColor,
-  getLevelColor,
-  filterEventsByCycle
-} from '@/mock/monitorEvents'
+  filterEventsByCycle,
+  getImpactColor,
+  getInfoTypeColor,
+  getInfoTypeLabel
+} from '@/utils/trendHotspotConstants'
 
 export default {
   name: 'StockMonitorCard',
@@ -121,8 +105,9 @@ export default {
       activeCycle,
       filteredEvents,
       CYCLE_OPTIONS,
-      getChangeTypeColor,
-      getLevelColor,
+      getImpactColor,
+      getInfoTypeColor,
+      getInfoTypeLabel,
       onCycleChange,
       goToStock
     }
@@ -198,7 +183,7 @@ export default {
   .monitor-list-head,
   .monitor-row {
     display: grid;
-    grid-template-columns: minmax(120px, 0.9fr) minmax(108px, 0.7fr) minmax(108px, 0.7fr) minmax(96px, 0.65fr) 56px 72px;
+    grid-template-columns: minmax(120px, 0.9fr) minmax(86px, 0.6fr) minmax(82px, 0.55fr) minmax(180px, 1.4fr) 56px 72px;
     align-items: center;
     gap: 8px;
   }
@@ -288,20 +273,16 @@ export default {
     gap: 6px;
     min-width: 0;
 
-    .stock-price {
-      font-weight: 700;
-      font-size: 0.9rem;
-
-      &.up { color: #f56c6c; }
-      &.down { color: #67c23a; }
-    }
-
-    .change-rate {
-      font-weight: 700;
+    .info-type-tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid;
       font-size: 0.74rem;
-
-      &.up { color: #f56c6c; }
-      &.down { color: #67c23a; }
+      font-weight: 700;
+      white-space: nowrap;
     }
   }
 
@@ -311,34 +292,30 @@ export default {
     gap: 6px;
     min-width: 0;
 
-    .event-price {
-      font-weight: 600;
-      font-size: 0.88rem;
-
-      &.up { color: #f56c6c; }
-      &.down { color: #67c23a; }
-    }
-
-    .event-change {
-      font-weight: 600;
+    .impact-tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid;
       font-size: 0.74rem;
-
-      &.up { color: #f56c6c; }
-      &.down { color: #67c23a; }
+      font-weight: 700;
+      white-space: nowrap;
     }
   }
 
   .change-info {
     min-width: 0;
 
-    .change-tag {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 4px;
+    .trend-summary {
+      margin: 0;
+      color: var(--text-secondary);
       font-size: 0.76rem;
-      font-weight: 500;
-      border: 1px solid;
+      line-height: 1.35;
       white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
   }
 
@@ -351,7 +328,8 @@ export default {
       border-radius: 3px;
       font-size: 0.72rem;
       font-weight: 600;
-      border: 1px solid;
+      border: 1px solid #cbd5e1;
+      color: #475569;
     }
   }
 
@@ -384,7 +362,7 @@ export default {
 
     .monitor-list-head,
     .monitor-row {
-      grid-template-columns: minmax(90px, 0.85fr) minmax(80px, 0.7fr) minmax(80px, 0.7fr) minmax(72px, 0.6fr) 44px 60px;
+      grid-template-columns: minmax(90px, 0.85fr) minmax(64px, 0.55fr) minmax(64px, 0.55fr) minmax(96px, 0.9fr) 44px 60px;
       gap: 4px;
     }
 
@@ -407,18 +385,14 @@ export default {
       max-width: 72px;
     }
 
-    .stock-metrics {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 1px;
-
-      .stock-price { font-size: 0.82rem; }
-      .change-rate { font-size: 0.68rem; }
+    .stock-metrics .info-type-tag,
+    .event-metrics .impact-tag {
+      font-size: 0.66rem;
+      padding: 1px 5px;
     }
 
-    .change-info .change-tag {
+    .change-info .trend-summary {
       font-size: 0.68rem;
-      padding: 1px 5px;
     }
 
     .time-cell { font-size: 0.68rem; }

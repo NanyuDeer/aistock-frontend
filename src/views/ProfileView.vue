@@ -36,18 +36,9 @@
             </div>
             <div class="push-tags-container">
               <div class="setting-caption">
-                <strong>异动推送偏好</strong>
-                <span>只接收符合偏好的自选股异动提醒</span>
+                <strong>趋势风口推送</strong>
+                <span>外部爬虫返回的公告和新闻研判，会按自选股推送开关发送</span>
               </div>
-              <el-checkbox-group
-                v-model="selectedPushTags"
-                :disabled="settingsLoading"
-                @change="updatePushTagSettings"
-              >
-                <el-checkbox label="short_term">短线异动</el-checkbox>
-                <el-checkbox label="mid_term">中线异动</el-checkbox>
-                <el-checkbox label="long_term">长线异动</el-checkbox>
-              </el-checkbox-group>
             </div>
           </div>
 
@@ -89,12 +80,8 @@ export default {
     const settingsLoading = ref(false)
     const pushSettings = ref({
       stock_push: false,
-      morning_report: false,
-      push_tag_short_term: true,
-      push_tag_mid_term: true,
-      push_tag_long_term: true
+      morning_report: false
     })
-    const selectedPushTags = ref(['short_term', 'mid_term', 'long_term'])
 
     const fetchUserData = async () => {
       try {
@@ -121,22 +108,10 @@ export default {
         if (response && response.settings) {
           pushSettings.value.stock_push = response.settings.stock_push || false;
           pushSettings.value.morning_report = response.settings.morning_report || false;
-          pushSettings.value.push_tag_short_term = response.settings.push_tag_short_term !== false;
-          pushSettings.value.push_tag_mid_term = response.settings.push_tag_mid_term !== false;
-          pushSettings.value.push_tag_long_term = response.settings.push_tag_long_term !== false;
-          selectedPushTags.value = [
-            pushSettings.value.push_tag_short_term ? 'short_term' : null,
-            pushSettings.value.push_tag_mid_term ? 'mid_term' : null,
-            pushSettings.value.push_tag_long_term ? 'long_term' : null
-          ].filter(Boolean);
         } else {
           // 如果没有设置，使用默认值
           pushSettings.value.stock_push = false;
           pushSettings.value.morning_report = false;
-          pushSettings.value.push_tag_short_term = true;
-          pushSettings.value.push_tag_mid_term = true;
-          pushSettings.value.push_tag_long_term = true;
-          selectedPushTags.value = ['short_term', 'mid_term', 'long_term'];
         }
       } catch (error) {
         console.error('获取推送设置失败:', error);
@@ -144,10 +119,6 @@ export default {
         // 出错时也使用默认值
         pushSettings.value.stock_push = false;
         pushSettings.value.morning_report = false;
-        pushSettings.value.push_tag_short_term = true;
-        pushSettings.value.push_tag_mid_term = true;
-        pushSettings.value.push_tag_long_term = true;
-        selectedPushTags.value = ['short_term', 'mid_term', 'long_term'];
       } finally {
         settingsLoading.value = false;
       }
@@ -180,41 +151,6 @@ export default {
       }
     };
 
-    const updatePushTagSettings = async () => {
-      if (!user?.id) return;
-
-      const selected = new Set(selectedPushTags.value);
-      const nextSettings = {
-        push_tag_short_term: selected.has('short_term'),
-        push_tag_mid_term: selected.has('mid_term'),
-        push_tag_long_term: selected.has('long_term')
-      };
-
-      settingsLoading.value = true;
-      try {
-        const results = await Promise.all(Object.entries(nextSettings).map(([type, enabled]) =>
-          store.dispatch('updatePushSettings', { type, enabled })
-        ));
-
-        if (results.every(Boolean)) {
-          pushSettings.value = {
-            ...pushSettings.value,
-            ...nextSettings
-          };
-          ElMessage.success('异动推送偏好已更新');
-        } else {
-          ElMessage.error('更新异动推送偏好失败');
-          await fetchPushSettings();
-        }
-      } catch (error) {
-        console.error('更新异动推送偏好失败:', error);
-        ElMessage.error('更新异动推送偏好失败');
-        await fetchPushSettings();
-      } finally {
-        settingsLoading.value = false;
-      }
-    };
-
     const getMarketCode = (code) => {
       // 简单的市场代码判断逻辑，可以根据需要扩展
       if (!code) return '';
@@ -236,10 +172,8 @@ export default {
       favoriteStocks,
       defaultAvatar,
       pushSettings,
-      selectedPushTags,
       settingsLoading,
       updatePushSettings,
-      updatePushTagSettings,
       getMarketCode
     }
   }

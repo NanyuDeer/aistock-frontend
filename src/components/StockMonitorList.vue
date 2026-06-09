@@ -12,7 +12,7 @@
       </button>
     </div>
 
-    <!-- 异动列表 -->
+    <!-- 趋势风口列表 -->
     <div class="monitor-events">
       <div
         v-for="event in filteredEvents"
@@ -28,36 +28,32 @@
           <div class="event-tags">
             <span
               class="change-tag"
-              :style="{ backgroundColor: getChangeTypeColor(event.change_type) + '18', color: getChangeTypeColor(event.change_type), borderColor: getChangeTypeColor(event.change_type) + '40' }"
+              :style="{ backgroundColor: getInfoTypeColor(event.change_type) + '18', color: getInfoTypeColor(event.change_type), borderColor: getInfoTypeColor(event.change_type) + '40' }"
             >
-              {{ event.change_type_name }}
+              {{ getInfoTypeLabel(event.change_type) }}
             </span>
-            <span class="level-tag" :style="{ color: getLevelColor(event.level) }">
+            <span class="level-tag" :style="{ color: getImpactColor(event.level) }">
               {{ event.level }}
             </span>
           </div>
           <div class="event-price-info">
-            <span class="price" :class="event.change_pct >= 0 ? 'up' : 'down'">
-              {{ event.price != null ? Number(event.price).toFixed(2) : '--' }}
-            </span>
-            <span class="change" :class="event.change_pct >= 0 ? 'up' : 'down'">
-              {{ event.change_pct != null ? (event.change_pct >= 0 ? '+' : '') + Number(event.change_pct).toFixed(2) + '%' : '--' }}
-            </span>
+            <span class="price">{{ event.ai_horizon || '--' }}</span>
+            <span class="change">{{ event.source || '--' }}</span>
           </div>
         </div>
         <div class="event-meta">
-          <span v-if="event.volume_ratio" class="meta-item">
-            量比 <strong>{{ event.volume_ratio }}</strong>
+          <span v-if="event.title" class="meta-item trend-title">
+            {{ event.title }}
           </span>
-          <span v-if="event.turnover_rate" class="meta-item">
-            换手 <strong>{{ event.turnover_rate }}%</strong>
+          <span v-if="event.summary" class="meta-item trend-summary">
+            {{ event.summary }}
           </span>
           <span class="meta-time">{{ event.event_time_display }}</span>
         </div>
       </div>
 
       <div v-if="filteredEvents.length === 0" class="empty-state">
-        <p>暂无异动数据</p>
+        <p>暂无趋势风口数据</p>
       </div>
     </div>
   </div>
@@ -68,10 +64,11 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   CYCLE_OPTIONS,
-  getChangeTypeColor,
-  getLevelColor,
-  filterEventsByCycle
-} from '@/mock/monitorEvents'
+  filterEventsByCycle,
+  getImpactColor,
+  getInfoTypeColor,
+  getInfoTypeLabel
+} from '@/utils/trendHotspotConstants'
 
 export default {
   name: 'StockMonitorList',
@@ -105,8 +102,9 @@ export default {
       activeCycle,
       filteredEvents,
       CYCLE_OPTIONS,
-      getChangeTypeColor,
-      getLevelColor,
+      getImpactColor,
+      getInfoTypeColor,
+      getInfoTypeLabel,
       goToStock
     }
   }
@@ -225,8 +223,7 @@ export default {
           font-weight: 500;
         }
 
-        .up { color: var(--danger-color); }
-        .down { color: var(--success-color); }
+        color: #475569;
       }
     }
 
@@ -241,11 +238,28 @@ export default {
       .meta-item {
         font-size: 0.78rem;
         color: var(--text-tertiary);
+        min-width: 0;
 
         strong {
           color: var(--text-secondary);
           font-weight: 500;
         }
+      }
+
+      .trend-title,
+      .trend-summary {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .trend-title {
+        max-width: 34%;
+        color: var(--text-secondary);
+      }
+
+      .trend-summary {
+        flex: 1;
       }
 
       .meta-time {

@@ -122,7 +122,7 @@
             </el-dialog>
           </div>
           
-          <!-- 个股异动 -->
+          <!-- 趋势风口 -->
           <div class="stock-monitor-section">
             <StockMonitorCard :events="monitorEvents" />
           </div>
@@ -311,7 +311,7 @@ import NewsSlider from '@/components/NewsSlider.vue';
 import StockCardList from '@/components/StockCardList.vue';
 import StockMonitorCard from '@/components/StockMonitorCard.vue';
 import HotSectorPanel from '@/components/HotSectorPanel.vue';
-import { monitorApi, hotSectorApi } from '@/services/api';
+import { trendHotspotApi, hotSectorApi } from '@/services/api';
 import { trendLeaderStocks as trendLeaderStockSeeds, tenbaggerStocks } from '@/mock/curatedStocks';
 import 'element-plus/es/components/message/style/css';
 
@@ -328,14 +328,14 @@ export default {
     const store = useStore();
     const router = useRouter();
 
-    // 个股异动数据
+    // 趋势风口数据
     const monitorEvents = ref([]);
     const loadingMonitor = ref(false);
 
     const fetchMonitorEvents = async () => {
       loadingMonitor.value = true;
       try {
-        const res = await monitorApi.getEvents({ cycle: 'all', limit: 8 });
+        const res = await trendHotspotApi.getEvents({ cycle: 'all', limit: 8 });
         const events = res?.data?.events || [];
         monitorEvents.value = events.map(e => ({
           ...e,
@@ -348,7 +348,7 @@ export default {
           event_time_display: e.event_time_display || formatEventTime(e.event_time),
         }));
       } catch (err) {
-        console.warn('[HomeView] 获取异动数据失败，使用空列表:', err);
+        console.warn('[HomeView] 获取趋势风口数据失败，使用空列表:', err);
         monitorEvents.value = [];
       } finally {
         loadingMonitor.value = false;
@@ -1283,7 +1283,7 @@ export default {
     });
 
     return {
-      // 个股异动
+      // 趋势风口
       monitorEvents,
 
       // 风口爆发股

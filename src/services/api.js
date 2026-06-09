@@ -762,48 +762,24 @@ export const stockApi = {
   },
 };
 
-async function fetchMonitorData(startTime, endTime) {
-  try {
-    // 构建查询参数
-    const params = {}
-    if (startTime) params.start_time = startTime
-    if (endTime) params.end_time = endTime
-    
-    // 调用我们自己的后端API，而不是直接调用1Panel API
-    const response = await api.get('/api/monitor/server-status', { params })
-    // 检查API响应
-    if (response.code === 200 && response.data) {
-      return response.data;
-    } else {
-      console.error('监控API返回错误:', response);
-      return null;
-    }
-  } catch (err) {
-    console.error('获取监控数据失败:', err);
-    return null;
-  }
-}
-
-export { fetchMonitorData };
-
-// 个股异动监测 API
-export const monitorApi = {
-  /** 查询异动事件列表 */
+// 趋势风口 API
+export const trendHotspotApi = {
+  /** 查询公告/新闻研判事件列表 */
   getEvents: ({ cycle = 'all', change_type, stock_code, limit = 20, offset = 0 } = {}) => {
     const params = new URLSearchParams({ cycle, limit: String(limit), offset: String(offset) });
     if (change_type) params.append('change_type', change_type);
     if (stock_code) params.append('stock_code', stock_code);
-    return api.get(`/api/cn/monitor/events?${params.toString()}`, { timeout: 8000 });
+    return api.get(`/api/cn/trend-hotspots/events?${params.toString()}`, { timeout: 8000 });
   },
 
-  /** 查询指定股票的异动事件 */
+  /** 查询指定股票的趋势风口事件 */
   getEventsByStock: (stockCode, { cycle = 'all', limit = 20 } = {}) => {
-    return api.get(`/api/cn/monitor/events/${encodeURIComponent(stockCode)}?cycle=${cycle}&limit=${limit}`, { timeout: 8000 });
+    return api.get(`/api/cn/trend-hotspots/events/${encodeURIComponent(stockCode)}?cycle=${cycle}&limit=${limit}`, { timeout: 8000 });
   },
 
-  /** 获取异动统计概览 */
+  /** 获取趋势风口统计概览 */
   getStats: () => {
-    return api.get('/api/cn/monitor/stats', { timeout: 8000 });
+    return api.get('/api/cn/trend-hotspots/stats', { timeout: 8000 });
   },
 };
 

@@ -83,10 +83,14 @@ const routes = [
   },
   {
     path: '/monitor',
+    redirect: '/trend-hotspots'
+  },
+  {
+    path: '/trend-hotspots',
     name: 'monitor',
     component: MonitorView,
     meta: {
-      title: '股票资讯AI智能分析 - 个股异动监测'
+      title: '股票资讯AI智能分析 - 趋势风口'
     }
   },
   {
