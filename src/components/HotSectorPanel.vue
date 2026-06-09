@@ -211,159 +211,99 @@ import * as d3 from 'd3';
 
 // 模拟数据：来自近期风口板块及龙头个股（后端不可用时的fallback）
 const MOCK_STOCKS = [
-  {
-    code: '300308', name: '中际旭创', track: 'CPO',
-    latestPrice: '184.62', changeRate: 3.18,
+  { code: '300308', name: '中际旭创', track: 'CPO',
     trendScore: '92', capitalSignal: '机构抱团', midSignal: '慢牛主升', expectedMultiple: '3倍',
     mainLogic: '全球800G/1.6T光模块龙头，CPO共封装方案核心供应商，AI算力扩张带来订单能见度。',
-    leaderBasis: '全球800G/1.6T光模块绝对龙头，市占率超30%；CPO共封装方案核心供应商，技术领先同业1-2年。'
-  },
-  {
-    code: '002281', name: '光迅科技', track: 'CPO',
-    latestPrice: '68.35', changeRate: 2.56,
+    leaderBasis: '全球800G/1.6T光模块绝对龙头，市占率超30%；CPO共封装方案核心供应商，技术领先同业1-2年。' },
+  { code: '002281', name: '光迅科技', track: 'CPO',
     trendScore: '78', capitalSignal: '机构关注', midSignal: '趋势强化', expectedMultiple: '2倍',
     mainLogic: '国内光通信器件龙头，800G光模块量产交付，硅光技术突破。',
-    leaderBasis: '国内光通信器件龙头，800G光模块量产交付，硅光技术突破。'
-  },
-  {
-    code: '300476', name: '胜宏科技', track: 'PCB',
-    latestPrice: '168.50', changeRate: 3.56,
+    leaderBasis: '国内光通信器件龙头，800G光模块量产交付，硅光技术突破。' },
+  { code: '300476', name: '胜宏科技', track: 'PCB',
     trendScore: '88', capitalSignal: '机构抱团', midSignal: '放量上行', expectedMultiple: '2倍',
     mainLogic: '全球AI算力PCB龙头，英伟达核心供应商，高端产能释放量价齐升。',
-    leaderBasis: '全球AI算力PCB市场份额第一，英伟达GB200/GB300主力供应商；全球首批6阶24层HDI量产企业。'
-  },
-  {
-    code: '002384', name: '东山精密', track: 'PCB',
-    latestPrice: '35.80', changeRate: 2.85,
+    leaderBasis: '全球AI算力PCB市场份额第一，英伟达GB200/GB300主力供应商；全球首批6阶24层HDI量产企业。' },
+  { code: '002384', name: '东山精密', track: 'PCB',
     trendScore: '80', capitalSignal: '机构关注', midSignal: '趋势强化', expectedMultiple: '2倍',
     mainLogic: 'PCB+FPC双龙头，AI服务器高阶HDI产能扩张，深度绑定海外大客户。',
-    leaderBasis: 'PCB+FPC双龙头，AI服务器高阶HDI产能扩张，深度绑定海外大客户。'
-  },
-  {
-    code: '603773', name: '沃格光电', track: '玻璃基板',
-    latestPrice: '106.80', changeRate: 8.45,
+    leaderBasis: 'PCB+FPC双龙头，AI服务器高阶HDI产能扩张，深度绑定海外大客户。' },
+  { code: '603773', name: '沃格光电', track: '玻璃基板',
     trendScore: '90', capitalSignal: '主题资金流入', midSignal: '趋势强化', expectedMultiple: '5倍',
     mainLogic: '国内TGV玻璃基板全制程绝对龙头，先进封装核心受益标的。',
-    leaderBasis: '国内TGV玻璃通孔全制程绝对龙头，唯一实现半导体玻璃基板小批量供货；1.6T光模块玻璃载板通过中际旭创、华为验证。'
-  },
-  {
-    code: '600707', name: '彩虹股份', track: '玻璃基板',
-    latestPrice: '12.85', changeRate: 5.62,
+    leaderBasis: '国内TGV玻璃通孔全制程绝对龙头，唯一实现半导体玻璃基板小批量供货；1.6T光模块玻璃载板通过中际旭创、华为验证。' },
+  { code: '600707', name: '彩虹股份', track: '玻璃基板',
     trendScore: '72', capitalSignal: '主题资金流入', midSignal: '强势突破', expectedMultiple: '3倍',
     mainLogic: '国内液晶玻璃基板龙头，高世代线产能国内第一。',
-    leaderBasis: '国内液晶玻璃基板龙头，高世代线产能国内第一，玻璃基板技术积累深厚。'
-  },
-  {
-    code: '600172', name: '黄河旋风', track: '培育钻石',
-    latestPrice: '13.30', changeRate: 5.62,
+    leaderBasis: '国内液晶玻璃基板龙头，高世代线产能国内第一，玻璃基板技术积累深厚。' },
+  { code: '600172', name: '黄河旋风', track: '培育钻石',
     trendScore: '82', capitalSignal: '主题资金流入', midSignal: '强势突破', expectedMultiple: '5倍',
     mainLogic: '国内唯一HPHT+CVD双工艺金刚石企业，CVD散热片量产卡位AI芯片散热刚需。',
-    leaderBasis: '国内唯一HPHT+CVD双工艺金刚石企业；国内首条8英寸CVD金刚石热沉片2026年量产，热导率2000W+/m·K。'
-  },
-  {
-    code: '301071', name: '力量钻石', track: '培育钻石',
-    latestPrice: '42.50', changeRate: 4.18,
+    leaderBasis: '国内唯一HPHT+CVD双工艺金刚石企业；国内首条8英寸CVD金刚石热沉片2026年量产，热导率2000W+/m·K。' },
+  { code: '301071', name: '力量钻石', track: '培育钻石',
     trendScore: '75', capitalSignal: '主题资金流入', midSignal: '趋势强化', expectedMultiple: '3倍',
     mainLogic: 'CVD培育钻石龙头，大尺寸金刚石技术突破，散热用金刚石片量产在即。',
-    leaderBasis: 'CVD培育钻石龙头，大尺寸金刚石技术突破，散热用金刚石片量产在即。'
-  },
-  {
-    code: '603986', name: '兆易创新', track: '存储芯片',
-    latestPrice: '428.50', changeRate: 6.38,
+    leaderBasis: 'CVD培育钻石龙头，大尺寸金刚石技术突破，散热用金刚石片量产在即。' },
+  { code: '603986', name: '兆易创新', track: '存储芯片',
     trendScore: '88', capitalSignal: '机构重仓', midSignal: '趋势强化', expectedMultiple: '2倍',
     mainLogic: 'A股存储+MCU双龙头，存储涨价周期+AI端侧+车规三重红利共振。',
-    leaderBasis: 'A股唯一全品类存储设计龙头，NOR Flash全球第二、国内第一；利基DRAM深度绑定长鑫存储。'
-  },
-  {
-    code: '002156', name: '通富微电', track: '存储芯片',
-    latestPrice: '44.56', changeRate: 4.85,
+    leaderBasis: 'A股唯一全品类存储设计龙头，NOR Flash全球第二、国内第一；利基DRAM深度绑定长鑫存储。' },
+  { code: '002156', name: '通富微电', track: '存储芯片',
     trendScore: '80', capitalSignal: '放量抢筹', midSignal: '强势突破', expectedMultiple: '3倍',
     mainLogic: '国内封测前三，HBM封装国内唯一量产，先进封装核心标的。',
-    leaderBasis: '国内封测前三，HBM封装国内唯一量产；深度绑定AMD+华为海思，先进封装核心标的。'
-  },
-  {
-    code: '601869', name: '长飞光纤', track: '光纤',
-    latestPrice: '275.80', changeRate: 5.62,
+    leaderBasis: '国内封测前三，HBM封装国内唯一量产；深度绑定AMD+华为海思，先进封装核心标的。' },
+  { code: '601869', name: '长飞光纤', track: '光纤',
     trendScore: '90', capitalSignal: '放量抢筹', midSignal: '强势突破', expectedMultiple: '3倍',
     mainLogic: '全球光纤龙头，光纤涨价周期弹性行业第一，空芯光纤卡位下一代标准。',
-    leaderBasis: '全球光纤预制棒、光纤、光缆销量连续10年第一；空芯光纤衰减0.04dB/km创世界纪录。'
-  },
-  {
-    code: '600487', name: '亨通光电', track: '光纤',
-    latestPrice: '22.50', changeRate: 3.85,
+    leaderBasis: '全球光纤预制棒、光纤、光缆销量连续10年第一；空芯光纤衰减0.04dB/km创世界纪录。' },
+  { code: '600487', name: '亨通光电', track: '光纤',
     trendScore: '78', capitalSignal: '机构关注', midSignal: '趋势强化', expectedMultiple: '2倍',
     mainLogic: '光纤光缆+海洋通信双龙头，400G/800G光模块量产，海外布局领先。',
-    leaderBasis: '光纤光缆+海洋通信双龙头，400G/800G光模块量产，海外布局领先。'
-  },
-  {
-    code: '000636', name: '风华高科', track: 'MLCC',
-    latestPrice: '21.25', changeRate: 4.86,
+    leaderBasis: '光纤光缆+海洋通信双龙头，400G/800G光模块量产，海外布局领先。' },
+  { code: '000636', name: '风华高科', track: 'MLCC',
     trendScore: '85', capitalSignal: '高换手承接', midSignal: '趋势强化', expectedMultiple: '3倍',
     mainLogic: '国内MLCC龙头，AI服务器+车规+存储三景气共振，涨价周期量价齐升。',
-    leaderBasis: '国内MLCC产能与市占率双第一，月产能超500亿只；唯一实现阻容感全品类自主布局。'
-  },
-  {
-    code: '300285', name: '国瓷材料', track: 'MLCC',
-    latestPrice: '18.65', changeRate: 3.52,
+    leaderBasis: '国内MLCC产能与市占率双第一，月产能超500亿只；唯一实现阻容感全品类自主布局。' },
+  { code: '300285', name: '国瓷材料', track: 'MLCC',
     trendScore: '75', capitalSignal: '机构关注', midSignal: '趋势强化', expectedMultiple: '2倍',
     mainLogic: 'MLCC陶瓷材料龙头，钛酸钡粉体国内市占率第一，MLCC上游核心材料国产替代。',
-    leaderBasis: 'MLCC陶瓷材料龙头，钛酸钡粉体国内市占率第一，MLCC上游核心材料国产替代。'
-  },
-  {
-    code: '300666', name: '江丰电子', track: '半导体材料',
-    latestPrice: '85.60', changeRate: 4.25,
+    leaderBasis: 'MLCC陶瓷材料龙头，钛酸钡粉体国内市占率第一，MLCC上游核心材料国产替代。' },
+  { code: '300666', name: '江丰电子', track: '半导体材料',
     trendScore: '82', capitalSignal: '机构重仓', midSignal: '趋势强化', expectedMultiple: '3倍',
     mainLogic: '国内高纯溅射靶材龙头，7nm+制程靶材量产，半导体材料国产替代核心标的。',
-    leaderBasis: '国内高纯溅射靶材龙头，7nm+制程靶材量产；全球前五大靶材制造商，台积电/中芯国际核心供应商。'
-  },
-  {
-    code: '603078', name: '江化微', track: '半导体材料',
-    latestPrice: '41.56', changeRate: 3.85,
+    leaderBasis: '国内高纯溅射靶材龙头，7nm+制程靶材量产；全球前五大靶材制造商，台积电/中芯国际核心供应商。' },
+  { code: '603078', name: '江化微', track: '半导体材料',
     trendScore: '78', capitalSignal: '机构关注', midSignal: '趋势强化', expectedMultiple: '2倍',
     mainLogic: '湿电子化学品龙头，G5等级产品量产，光刻胶配套试剂国产替代先锋。',
-    leaderBasis: '湿电子化学品龙头，G5等级产品量产，光刻胶配套试剂国产替代先锋。'
-  },
-  {
-    code: '688507', name: '索辰科技', track: '物理AI',
-    latestPrice: '162.91', changeRate: 7.25,
+    leaderBasis: '湿电子化学品龙头，G5等级产品量产，光刻胶配套试剂国产替代先锋。' },
+  { code: '688507', name: '索辰科技', track: '物理AI',
     trendScore: '90', capitalSignal: '游资接力', midSignal: '强势突破', expectedMultiple: '5倍',
     mainLogic: 'A股唯一物理AI底座标的，军工CAE市占率超70%，物理AI平台订单爆发。',
-    leaderBasis: '国内唯一全学科自主CAE求解器+物理AI平台企业，军工CAE市占率超70%；自研"天工·开物"可微分物理仿真平台。'
-  },
-  {
-    code: '301316', name: '凡拓数创', track: '物理AI',
-    latestPrice: '28.50', changeRate: 5.85,
+    leaderBasis: '国内唯一全学科自主CAE求解器+物理AI平台企业，军工CAE市占率超70%；自研"天工·开物"可微分物理仿真平台。' },
+  { code: '301316', name: '凡拓数创', track: '物理AI',
     trendScore: '72', capitalSignal: '主题资金流入', midSignal: '趋势强化', expectedMultiple: '3倍',
     mainLogic: '数字孪生+3D可视化龙头，物理AI仿真可视化核心标的。',
-    leaderBasis: '数字孪生+3D可视化龙头，物理AI仿真可视化核心标的。'
-  },
-  {
-    code: '002008', name: '大族激光', track: '半导体设备',
-    latestPrice: '32.50', changeRate: 3.92,
+    leaderBasis: '数字孪生+3D可视化龙头，物理AI仿真可视化核心标的。' },
+  { code: '002008', name: '大族激光', track: '半导体设备',
     trendScore: '85', capitalSignal: '机构抱团', midSignal: '趋势强化', expectedMultiple: '2倍',
     mainLogic: '全球激光加工设备龙头，半导体激光切割/封装设备核心供应商。',
-    leaderBasis: '全球激光加工设备龙头，半导体激光切割/封装设备核心供应商；先进封装设备国产替代先锋。'
-  },
-  {
-    code: '688347', name: '华虹公司', track: '半导体设备',
-    latestPrice: '45.80', changeRate: 3.15,
+    leaderBasis: '全球激光加工设备龙头，半导体激光切割/封装设备核心供应商；先进封装设备国产替代先锋。' },
+  { code: '688347', name: '华虹公司', track: '半导体设备',
     trendScore: '78', capitalSignal: '机构关注', midSignal: '趋势强化', expectedMultiple: '2倍',
     mainLogic: '国内特色工艺晶圆代工龙头，功率器件+MCU+RF芯片代工。',
-    leaderBasis: '国内特色工艺晶圆代工龙头，功率器件+MCU+RF芯片代工，半导体设备下游核心验证平台。'
-  },
+    leaderBasis: '国内特色工艺晶圆代工龙头，功率器件+MCU+RF芯片代工，半导体设备下游核心验证平台。' },
 ];
 
 const MOCK_BUBBLES = [
-  { name: 'CPO', change: 3.18 },
-  { name: 'PCB', change: 3.56 },
-  { name: '玻璃基板', change: 8.45 },
-  { name: '培育钻石', change: 5.62 },
-  { name: '存储芯片', change: 6.38 },
-  { name: '光纤', change: 5.62 },
-  { name: 'MLCC', change: 4.86 },
-  { name: '半导体材料', change: 4.25 },
-  { name: '物理AI', change: 7.25 },
-  { name: '半导体设备', change: 3.92 },
+  { name: 'CPO', change: 0 },
+  { name: 'PCB', change: 0 },
+  { name: '玻璃基板', change: 0 },
+  { name: '培育钻石', change: 0 },
+  { name: '存储芯片', change: 0 },
+  { name: '光纤', change: 0 },
+  { name: 'MLCC', change: 0 },
+  { name: '半导体材料', change: 0 },
+  { name: '物理AI', change: 0 },
+  { name: '半导体设备', change: 0 },
 ];
 
 /**
@@ -479,8 +419,12 @@ export default {
       if (useBackendData.value) {
         stocks = flattenSectorsToStocks(props.sectors);
       } else {
-        // 模拟数据也按涨跌幅排序
-        stocks = [...MOCK_STOCKS].sort((a, b) => (b.changeRate || 0) - (a.changeRate || 0));
+        // 模拟数据：初始化行情为空，由quoteMap填充
+        stocks = [...MOCK_STOCKS].map(s => ({
+          ...s,
+          latestPrice: s.latestPrice || '--',
+          changeRate: s.changeRate ?? null,
+        }));
       }
       // 合并实时行情
       if (props.quoteMap && Object.keys(props.quoteMap).length > 0) {

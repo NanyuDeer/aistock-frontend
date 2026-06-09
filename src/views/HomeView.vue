@@ -316,6 +316,14 @@ import { trendHotspotApi, hotSectorApi } from '@/services/api';
 import { trendLeaderStocks as trendLeaderStockSeeds, tenbaggerStocks } from '@/mock/curatedStocks';
 import 'element-plus/es/components/message/style/css';
 
+// 风口板块mock股票代码（后端不可用时的fallback，需同步HotSectorPanel.vue中MOCK_STOCKS）
+const HOT_SECTOR_MOCK_CODES = [
+  '300308','002281','300476','002384','603773','600707',
+  '600172','301071','603986','002156','601869','600487',
+  '000636','300285','300666','603078','688507','301316',
+  '002008','688347',
+];
+
 export default {
   name: 'HomeView',
   components: {
@@ -495,6 +503,9 @@ export default {
         (sector.upstream_stocks || []).forEach(s => { if (s.code) codes.add(s.code); });
         (sector.downstream_stocks || []).forEach(s => { if (s.code) codes.add(s.code); });
       });
+
+      // 风口龙头股代码（当前使用mock临时数据，始终加入行情刷新）
+      HOT_SECTOR_MOCK_CODES.forEach(c => codes.add(c));
 
       if (codes.size === 0) return;
 
