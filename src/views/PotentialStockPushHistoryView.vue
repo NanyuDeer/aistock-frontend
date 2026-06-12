@@ -28,8 +28,8 @@
       </div>
       <div class="summary-card">
         <span class="summary-label">最高收益</span>
-        <strong :class="returnClass(summary.best?.return_pct)">
-          {{ summary.best ? formatPercent(summary.best.return_pct) : '--' }}
+        <strong :class="returnClass(summary.best ? displayReturn(summary.best) : null)">
+          {{ summary.best ? formatPercent(displayReturn(summary.best)) : '--' }}
         </strong>
         <small>{{ summary.best?.stock_name || '暂无数据' }}</small>
       </div>
@@ -65,7 +65,7 @@
             class="history-table"
             empty-text="暂无推送记录"
           >
-            <el-table-column prop="push_date" width="120">
+            <el-table-column prop="push_date" width="102">
               <template #header>
                 <div class="sort-header">
                   <span>推送日期</span>
@@ -77,7 +77,7 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column label="股票" min-width="170">
+            <el-table-column label="股票" width="128">
               <template #default="{ row }">
                 <div class="stock-cell">
                   <strong>{{ row.stock_name }}</strong>
@@ -85,12 +85,12 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column label="风口/题材" prop="theme" width="140">
+            <el-table-column label="风口/题材" prop="theme" width="112">
               <template #default="{ row }">
                 <el-tag type="primary">{{ row.theme }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column width="90">
+            <el-table-column width="82">
               <template #header>
                 <div class="sort-header">
                   <span>推荐分</span>
@@ -103,19 +103,19 @@
               </template>
               <template #default="{ row }">{{ formatScore(row.score) }}</template>
             </el-table-column>
-            <el-table-column label="链路" width="92">
+            <el-table-column label="链路" width="72">
               <template #default="{ row }">
                 <el-tag size="small" effect="plain">{{ chainPositionLabel(row.chain_position) }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="推荐理由" prop="reason" min-width="260" show-overflow-tooltip />
-            <el-table-column label="推送价" width="100">
+            <el-table-column label="推荐理由" prop="reason" min-width="210" show-overflow-tooltip />
+            <el-table-column label="推送价" width="84">
               <template #default="{ row }">{{ formatPrice(row.push_price) }}</template>
             </el-table-column>
-            <el-table-column label="实时价" width="100">
+            <el-table-column label="实时价" width="84">
               <template #default="{ row }">{{ formatPrice(displayPrice(row)) }}</template>
             </el-table-column>
-            <el-table-column width="120">
+            <el-table-column width="98">
               <template #header>
                 <div class="sort-header">
                   <span>收益率</span>
@@ -132,7 +132,7 @@
                 </span>
               </template>
             </el-table-column>
-            <el-table-column label="行情时间" width="150">
+            <el-table-column label="行情时间" width="132">
               <template #default="{ row }">{{ row.realtime_time || row.latest_trade_date || '--' }}</template>
             </el-table-column>
           </el-table>
@@ -205,17 +205,29 @@ export default {
     }
 
     const toFiniteNumber = (value) => {
+      if (value === null || value === undefined || value === '') return null
       const num = Number(value)
       return Number.isFinite(num) ? num : null
     }
 
+    const hasHistoricalPrice = (row) => {
+      const pushPrice = toFiniteNumber(row?.push_price)
+      const latestPrice = toFiniteNumber(row?.latest_price)
+      if (latestPrice === null) return false
+      if (row?.latest_trade_date && row?.push_date && row.latest_trade_date !== row.push_date) return true
+      return pushPrice !== null && latestPrice !== pushPrice
+    }
+
     const displayPrice = (row) => {
-      return row?.realtime_price ?? row?.latest_price
+      if (row?.realtime_price !== undefined && row?.realtime_price !== null) return row.realtime_price
+      return hasHistoricalPrice(row) ? row?.latest_price : null
     }
 
     const displayReturn = (row) => {
       const calculated = calculateReturn(row?.push_price, displayPrice(row))
-      return calculated ?? row?.realtime_return_pct ?? row?.return_pct
+      if (calculated !== null) return calculated
+      if (row?.realtime_return_pct !== undefined && row?.realtime_return_pct !== null) return row.realtime_return_pct
+      return hasHistoricalPrice(row) ? row?.return_pct : null
     }
 
     const buildSummary = (items) => {
@@ -302,18 +314,33 @@ export default {
       return groups
     }
 
+    const mergeRealtimeQuotes = (quoteMap, nowText) => {
+      records.value = records.value.map(item => {
+        const quote = quoteMap[item.stock_code]
+        if (!quote || quote.price === null) return item
+        return {
+          ...item,
+          realtime_price: quote.price,
+          realtime_change_pct: quote.change_pct,
+          realtime_time: quote.time || nowText,
+          realtime_return_pct: calculateReturn(item.push_price, quote.price)
+        }
+      })
+    }
+
     const refreshRealtimeQuotes = async () => {
       const symbols = [...new Set(records.value.map(item => item.stock_code).filter(Boolean))]
       if (!symbols.length) return
       if (realtimeLoading.value) return
 
       realtimeLoading.value = true
+      const nowText = new Date().toLocaleTimeString('zh-CN', { hour12: false })
       try {
-        const quoteMap = {}
-        const groups = chunk(symbols, 20)
+        const groups = chunk(symbols, 4)
         await Promise.allSettled(groups.map(group =>
           stockApi.getStockRealtimeQuotes(group.join(',')).then(response => {
             if (response?.code !== 200) return
+            const quoteMap = {}
             const quotes = response?.data?.行情 || []
             quotes.forEach(quote => {
               const code = quote?.股票代码
@@ -324,21 +351,10 @@ export default {
                 time: quote?.更新时间 || ''
               }
             })
+            mergeRealtimeQuotes(quoteMap, nowText)
           })
         ))
 
-        const nowText = new Date().toLocaleTimeString('zh-CN', { hour12: false })
-        records.value = records.value.map(item => {
-          const quote = quoteMap[item.stock_code]
-          if (!quote || quote.price === null) return item
-          return {
-            ...item,
-            realtime_price: quote.price,
-            realtime_change_pct: quote.change_pct,
-            realtime_time: quote.time || nowText,
-            realtime_return_pct: calculateReturn(item.push_price, quote.price)
-          }
-        })
         realtimeUpdatedAt.value = nowText
       } catch (error) {
         console.warn('[PotentialStockPushHistory] realtime quote refresh failed', error)
@@ -374,18 +390,18 @@ export default {
     }
 
     const formatPrice = (value) => {
-      const num = Number(value)
+      const num = toFiniteNumber(value)
       return Number.isFinite(num) ? num.toFixed(2) : '--'
     }
 
     const formatPercent = (value) => {
-      const num = Number(value)
+      const num = toFiniteNumber(value)
       if (!Number.isFinite(num)) return '--'
       return `${num > 0 ? '+' : ''}${num.toFixed(2)}%`
     }
 
     const formatScore = (value) => {
-      const num = Number(value)
+      const num = toFiniteNumber(value)
       return Number.isFinite(num) ? num.toFixed(1) : '--'
     }
 
@@ -507,6 +523,14 @@ export default {
   line-height: 1.2;
 }
 
+.summary-card strong.is-up {
+  color: #ef4444;
+}
+
+.summary-card strong.is-down {
+  color: #16a34a;
+}
+
 .summary-card small {
   display: block;
   margin-top: 8px;
@@ -514,7 +538,33 @@ export default {
 }
 
 .content-panel {
-  padding: 18px 20px 24px;
+  padding: 16px 18px 22px;
+}
+
+.history-table {
+  width: 100%;
+}
+
+.history-table :deep(.el-table__cell) {
+  padding: 10px 0;
+}
+
+.history-table :deep(.cell) {
+  padding: 0 8px;
+  line-height: 1.35;
+}
+
+.history-table :deep(.el-tag) {
+  max-width: 100%;
+}
+
+.history-table :deep(.el-tag__content) {
+  display: inline-block;
+  max-width: 82px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+  white-space: nowrap;
 }
 
 .panel-toolbar {
@@ -599,11 +649,15 @@ export default {
 .stock-cell {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
+  min-width: 0;
 }
 
 .stock-cell strong {
   color: #111827;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .stock-cell span {
