@@ -4,7 +4,7 @@
     <div class="page-container">
       <div class="container">
         <div class="page-header">
-          <h2 class="page-title">趋势风口</h2>
+          <h2 class="page-title">风口爆发</h2>
           <p class="page-desc">聚合外部爬虫返回的公告和新闻研判，发现个股趋势线索</p>
         </div>
 
@@ -16,7 +16,7 @@
           </div>
         </div>
 
-        <!-- 趋势风口列表 -->
+        <!-- 风口爆发列表 -->
         <div class="monitor-content">
           <StockMonitorList
             :events="allEvents"
@@ -56,7 +56,7 @@ export default {
           event_time_display: e.event_time_display || formatEventTime(e.event_time),
         }))
       } catch (err) {
-        console.warn('[MonitorView] 获取趋势风口数据失败:', err)
+        console.warn('[MonitorView] 获取风口爆发数据失败:', err)
       }
     }
 

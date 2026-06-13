@@ -769,7 +769,7 @@ export const stockApi = {
   },
 };
 
-// 趋势风口 API
+// 风口爆发 API
 export const trendHotspotApi = {
   /** 查询公告/新闻研判事件列表 */
   getEvents: ({ cycle = 'all', change_type, stock_code, limit = 20, offset = 0 } = {}) => {
@@ -779,14 +779,21 @@ export const trendHotspotApi = {
     return api.get(`/api/cn/trend-hotspots/events?${params.toString()}`, { timeout: 8000 });
   },
 
-  /** 查询指定股票的趋势风口事件 */
+  /** 查询指定股票的风口爆发事件 */
   getEventsByStock: (stockCode, { cycle = 'all', limit = 20 } = {}) => {
     return api.get(`/api/cn/trend-hotspots/events/${encodeURIComponent(stockCode)}?cycle=${cycle}&limit=${limit}`, { timeout: 8000 });
   },
 
-  /** 获取趋势风口统计概览 */
+  /** 获取风口爆发统计概览 */
   getStats: () => {
     return api.get('/api/cn/trend-hotspots/stats', { timeout: 8000 });
+  },
+
+  /** 查询用户自选股资讯（需登录） */
+  getFavoritesNews: ({ cycle = 'all', change_type, limit = 20, offset = 0 } = {}) => {
+    const params = new URLSearchParams({ cycle, limit: String(limit), offset: String(offset) });
+    if (change_type) params.append('change_type', change_type);
+    return api.get(`/api/cn/favorites/news?${params.toString()}`, { timeout: 8000 });
   },
 };
 
@@ -844,6 +851,24 @@ export const hotSectorApi = {
   /** 手动触发风口爆发股分析刷新 */
   refreshAnalysis: () => api.post('/api/cn/hot-sectors/refresh', {}, {
     timeout: 120000,
+  }),
+  /** 执行三步风口爆发检测 */
+  detectOutbreak: () => api.post('/api/cn/hotspot-outbreak/detect', {}, {
+    timeout: 60000,
+  }),
+  /** 获取风口爆发检测结果 */
+  getOutbreak: (hours = 6) => api.get('/api/cn/hotspot-outbreak', {
+    params: { hours },
+    timeout: 10000,
+  }),
+  /** 获取爆发关键词 */
+  getHotKeywords: (hours = 6, limit = 20) => api.get('/api/cn/hot-keywords', {
+    params: { hours, limit },
+    timeout: 10000,
+  }),
+  /** 手动触发关键词爆发检测 */
+  detectHotKeywords: () => api.post('/api/cn/hot-keywords/detect', {}, {
+    timeout: 30000,
   }),
 };
 

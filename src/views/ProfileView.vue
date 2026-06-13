@@ -36,7 +36,7 @@
             </div>
             <div class="push-tags-container">
               <div class="setting-caption">
-                <strong>趋势风口推送</strong>
+                <strong>风口爆发推送</strong>
                 <span>外部爬虫返回的公告和新闻研判，会按自选股推送开关发送</span>
               </div>
             </div>

@@ -83,14 +83,14 @@ const routes = [
   },
   {
     path: '/monitor',
-    redirect: '/trend-hotspots'
+    redirect: '/hotspot-outbreak'
   },
   {
-    path: '/trend-hotspots',
+    path: '/hotspot-outbreak',
     name: 'monitor',
     component: MonitorView,
     meta: {
-      title: '股票资讯AI智能分析 - 趋势风口'
+      title: '股票资讯AI智能分析 - 风口爆发'
     }
   },
   {

@@ -1,7 +1,7 @@
 <template>
   <div class="stock-monitor-card">
     <div class="monitor-header">
-      <h3 class="section-title">趋势风口</h3>
+      <h3 class="section-title">风口爆发</h3>
       <div class="header-right">
         <div class="cycle-filter">
           <button
@@ -24,7 +24,7 @@
         <span>股票</span>
         <span>来源</span>
         <span>影响</span>
-        <span>研判摘要</span>
+        <span>关键词</span>
         <span>周期</span>
         <span>时间</span>
       </div>
@@ -52,7 +52,15 @@
           </span>
         </div>
         <div class="change-info">
-          <p class="trend-summary">{{ event.summary || event.title || event.change_type_name }}</p>
+          <div v-if="event.ai_keywords && event.ai_keywords.length > 0" class="keyword-tags">
+            <span
+              v-for="kw in filterDecisiveKeywords(event.ai_keywords)"
+              :key="kw"
+              class="keyword-tag"
+              :style="{ backgroundColor: getKeywordColor(kw) + '15', color: getKeywordColor(kw), borderColor: getKeywordColor(kw) + '40' }"
+            >{{ kw }}</span>
+          </div>
+          <p v-else class="trend-summary">{{ event.summary || event.title || event.change_type_name }}</p>
         </div>
         <div class="level-cell">
           <span class="level-badge">{{ event.ai_horizon || event.cycle }}</span>
@@ -60,7 +68,7 @@
         <div class="time-cell">{{ event.event_time_display }}</div>
       </div>
       <div v-if="filteredEvents.length === 0" class="empty-row">
-        暂无趋势风口数据
+        暂无风口爆发数据
       </div>
     </div>
   </div>
@@ -74,7 +82,9 @@ import {
   filterEventsByCycle,
   getImpactColor,
   getInfoTypeColor,
-  getInfoTypeLabel
+  getInfoTypeLabel,
+  getKeywordColor,
+  filterDecisiveKeywords,
 } from '@/utils/trendHotspotConstants'
 
 export default {
@@ -108,6 +118,7 @@ export default {
       getImpactColor,
       getInfoTypeColor,
       getInfoTypeLabel,
+      getKeywordColor,
       onCycleChange,
       goToStock
     }
@@ -307,6 +318,22 @@ export default {
 
   .change-info {
     min-width: 0;
+
+    .keyword-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+
+      .keyword-tag {
+        display: inline-block;
+        padding: 1px 8px;
+        border-radius: 10px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        border: 1px solid;
+        white-space: nowrap;
+      }
+    }
 
     .trend-summary {
       margin: 0;

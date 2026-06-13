@@ -6,7 +6,7 @@
         <div class="favorites-actions">
           <el-button 
             type="primary" 
-            @click="refreshStockData" 
+            @click="refreshCurrentTab" 
             :loading="refreshing"
             class="refresh-button">
             <img v-if="!refreshing" src="@/assets/refresh.svg" alt="刷新" class="button-icon" />
@@ -21,8 +21,21 @@
           </el-button>
         </div>
       </div>
+
+      <!-- Tab 切换：行情 / 资讯 -->
+      <div class="favorites-tabs">
+        <button
+          :class="['tab-btn', { 'is-active': activeTab === 'quotes' }]"
+          @click="activeTab = 'quotes'"
+        >行情</button>
+        <button
+          :class="['tab-btn', { 'is-active': activeTab === 'news' }]"
+          @click="activeTab = 'news'"
+        >资讯</button>
+      </div>
       
-      <div v-loading="loading" class="favorites-content">
+      <!-- 行情 Tab -->
+      <div v-show="activeTab === 'quotes'" v-loading="loading" class="favorites-content">
         <!-- 表格显示模式 -->
         <el-table 
           v-if="favoriteStocks.length > 0" 
@@ -144,18 +157,87 @@
           <el-button type="primary" @click="goToSearch">去添加</el-button>
         </el-empty>
       </div>
+
+      <!-- 资讯 Tab -->
+      <div v-show="activeTab === 'news'" v-loading="newsLoading" class="favorites-content">
+        <!-- 周期筛选 -->
+        <div class="news-filter">
+          <button
+            v-for="opt in CYCLE_OPTIONS"
+            :key="opt.key"
+            :class="['cycle-btn', { 'is-active': newsCycle === opt.key }]"
+            @click="newsCycle = opt.key"
+          >{{ opt.label }}</button>
+        </div>
+
+        <!-- 资讯列表 -->
+        <div v-if="filteredNewsEvents.length > 0" class="news-list">
+          <div
+            v-for="event in filteredNewsEvents"
+            :key="event.event_id"
+            class="news-item"
+            @click="viewStockDetail({ code: event.stock_code })"
+          >
+            <div class="news-item-header">
+              <div class="news-stock-info">
+                <span class="news-stock-name">{{ event.stock_name }}</span>
+                <span class="news-stock-code">{{ event.stock_code }}</span>
+              </div>
+              <div class="news-item-tags">
+                <span class="news-info-type" :style="{ color: getInfoTypeColor(event.change_type), borderColor: getInfoTypeColor(event.change_type) + '60' }">
+                  {{ getInfoTypeLabel(event.change_type) }}
+                </span>
+                <span class="news-impact-tag" :style="{ color: getImpactColor(event.level) }">
+                  {{ event.level }}
+                </span>
+                <span class="news-horizon-tag">{{ event.ai_horizon }}</span>
+              </div>
+            </div>
+            <div class="news-item-title">{{ event.title }}</div>
+            <!-- 关键词标签 -->
+            <div v-if="event.ai_keywords && event.ai_keywords.length > 0" class="news-keywords">
+              <span
+                v-for="kw in filterDecisiveKeywords(event.ai_keywords)"
+                :key="kw"
+                class="keyword-tag"
+                :style="{ backgroundColor: getKeywordColor(kw) + '15', color: getKeywordColor(kw), borderColor: getKeywordColor(kw) + '40' }"
+              >{{ kw }}</span>
+            </div>
+            <div class="news-item-footer">
+              <span class="news-source">{{ event.source }}</span>
+              <span class="news-time">{{ formatEventTime(event.event_time) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <el-empty
+          v-if="filteredNewsEvents.length === 0 && !newsLoading"
+          description="暂无自选股资讯"
+          class="empty-state"
+        />
+      </div>
     </div>
   </div>
 </template>
 
 <script>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { ElMessage } from 'element-plus';
 import CycleSelect from '@/components/CycleSelect.vue';
 import { useStockCycle } from '@/utils/stockCycle';
 import { useScrollReset } from '@/utils/scrollUtils';
+import { trendHotspotApi } from '@/services/api';
+import {
+  CYCLE_OPTIONS,
+  filterEventsByCycle,
+  getInfoTypeColor,
+  getInfoTypeLabel,
+  getImpactColor,
+  getKeywordColor,
+  filterDecisiveKeywords,
+} from '@/utils/trendHotspotConstants';
 
 export default {
   name: 'FavoritesView',
@@ -169,6 +251,58 @@ export default {
     const refreshing = ref(false);
     const favoriteStocks = ref([]);
     const refreshTimer = ref(null);
+
+    // Tab 切换
+    const activeTab = ref('quotes');
+
+    // 资讯相关
+    const newsLoading = ref(false);
+    const newsEvents = ref([]);
+    const newsCycle = ref('all');
+
+    const filteredNewsEvents = computed(() => {
+      return filterEventsByCycle(newsEvents.value, newsCycle.value);
+    });
+
+    // 获取自选股资讯
+    const fetchFavoritesNews = async () => {
+      try {
+        newsLoading.value = true;
+        const res = await trendHotspotApi.getFavoritesNews({ cycle: 'all', limit: 50 });
+        if (res?.code === 200 && res?.data) {
+          newsEvents.value = (res.data.events || []).map(e => ({
+            ...e,
+            event_time_display: formatEventTime(e.event_time),
+          }));
+        }
+      } catch (error) {
+        console.error('获取自选股资讯失败:', error);
+      } finally {
+        newsLoading.value = false;
+      }
+    };
+
+    // 格式化事件时间
+    const formatEventTime = (time) => {
+      if (!time) return '--';
+      const d = new Date(time);
+      if (isNaN(d.getTime())) return '--';
+      const now = new Date();
+      const isToday = d.toDateString() === now.toDateString();
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      if (isToday) return `${hh}:${mm}`;
+      const MM = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${MM}-${dd} ${hh}:${mm}`;
+    };
+
+    // 切换到资讯tab时自动加载
+    watch(activeTab, (val) => {
+      if (val === 'news' && newsEvents.value.length === 0) {
+        fetchFavoritesNews();
+      }
+    });
 
     // 获取自选股数据。默认复用短时缓存，手动/定时刷新时强制拉取最新价格。
     const fetchFavoriteStocks = async ({ forceRefresh = false } = {}) => {
@@ -193,7 +327,7 @@ export default {
           ...stock,
           price: stock.latest_price || stock.price || 0,
           change: stock.change_percent || stock.change || 0,
-          marketCap: 0, // 市值信息暂时不可用，可以后续扩展
+          marketCap: 0,
           industry: stock.industry || '未知行业'
         }));
       } catch (error) {
@@ -204,13 +338,16 @@ export default {
       }
     };
     
-    // 手动刷新股票数据
-    const refreshStockData = async () => {
+    // 手动刷新当前tab
+    const refreshCurrentTab = async () => {
       if (refreshing.value) return;
-      
       try {
         refreshing.value = true;
-        await fetchFavoriteStocks({ forceRefresh: true });
+        if (activeTab.value === 'quotes') {
+          await fetchFavoriteStocks({ forceRefresh: true });
+        } else {
+          await fetchFavoritesNews();
+        }
         ElMessage.success('数据刷新成功');
       } catch (error) {
         console.error('刷新数据失败:', error);
@@ -261,19 +398,6 @@ export default {
       return Number(percent).toFixed(2);
     };
     
-    // 格式化市值
-    const formatMarketCap = (marketCap) => {
-      if (!marketCap) return '--';
-      if (marketCap >= 100000000000) {
-        return (marketCap / 100000000000).toFixed(2) + '千亿';
-      } else if (marketCap >= 100000000) {
-        return (marketCap / 100000000).toFixed(2) + '亿';
-      } else if (marketCap >= 10000) {
-        return (marketCap / 10000).toFixed(2) + '万';
-      }
-      return marketCap.toLocaleString();
-    };
-    
     onMounted(async () => {
       // 重置滚动位置到顶部
       useScrollReset();
@@ -301,18 +425,30 @@ export default {
     });
     
     return {
+      activeTab,
       loading,
       refreshing,
       favoriteStocks,
-      refreshStockData,
+      refreshCurrentTab,
       removeFromFavorite,
       viewStockDetail,
       goToSearch,
       formatPrice,
       formatPercent,
-      formatMarketCap,
       getCycle,
-      setCycle
+      setCycle,
+      // 资讯相关
+      newsLoading,
+      newsEvents,
+      newsCycle,
+      filteredNewsEvents,
+      formatEventTime,
+      // 常量和方法
+      CYCLE_OPTIONS,
+      getInfoTypeColor,
+      getInfoTypeLabel,
+      getImpactColor,
+      getKeywordColor,
     };
   }
 };
@@ -320,13 +456,13 @@ export default {
 
 <style lang="scss" scoped>
 .favorites-page {
-  padding-top: 80px; /* 为顶部导航条预留空间 */
+  padding-top: 80px;
   
   .favorites-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
     
     h1 {
       font-size: 1.75rem;
@@ -345,13 +481,43 @@ export default {
       }
     }
   }
+
+  // Tab 切换
+  .favorites-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #e5e7eb;
+
+    .tab-btn {
+      padding: 10px 28px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover {
+        color: var(--primary-color);
+      }
+
+      &.is-active {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+      }
+    }
+  }
   
   .favorites-content {
     margin-bottom: 20px;
     min-height: 200px;
     
     .stock-table {
-      table-layout: auto; /* 恢复表格自适应宽度 */
+      table-layout: auto;
       width: 100%;
       margin-bottom: 20px;
       display: block;
@@ -441,10 +607,159 @@ export default {
       padding: 40px 0;
     }
   }
+
+  // 资讯筛选
+  .news-filter {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+
+    .cycle-btn {
+      padding: 6px 16px;
+      border-radius: 20px;
+      border: 1px solid var(--border-color);
+      background: #fff;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+      }
+
+      &.is-active {
+        background: var(--primary-color);
+        border-color: var(--primary-color);
+        color: #fff;
+      }
+    }
+  }
+
+  // 资讯列表
+  .news-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .news-item {
+    padding: 14px 16px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    cursor: pointer;
+    transition: box-shadow 0.2s, transform 0.15s;
+
+    &:hover {
+      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
+      transform: translateY(-1px);
+    }
+
+    .news-item-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+
+      .news-stock-info {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+
+        .news-stock-name {
+          font-size: 0.95rem;
+          font-weight: 600;
+          color: var(--text-primary);
+        }
+
+        .news-stock-code {
+          font-size: 0.75rem;
+          color: var(--text-tertiary);
+        }
+      }
+
+      .news-item-tags {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+
+        .news-info-type {
+          display: inline-block;
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-size: 0.78rem;
+          font-weight: 500;
+          border: 1px solid;
+          white-space: nowrap;
+        }
+
+        .news-impact-tag {
+          font-size: 0.72rem;
+          font-weight: 600;
+        }
+
+        .news-horizon-tag {
+          font-size: 0.72rem;
+          color: var(--text-tertiary);
+          padding: 1px 6px;
+          border: 1px solid #cbd5e1;
+          border-radius: 3px;
+        }
+      }
+    }
+
+    .news-item-title {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.4;
+      margin-bottom: 8px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    // 关键词标签
+    .news-keywords {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 8px;
+
+      .keyword-tag {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 12px;
+        font-size: 0.76rem;
+        font-weight: 600;
+        border: 1px solid;
+        white-space: nowrap;
+      }
+    }
+
+    .news-item-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      .news-source {
+        font-size: 0.75rem;
+        color: var(--text-tertiary);
+      }
+
+      .news-time {
+        font-size: 0.75rem;
+        color: var(--text-tertiary);
+      }
+    }
+  }
 }
 
 .el-table {
-  width: 100%; /* 确保表格占满全部宽度 */
+  width: 100%;
 }
 
 .stock-up {
@@ -465,15 +780,15 @@ export default {
 .action-buttons {
   display: flex;
   justify-content: space-between;
-  gap: 10px; /* 增加按钮间距 */
-  position: relative; /* 确保 z-index 生效 */
-  z-index: 1; /* 提升按钮的层级，避免被遮挡 */
-  overflow: visible; /* 防止按钮被遮挡 */
-  padding: 8px; /* 增加按钮与边框的间距 */
+  gap: 10px;
+  position: relative;
+  z-index: 1;
+  overflow: visible;
+  padding: 8px;
 }
 
 .action-buttons .el-button:last-child {
-  margin-left: auto; /* 使取消关注按钮靠右对齐 */
+  margin-left: auto;
 }
 
 .market-code {

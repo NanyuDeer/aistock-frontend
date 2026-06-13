@@ -1,4 +1,4 @@
-﻿﻿<template>
+<template>
   <div class="stock-detail-page">
     <div class="page-container">
       <div class="stock-header">
@@ -115,11 +115,11 @@
         </button>
       </div>
 
-      <!-- 趋势风口 -->
+      <!-- 风口爆发 -->
       <div class="stock-monitor-section">
         <div class="card">
           <div class="card-header">
-            <h3>趋势风口</h3>
+            <h3>风口爆发</h3>
           </div>
           <div class="card-body">
             <StockMonitorList
@@ -346,12 +346,14 @@
                 <div class="metric-line">
                   <span class="metric-label">成交额：</span>
                   <span class="metric-value">{{ stockInfo.turnover }}</span>
+                  <span v-if="turnoverLevel" class="metric-hint" :class="turnoverLevel.class">{{ turnoverLevel.text }}</span>
                 </div>
               </div>
               <div class="data-item">
                 <div class="metric-line">
                   <span class="metric-label">换手率：</span>
                   <span class="metric-value">{{ stockInfo.turnoverRate }}</span>
+                  <span v-if="turnoverRateLevel" class="metric-hint" :class="turnoverRateLevel.class">{{ turnoverRateLevel.text }}</span>
                 </div>
               </div>
               <div class="data-item">
@@ -817,7 +819,7 @@ export default {
       { key: 'long', label: '长线', desc: '季/年' }
     ];
 
-    // 趋势风口数据
+    // 风口爆发数据
     const stockMonitorEvents = ref([]);
 
     const fetchMonitorEvents = async () => {
@@ -837,7 +839,7 @@ export default {
           event_time_display: e.event_time_display || formatEventTime(e.event_time),
         }));
       } catch (err) {
-        console.warn('[StockDetail] 获取趋势风口数据失败:', err);
+        console.warn('[StockDetail] 获取风口爆发数据失败:', err);
       }
     };
 
@@ -859,8 +861,8 @@ export default {
       industry: '--', industryTagId: '', listingDate: '--',
       totalShares: '--', floatShares: '--', totalSharesValue: null, floatSharesValue: null,
       open: '--', prevClose: '--', high: '--', low: '--',
-      limitUp: '--', limitDown: '--', volume: '--', turnover: '--',
-      turnoverRate: '--', volumeRatio: '--', outerVolume: '--', innerVolume: '--',
+      limitUp: '--', limitDown: '--', volume: '--', turnover: '--', turnoverRaw: null,
+      turnoverRate: '--', turnoverRateRaw: null, volumeRatio: '--', outerVolume: '--', innerVolume: '--',
       marketCap: '--', floatMarketCap: '--', marketCapValue: null, floatMarketCapValue: null,
       infoUpdatedAt: '--', lastUpdated: '--'
     });
@@ -1935,7 +1937,7 @@ export default {
           const cpn = toNumber(quote.涨跌幅 ?? quote.change_percent);
           const can = toNumber(quote.涨跌额 ?? quote.change_amount);
           const cn = can !== null ? can : (lpn !== null && cpn !== null ? lpn * cpn / 100 : 0);
-          stockInfo.value = { ...stockInfo.value, name: info.股票简称 || quote.股票简称 || stockInfo.value.name || '未知', code: info.股票代码 || quote.股票代码 || stockInfo.value.code, market: info.市场代码 || quote.市场代码 || stockInfo.value.market || '', regionBoard: info.地域板块 || '--', regionBoardTagId: normalizeTagCode(info.地域板块ID), price: formatPrice(lpn), avgPrice: formatPrice(apn), change: cn, changeAmount: formatPrice(can), changePercent: formatPercentValue(cpn), industry: info.所属行业 || '未知行业', industryTagId: normalizeTagCode(info.行业板块ID), listingDate: formatListingDate(info.上市时间), totalShares: formatScaledValue(info.总股本, '股'), floatShares: formatScaledValue(info.流通股, '股'), totalSharesValue: toNumber(info.总股本), floatSharesValue: toNumber(info.流通股), open: formatPrice(quote.今开价 ?? quote.今开 ?? quote.开盘价 ?? quote.open), prevClose: formatPrice(quote.昨收价 ?? quote.昨收 ?? quote.prev_close), high: formatPrice(quote.最高价 ?? quote.最高 ?? quote.high), low: formatPrice(quote.最低价 ?? quote.最低 ?? quote.low), limitUp: formatPrice(quote.涨停价 ?? quote.limit_up), limitDown: formatPrice(quote.跌停价 ?? quote.limit_down), volume: formatScaledValue(quote.成交量 ?? quote.volume), turnover: formatScaledValue(quote.成交额 ?? quote.turnover, '元'), turnoverRate: formatPercentText(quote.换手率 ?? quote.turnover_rate), volumeRatio: formatPrice(quote.量比 ?? quote.volume_ratio), outerVolume: formatScaledValue(quote.外盘 ?? quote.outer_volume), innerVolume: formatScaledValue(quote.内盘 ?? quote.inner_volume), marketCap: formatScaledValue(info.总市值, '元'), floatMarketCap: formatScaledValue(info.流通市值, '元'), marketCapValue: toNumber(info.总市值), floatMarketCapValue: toNumber(info.流通市值), infoUpdatedAt: snapshot.infoUpdatedAt || '--', lastUpdated: quote.更新时间 || quote.时间 || quote.update_time || snapshot.quoteUpdatedAt || '--' };
+          stockInfo.value = { ...stockInfo.value, name: info.股票简称 || quote.股票简称 || stockInfo.value.name || '未知', code: info.股票代码 || quote.股票代码 || stockInfo.value.code, market: info.市场代码 || quote.市场代码 || stockInfo.value.market || '', regionBoard: info.地域板块 || '--', regionBoardTagId: normalizeTagCode(info.地域板块ID), price: formatPrice(lpn), avgPrice: formatPrice(apn), change: cn, changeAmount: formatPrice(can), changePercent: formatPercentValue(cpn), industry: info.所属行业 || '未知行业', industryTagId: normalizeTagCode(info.行业板块ID), listingDate: formatListingDate(info.上市时间), totalShares: formatScaledValue(info.总股本, '股'), floatShares: formatScaledValue(info.流通股, '股'), totalSharesValue: toNumber(info.总股本), floatSharesValue: toNumber(info.流通股), open: formatPrice(quote.今开价 ?? quote.今开 ?? quote.开盘价 ?? quote.open), prevClose: formatPrice(quote.昨收价 ?? quote.昨收 ?? quote.prev_close), high: formatPrice(quote.最高价 ?? quote.最高 ?? quote.high), low: formatPrice(quote.最低价 ?? quote.最低 ?? quote.low), limitUp: formatPrice(quote.涨停价 ?? quote.limit_up), limitDown: formatPrice(quote.跌停价 ?? quote.limit_down), volume: formatScaledValue(quote.成交量 ?? quote.volume), turnover: formatScaledValue(quote.成交额 ?? quote.turnover, '元'), turnoverRaw: toNumber(quote.成交额 ?? quote.turnover), turnoverRate: formatPercentText(quote.换手率 ?? quote.turnover_rate), turnoverRateRaw: toNumber(quote.换手率 ?? quote.turnover_rate), volumeRatio: formatPrice(quote.量比 ?? quote.volume_ratio), outerVolume: formatScaledValue(quote.外盘 ?? quote.outer_volume), innerVolume: formatScaledValue(quote.内盘 ?? quote.inner_volume), marketCap: formatScaledValue(info.总市值, '元'), floatMarketCap: formatScaledValue(info.流通市值, '元'), marketCapValue: toNumber(info.总市值), floatMarketCapValue: toNumber(info.流通市值), infoUpdatedAt: snapshot.infoUpdatedAt || '--', lastUpdated: quote.更新时间 || quote.时间 || quote.update_time || snapshot.quoteUpdatedAt || '--' };
           document.title = `${stockInfo.value.name}(${stockInfo.value.market || '未知'}${stockInfo.value.code}) - AI StockLink`;
           markCacheFresh('stockData', stockInfo.value.code);
         } else { ElMessage.error('获取股票数据失败'); }
@@ -2146,6 +2148,32 @@ export default {
       return 'trend-flat';
     });
 
+    // 成交额级别判断
+    const turnoverLevel = computed(() => {
+      const raw = stockInfo.value.turnoverRaw || stockInfo.value.turnover
+      const val = toNumber(raw)
+      if (val === null) return null
+      // 成交额单位：元
+      if (val >= 50e8) return { text: '超大', class: 'hint-bullish' }
+      if (val >= 20e8) return { text: '大', class: 'hint-bullish' }
+      if (val >= 5e8) return { text: '中', class: 'hint-neutral' }
+      if (val >= 1e8) return { text: '小', class: 'hint-bearish' }
+      return { text: '极小', class: 'hint-bearish' }
+    })
+
+    // 换手率级别判断
+    const turnoverRateLevel = computed(() => {
+      const raw = stockInfo.value.turnoverRateRaw || stockInfo.value.turnoverRate
+      const val = toNumber(raw)
+      if (val === null) return null
+      // 换手率单位：%
+      if (val >= 15) return { text: '极高', class: 'hint-bullish' }
+      if (val >= 7) return { text: '高', class: 'hint-bullish' }
+      if (val >= 3) return { text: '中', class: 'hint-neutral' }
+      if (val >= 1) return { text: '低', class: 'hint-bearish' }
+      return { text: '极低', class: 'hint-bearish' }
+    })
+
     const formatSignedPercent = (value) => {
       const num = toNumber(value);
       if (num === null) return '--';
@@ -2209,6 +2237,7 @@ export default {
       TENX_DIMS, tenxSColor, tenxSGrad, tenxExpandedDims, tenxAllOpen, tenxRadarCanvas, tenxToggleDim, tenxToggleAll,
       toggleFavorite, getEvaluationClass, goToTagBoard, formatRatioText,
       mergedStructureChart, priceTrendClass,
+      turnoverLevel, turnoverRateLevel,
       formatSignedPercent, formatSignedPrice, formatFlowValue,
       getScoreClass, getScoreLabel, getScoreDescription, getScoreRingStyle
     };
@@ -3113,6 +3142,32 @@ export default {
           &.trend-flat {
             color: #4b5563;
             font-weight: 700;
+          }
+        }
+
+        .metric-hint {
+          display: inline-block;
+          font-size: 0.72rem;
+          font-weight: 700;
+          padding: 1px 6px;
+          border-radius: 3px;
+          margin-left: 4px;
+          vertical-align: middle;
+
+          &.hint-bullish {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+          }
+          &.hint-neutral {
+            background: #f8fafc;
+            color: #64748b;
+            border: 1px solid #e2e8f0;
+          }
+          &.hint-bearish {
+            background: #f0fdf4;
+            color: #16a34a;
+            border: 1px solid #bbf7d0;
           }
         }
       }

@@ -122,7 +122,7 @@
             </el-dialog>
           </div>
           
-          <!-- 趋势风口 -->
+          <!-- 风口爆发 -->
           <div class="stock-monitor-section">
             <StockMonitorCard :events="monitorEvents" />
           </div>
@@ -337,7 +337,7 @@ export default {
     const store = useStore();
     const router = useRouter();
 
-    // 趋势风口数据
+    // 风口爆发数据
     const monitorEvents = ref([]);
     const loadingMonitor = ref(false);
 
@@ -357,7 +357,7 @@ export default {
           event_time_display: e.event_time_display || formatEventTime(e.event_time),
         }));
       } catch (err) {
-        console.warn('[HomeView] 获取趋势风口数据失败，使用空列表:', err);
+        console.warn('[HomeView] 获取风口爆发数据失败，使用空列表:', err);
         monitorEvents.value = [];
       } finally {
         loadingMonitor.value = false;
@@ -1406,7 +1406,7 @@ export default {
     });
 
     return {
-      // 趋势风口
+      // 风口爆发
       monitorEvents,
 
       // 风口爆发股
