@@ -12,7 +12,7 @@
       </button>
     </div>
 
-    <!-- 趋势风口列表 -->
+    <!-- 风口爆发列表 -->
     <div class="monitor-events">
       <div
         v-for="event in filteredEvents"
@@ -45,7 +45,15 @@
           <span v-if="event.title" class="meta-item trend-title">
             {{ event.title }}
           </span>
-          <span v-if="event.summary" class="meta-item trend-summary">
+          <div v-if="event.ai_keywords && event.ai_keywords.length > 0" class="event-keywords">
+            <span
+              v-for="kw in filterDecisiveKeywords(event.ai_keywords)"
+              :key="kw"
+              class="keyword-tag"
+              :style="{ backgroundColor: getKeywordColor(kw) + '15', color: getKeywordColor(kw), borderColor: getKeywordColor(kw) + '40' }"
+            >{{ kw }}</span>
+          </div>
+          <span v-else-if="event.summary" class="meta-item trend-summary">
             {{ event.summary }}
           </span>
           <span class="meta-time">{{ event.event_time_display }}</span>
@@ -53,7 +61,7 @@
       </div>
 
       <div v-if="filteredEvents.length === 0" class="empty-state">
-        <p>暂无趋势风口数据</p>
+        <p>暂无风口爆发数据</p>
       </div>
     </div>
   </div>
@@ -67,7 +75,9 @@ import {
   filterEventsByCycle,
   getImpactColor,
   getInfoTypeColor,
-  getInfoTypeLabel
+  getInfoTypeLabel,
+  getKeywordColor,
+  filterDecisiveKeywords,
 } from '@/utils/trendHotspotConstants'
 
 export default {
@@ -105,6 +115,7 @@ export default {
       getImpactColor,
       getInfoTypeColor,
       getInfoTypeLabel,
+      getKeywordColor,
       goToStock
     }
   }
@@ -260,6 +271,23 @@ export default {
 
       .trend-summary {
         flex: 1;
+      }
+
+      .event-keywords {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        flex: 1;
+
+        .keyword-tag {
+          display: inline-block;
+          padding: 1px 8px;
+          border-radius: 10px;
+          font-size: 0.72rem;
+          font-weight: 600;
+          border: 1px solid;
+          white-space: nowrap;
+        }
       }
 
       .meta-time {
