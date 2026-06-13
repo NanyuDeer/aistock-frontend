@@ -17,9 +17,10 @@
         <router-link to="/search" class="menu-item" @click="closeMobileMenu">搜索股票</router-link>
         <router-link to="/forecast" class="menu-item" @click="closeMobileMenu">业绩预测</router-link>
         <router-link to="/tenx" class="menu-item" @click="closeMobileMenu">十倍股评分</router-link>
-        <router-link to="/potential-push-history" class="menu-item" @click="closeMobileMenu">风口追踪</router-link>
+        <router-link to="/hotspot-outbreak" class="menu-item" @click="closeMobileMenu">风口爆发</router-link>
         <router-link v-if="isLoggedIn" to="/favorites" class="menu-item" @click="closeMobileMenu">我的自选股</router-link>
         <template v-if="isLoggedIn">
+          <div class="menu-item" @click="openSubscribeDialog">消息订阅</div>
           <router-link to="/profile" class="menu-item" @click="closeMobileMenu">个人信息</router-link>
           <div class="menu-item" @click="handleLogout">退出登录</div>
         </template>
@@ -32,11 +33,16 @@
         <router-link to="/search" class="nav-item" @click="closeMobileMenu">搜索股票</router-link>
         <router-link to="/forecast" class="nav-item" @click="closeMobileMenu">业绩预测</router-link>
         <router-link to="/tenx" class="nav-item" @click="closeMobileMenu">十倍股评分</router-link>
-        <router-link to="/potential-push-history" class="nav-item" @click="closeMobileMenu">风口追踪</router-link>
+        <router-link to="/hotspot-outbreak" class="nav-item" @click="closeMobileMenu">风口爆发</router-link>
         <router-link v-if="isLoggedIn" to="/favorites" class="nav-item" @click="closeMobileMenu">我的自选股</router-link>
       </div>
       <div class="user-area">
         <template v-if="isLoggedIn">
+          <!-- 消息订阅按钮 -->
+          <div class="subscribe-btn" @click="openSubscribeDialog" title="消息订阅">
+            <i class="el-icon-bell"></i>
+            <span v-if="subscribeStatus === 'subscribed'" class="subscribe-dot"></span>
+          </div>
           <el-dropdown trigger="click">
             <div class="user-avatar">
               <img :src="currentUser?.avatar || defaultAvatar" alt="头像" />
@@ -60,14 +66,67 @@
         </template>
       </div>
     </div>
+
+    <!-- 消息订阅弹窗 -->
+    <el-dialog
+      v-model="subscribeDialogVisible"
+      title="消息订阅"
+      width="420px"
+      :close-on-click-modal="true"
+      class="subscribe-dialog"
+    >
+      <div class="subscribe-content">
+        <div class="subscribe-desc">
+          订阅后，飞书机器人将每日推送3次资讯到您的飞书账号：
+        </div>
+        <div class="subscribe-features">
+          <div class="feature-item">
+            <i class="el-icon-document"></i>
+            <span>自选股资讯推送（个股公告/新闻研判）</span>
+          </div>
+          <div class="feature-item">
+            <i class="el-icon-trophy"></i>
+            <span>风口爆发股推送（每日3支风口股票）</span>
+          </div>
+          <div class="feature-item">
+            <i class="el-icon-time"></i>
+            <span>推送时间：9:00 / 13:00 / 19:00</span>
+          </div>
+        </div>
+
+        <div v-if="subscribeStatus === 'unauthorized'" class="subscribe-oauth">
+          <p class="oauth-tip">需要授权飞书账号以接收推送消息</p>
+          <el-button type="primary" @click="handleFeishuAuth" :loading="oauthLoading">
+            授权飞书账号
+          </el-button>
+        </div>
+
+        <div v-else-if="subscribeStatus === 'subscribed'" class="subscribe-active">
+          <div class="active-status">
+            <i class="el-icon-success"></i>
+            <span>已订阅，飞书推送已开启</span>
+          </div>
+          <el-button type="danger" plain size="small" @click="handleUnsubscribe">
+            取消订阅
+          </el-button>
+        </div>
+
+        <div v-else class="subscribe-idle">
+          <el-button type="primary" @click="handleSubscribe" :loading="subscribeLoading">
+            开启订阅
+          </el-button>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
 import CacheManager from '../utils/cacheManager'
+import api from '../services/api'
 
 export default {
   name: 'TheNavbar',
@@ -80,11 +139,8 @@ export default {
     const currentUser = computed(() => store.getters.currentUser)
     
     const handleLogout = async () => {
-      // 清理所有缓存
       await CacheManager.clearAllCache()
-      // 调用后端清除 Cookie 并清理本地状态
       await store.dispatch('logout')
-      // 跳转到首页
       router.push('/')
     }
 
@@ -97,6 +153,70 @@ export default {
     const closeMobileMenu = () => {
       mobileMenuOpen.value = false
     }
+
+    // 消息订阅相关
+    const subscribeDialogVisible = ref(false)
+    const subscribeStatus = ref('idle') // idle | unauthorized | subscribed
+    const subscribeLoading = ref(false)
+    const oauthLoading = ref(false)
+
+    const openSubscribeDialog = () => {
+      closeMobileMenu()
+      subscribeDialogVisible.value = true
+      checkSubscribeStatus()
+    }
+
+    const checkSubscribeStatus = async () => {
+      try {
+        const res = await api.get('/api/users/me/subscription')
+        if (res?.data?.status === 'subscribed') {
+          subscribeStatus.value = 'subscribed'
+        } else if (res?.data?.status === 'unauthorized') {
+          subscribeStatus.value = 'unauthorized'
+        } else {
+          subscribeStatus.value = 'idle'
+        }
+      } catch {
+        subscribeStatus.value = 'idle'
+      }
+    }
+
+    const handleSubscribe = async () => {
+      subscribeLoading.value = true
+      try {
+        await api.post('/api/users/me/subscription', { action: 'subscribe' })
+        subscribeStatus.value = 'subscribed'
+      } catch (err) {
+        console.warn('[Navbar] 订阅失败:', err)
+      } finally {
+        subscribeLoading.value = false
+      }
+    }
+
+    const handleUnsubscribe = async () => {
+      try {
+        await api.post('/api/users/me/subscription', { action: 'unsubscribe' })
+        subscribeStatus.value = 'idle'
+      } catch (err) {
+        console.warn('[Navbar] 取消订阅失败:', err)
+      }
+    }
+
+    const handleFeishuAuth = () => {
+      oauthLoading.value = true
+      // 跳转到飞书OAuth授权页面
+      const feishuAppId = process.env.VUE_APP_FEISHU_APP_ID || ''
+      const redirectUri = encodeURIComponent(`${window.location.origin}/api/auth/feishu/callback`)
+      const state = encodeURIComponent(window.location.pathname)
+      const authUrl = `https://open.feishu.cn/open-apis/authen/v1/authorize?app_id=${feishuAppId}&redirect_uri=${redirectUri}&state=${state}`
+      window.location.href = authUrl
+    }
+
+    onMounted(() => {
+      if (isLoggedIn.value) {
+        checkSubscribeStatus()
+      }
+    })
     
     return {
       isLoggedIn,
@@ -105,7 +225,15 @@ export default {
       handleLogout,
       mobileMenuOpen,
       toggleMobileMenu,
-      closeMobileMenu
+      closeMobileMenu,
+      subscribeDialogVisible,
+      subscribeStatus,
+      subscribeLoading,
+      oauthLoading,
+      openSubscribeDialog,
+      handleSubscribe,
+      handleUnsubscribe,
+      handleFeishuAuth,
     }
   }
 }
@@ -148,7 +276,6 @@ export default {
       
       img {
         height: 36px;
-        // margin-right: 10px;
       }
       
       .logo-divider {
@@ -166,7 +293,7 @@ export default {
   }
 
   .menu-toggle {
-    display: none; // 默认隐藏菜单按钮
+    display: none;
     font-size: 1.5rem;
     cursor: pointer;
     width: 32px; 
@@ -175,35 +302,35 @@ export default {
     justify-content: center; 
 
     @media (max-width: 768px) {
-      display: flex; // 小屏幕时才显示菜单按钮
+      display: flex;
       z-index: 1010;
     }
 
     img {
-      width: 24px; // 确保图标有合适的大小
+      width: 24px;
       height: 24px;
     }
 
     i {
-      font-size: 24px; // 确保图标有合适的大小
+      font-size: 24px;
     }
   }
 
   .mobile-menu {
     display: none;
     flex-direction: column;
-    position: fixed; // 改为固定定位
+    position: fixed;
     top: 60px;
     left: 0;
     right: 0;
-    bottom: 0; // 添加底部边界，让菜单占据整个屏幕高度
+    bottom: 0;
     background-color: #fff;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     padding: 10px 0;
     z-index: 1000;
-    overflow-y: auto; // 允许滚动
+    overflow-y: auto;
 
-    @media (max-width: 768px) { // 只针对小屏幕应用
+    @media (max-width: 768px) {
       &.open {
         display: flex !important;
       }
@@ -278,6 +405,39 @@ export default {
   .user-area {
     display: flex;
     align-items: center;
+    gap: 12px;
+    
+    .subscribe-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: background 0.2s;
+      position: relative;
+
+      &:hover {
+        background: #f5f5f5;
+      }
+
+      i {
+        font-size: 20px;
+        color: #666;
+      }
+
+      .subscribe-dot {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #67c23a;
+        border: 2px solid #fff;
+      }
+    }
     
     .user-avatar {
       display: flex;
@@ -366,7 +526,77 @@ export default {
   }
 }
 
-// 移除下拉菜单中 router-link 的默认样式（下划线、颜色等）
+// 消息订阅弹窗样式
+.subscribe-content {
+  .subscribe-desc {
+    font-size: 0.95rem;
+    color: #606266;
+    margin-bottom: 16px;
+  }
+
+  .subscribe-features {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+
+    .feature-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      font-size: 0.9rem;
+      color: #303133;
+
+      i {
+        font-size: 18px;
+        color: var(--primary-color);
+      }
+
+      &:not(:last-child) {
+        border-bottom: 1px solid #ebeef5;
+      }
+    }
+  }
+
+  .subscribe-oauth {
+    text-align: center;
+
+    .oauth-tip {
+      font-size: 0.9rem;
+      color: #909399;
+      margin-bottom: 12px;
+    }
+  }
+
+  .subscribe-active {
+    text-align: center;
+
+    .active-status {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 12px;
+
+      i {
+        font-size: 20px;
+        color: #67c23a;
+      }
+
+      span {
+        font-size: 0.95rem;
+        color: #67c23a;
+        font-weight: 500;
+      }
+    }
+  }
+
+  .subscribe-idle {
+    text-align: center;
+  }
+}
+
 :deep(.el-dropdown-menu__item) {
   a {
     text-decoration: none;
