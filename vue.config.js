@@ -97,6 +97,7 @@ module.exports = {
     // 关闭热重载和实时刷新
     hot: false,
     liveReload: false,
+    historyApiFallback: true,
     // 正确配置client选项
     client: {
       // 使用有效的WebSocketURL配置

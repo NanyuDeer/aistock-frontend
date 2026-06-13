@@ -448,7 +448,7 @@ export default {
           allStocks.value = res.data.map(s => ({
             code: s.symbol,
             name: s.name || s.symbol,
-            sector: s.label || '',
+            sector: s.industry || s.label || '',
             score: s.score,
             label: s.label,
             latestPrice: '--',
@@ -495,7 +495,7 @@ export default {
             searchResults.value = res.data.股票列表.map(item => ({
               code: item.股票代码,
               name: item.股票简称,
-              sector: item.市场代码 || '',
+              sector: item.所属行业 || item.市场代码 || '',
               latestPrice: (Math.random() * 200 + 20).toFixed(2),
               changeRate: (Math.random() * 10 - 5).toFixed(2)
             }))

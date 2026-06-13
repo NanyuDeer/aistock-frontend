@@ -139,6 +139,7 @@
             :loading="loadingHotSectors"
             :error="hotSectorError"
             :update-time="hotSectorUpdateTime"
+            :quote-map="hotSectorQuoteMap"
             @retry="fetchHotSectors(true)"
           />
 
@@ -315,6 +316,14 @@ import { trendHotspotApi, hotSectorApi } from '@/services/api';
 import { trendLeaderStocks as trendLeaderStockSeeds, tenbaggerStocks } from '@/mock/curatedStocks';
 import 'element-plus/es/components/message/style/css';
 
+// 风口板块mock股票代码（后端不可用时的fallback，需同步HotSectorPanel.vue中MOCK_STOCKS）
+const HOT_SECTOR_MOCK_CODES = [
+  '300308','002281','300476','002384','603773','600707',
+  '600172','301071','603986','002156','601869','600487',
+  '000636','300285','300666','603078','688507','301316',
+  '002008','688347',
+];
+
 export default {
   name: 'HomeView',
   components: {
@@ -372,6 +381,7 @@ export default {
     const loadingHotSectors = ref(false);
     const hotSectorUpdateTime = ref('');
     const hotSectorError = ref('');
+    const hotSectorQuoteMap = ref({}); // 风口股票实时行情
 
     const fetchHotSectors = async (forceRefresh = false) => {
       loadingHotSectors.value = true;
@@ -458,9 +468,118 @@ export default {
     let hotStocksRefreshInterval = null; // 热门股票刷新定时器
     let trendLeaderQuotesRefreshInterval = null; // 趋势龙头股行情刷新定时器
     let favoriteStocksPriceRefreshInterval = null; // 自选股价格刷新定时器
+    let realtimeQuoteInterval = null; // 盘中行情3秒实时刷新
     let rankingLayoutObserver = null;
 
     const FORECAST_RANKING_FETCH_LIMIT = 30;
+
+    // 判断当前是否为A股盘中时间（工作日 9:30-11:30, 13:00-15:00）
+    const isTradingHours = () => {
+      const now = new Date();
+      const day = now.getDay();
+      if (day === 0 || day === 6) return false;
+      const h = now.getHours();
+      const m = now.getMinutes();
+      const t = h * 60 + m;
+      return (t >= 570 && t <= 690) || (t >= 780 && t <= 900); // 9:30-11:30, 13:00-15:00
+    };
+
+    // 盘中实时行情刷新：只刷新首页可见股票的价格
+    const refreshRealtimeQuotes = async () => {
+      if (!isTradingHours()) return;
+
+      // 收集所有需要刷新行情的股票代码
+      const codes = new Set();
+
+      // 热门股票
+      hotStocks.value.forEach(s => { if (s.code) codes.add(s.code); });
+
+      // 自选股
+      myFavoriteStocks.value.forEach(s => { if (s.code) codes.add(s.code); });
+
+      // 风口爆发股龙头
+      hotSectors.value.forEach(sector => {
+        (sector.main_stocks || []).forEach(s => { if (s.code) codes.add(s.code); });
+        (sector.upstream_stocks || []).forEach(s => { if (s.code) codes.add(s.code); });
+        (sector.downstream_stocks || []).forEach(s => { if (s.code) codes.add(s.code); });
+      });
+
+      // 风口龙头股代码（当前使用mock临时数据，始终加入行情刷新）
+      HOT_SECTOR_MOCK_CODES.forEach(c => codes.add(c));
+
+      if (codes.size === 0) return;
+
+      const codeArr = [...codes];
+      // 每批最多20个（后端限制）
+      const groups = [];
+      for (let i = 0; i < codeArr.length; i += 20) {
+        groups.push(codeArr.slice(i, i + 20).join(','));
+      }
+
+      const quoteMap = {};
+      await Promise.allSettled(groups.map(group =>
+        stockApi.getStockCoreQuotes(group)
+          .then(res => {
+            if (res?.code !== 200) return;
+            (res?.data?.行情 || []).forEach(q => {
+              const code = q?.股票代码;
+              if (!code) return;
+              quoteMap[code] = {
+                latest_price: toFiniteNumber(q?.最新价),
+                change_percent: toFiniteNumber(q?.涨跌幅),
+              };
+            });
+          })
+          .catch(() => {})
+      ));
+
+      if (Object.keys(quoteMap).length === 0) return;
+
+      // 更新热门股票价格
+      if (hotStocks.value.length > 0) {
+        hotStocks.value = hotStocks.value.map(s => {
+          const q = quoteMap[s.code];
+          if (!q) return s;
+          return {
+            ...s,
+            latest_price: q.latest_price ?? s.latest_price,
+            change_percent: q.change_percent ?? s.change_percent,
+          };
+        });
+      }
+
+      // 更新自选股价格
+      if (myFavoriteStocks.value.length > 0) {
+        myFavoriteStocks.value = myFavoriteStocks.value.map(s => {
+          const q = quoteMap[s.code];
+          if (!q) return s;
+          return {
+            ...s,
+            latest_price: q.latest_price ?? s.latest_price,
+            change_percent: q.change_percent ?? s.change_percent,
+          };
+        });
+      }
+
+      // 更新风口爆发股行情
+      hotSectorQuoteMap.value = { ...hotSectorQuoteMap.value, ...quoteMap };
+    };
+
+    const startRealtimeQuoteRefresh = () => {
+      stopRealtimeQuoteRefresh();
+      if (!isTradingHours()) return;
+      console.log('[HomeView] 盘中行情1分钟实时刷新已启动');
+      // 立即刷新一次
+      refreshRealtimeQuotes();
+      realtimeQuoteInterval = setInterval(refreshRealtimeQuotes, 60 * 1000);
+    };
+
+    const stopRealtimeQuoteRefresh = () => {
+      if (realtimeQuoteInterval) {
+        clearInterval(realtimeQuoteInterval);
+        realtimeQuoteInterval = null;
+      }
+    };
 
     const normalizeTagCode = (value) => {
       const text = String(value || '').trim().toUpperCase();
@@ -1264,6 +1383,9 @@ export default {
       if (isLoggedIn.value) {
         startFavoriteAutoRefresh({ showLoading: true });
       }
+
+      // 盘中行情3秒实时刷新
+      startRealtimeQuoteRefresh();
     });
 
     onUnmounted(() => {
@@ -1274,6 +1396,7 @@ export default {
       clearInterval(hotStocksRefreshInterval); // 清除热门股票刷新定时器
       clearInterval(trendLeaderQuotesRefreshInterval); // 清除趋势龙头股行情刷新定时器
       stopFavoriteAutoRefresh();
+      stopRealtimeQuoteRefresh();
 
       window.removeEventListener('resize', updateForecastLayout);
       if (rankingLayoutObserver) {
@@ -1291,6 +1414,7 @@ export default {
       loadingHotSectors,
       hotSectorUpdateTime,
       hotSectorError,
+      hotSectorQuoteMap,
 
       // 市场资讯相关
       domesticNews,

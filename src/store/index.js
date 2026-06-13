@@ -377,7 +377,8 @@ export default createStore({
           return response.data.股票列表.map(item => ({
             code: item.股票代码,
             name: item.股票简称,
-            market: item.市场代码
+            market: item.市场代码,
+            industry: item.所属行业 || ''
           }));
         }
         return [];
