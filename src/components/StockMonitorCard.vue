@@ -119,6 +119,7 @@ export default {
       getInfoTypeColor,
       getInfoTypeLabel,
       getKeywordColor,
+      filterDecisiveKeywords,
       onCycleChange,
       goToStock
     }
