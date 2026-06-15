@@ -17,6 +17,32 @@
 
           <el-divider />
 
+          <!-- 飞书账号绑定区域 -->
+          <div class="feishu-bind-section">
+            <h3>飞书账号</h3>
+            <div class="feishu-bind-card">
+              <div v-if="feishuLoading" class="feishu-loading">加载中...</div>
+              <div v-else-if="feishuStatus === 'subscribed'" class="feishu-bound">
+                <div class="feishu-info">
+                  <span class="feishu-icon">✓</span>
+                  <span class="feishu-name">{{ feishuName || '已绑定' }}</span>
+                  <span class="feishu-badge bound">已绑定</span>
+                </div>
+                <el-button type="danger" size="small" :loading="feishuUnbinding" @click="handleUnbind">
+                  解除绑定
+                </el-button>
+              </div>
+              <div v-else class="feishu-unbound">
+                <span class="feishu-desc">绑定飞书账号后可接收资讯推送</span>
+                <el-button type="primary" size="small" @click="handleFeishuAuth">
+                  绑定飞书账号
+                </el-button>
+              </div>
+            </div>
+          </div>
+
+          <el-divider />
+
           <!-- 推送设置区域 -->
           <div class="push-settings-section">
             <h3>推送设置</h3>
@@ -66,8 +92,9 @@
 import { ref, onMounted } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import 'element-plus/es/components/message/style/css';
+import api from '@/services/api'
 
 export default {
   name: 'ProfileView',
@@ -82,6 +109,63 @@ export default {
       stock_push: false,
       morning_report: false
     })
+
+    // 飞书绑定状态
+    const feishuLoading = ref(false)
+    const feishuStatus = ref('idle') // 'idle' | 'subscribed' | 'unauthorized'
+    const feishuName = ref('')
+    const feishuUnbinding = ref(false)
+
+    const fetchFeishuStatus = async () => {
+      feishuLoading.value = true
+      try {
+        const res = await api.get('/api/users/me/subscription')
+        if (res?.data?.status === 'subscribed') {
+          feishuStatus.value = 'subscribed'
+          feishuName.value = res.data.feishuName || ''
+        } else {
+          feishuStatus.value = 'idle'
+          feishuName.value = ''
+        }
+      } catch {
+        feishuStatus.value = 'idle'
+        feishuName.value = ''
+      } finally {
+        feishuLoading.value = false
+      }
+    }
+
+    const handleFeishuAuth = () => {
+      const feishuAppId = process.env.VUE_APP_FEISHU_APP_ID || ''
+      const redirectUri = encodeURIComponent(`${window.location.origin}/api/auth/feishu/callback`)
+      const state = encodeURIComponent('/profile')
+      const authUrl = `https://open.feishu.cn/open-apis/authen/v1/authorize?app_id=${feishuAppId}&redirect_uri=${redirectUri}&state=${state}`
+      window.location.href = authUrl
+    }
+
+    const handleUnbind = async () => {
+      try {
+        await ElMessageBox.confirm('解除绑定后将无法接收飞书推送，确定要解除吗？', '解除绑定', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning',
+        })
+      } catch {
+        return // 用户取消
+      }
+
+      feishuUnbinding.value = true
+      try {
+        await api.post('/api/users/me/subscription', { action: 'unbind' })
+        feishuStatus.value = 'idle'
+        feishuName.value = ''
+        ElMessage.success('已解除飞书绑定')
+      } catch {
+        ElMessage.error('解除绑定失败')
+      } finally {
+        feishuUnbinding.value = false
+      }
+    }
 
     const fetchUserData = async () => {
       try {
@@ -162,9 +246,10 @@ export default {
     onMounted(() => {
       // 重置滚动位置到顶部
       window.scrollTo(0, 0);
-      
+
       fetchUserData();
       fetchPushSettings();
+      fetchFeishuStatus();
     })
 
     return {
@@ -174,7 +259,13 @@ export default {
       pushSettings,
       settingsLoading,
       updatePushSettings,
-      getMarketCode
+      getMarketCode,
+      feishuLoading,
+      feishuStatus,
+      feishuName,
+      feishuUnbinding,
+      handleFeishuAuth,
+      handleUnbind,
     }
   }
 }
@@ -273,6 +364,81 @@ export default {
               color: #8a8f99;
               font-size: 0.85rem;
             }
+          }
+        }
+      }
+
+      .feishu-bind-section {
+        margin-top: 20px;
+
+        h3 {
+          font-size: 1.1rem;
+          color: var(--text-secondary);
+          margin-bottom: 15px;
+        }
+
+        .feishu-bind-card {
+          padding: 14px 16px;
+          background: #f8fafc;
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+        }
+
+        .feishu-loading {
+          color: #8a8f99;
+          font-size: 0.85rem;
+        }
+
+        .feishu-bound {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+
+          .feishu-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
+
+          .feishu-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #dcfce7;
+            color: #16a34a;
+            font-size: 12px;
+            font-weight: bold;
+          }
+
+          .feishu-name {
+            font-size: 0.95rem;
+            color: #333;
+            font-weight: 500;
+          }
+
+          .feishu-badge {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+
+            &.bound {
+              background: #dcfce7;
+              color: #16a34a;
+            }
+          }
+        }
+
+        .feishu-unbound {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+
+          .feishu-desc {
+            color: #8a8f99;
+            font-size: 0.85rem;
           }
         }
       }

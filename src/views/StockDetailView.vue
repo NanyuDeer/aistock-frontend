@@ -1576,9 +1576,31 @@ export default {
       if (c) streamedConclusion.value = c; if (cl) streamedCoreLogic.value = cl; if (rw) streamedRiskWarning.value = rw;
     };
     const appendStreamPreview = (text) => { if (!text || typeof text !== 'string') return; const normalized = text.replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\'); const merged = `${evaluationStreamPreview.value}${normalized}`; const maxLength = 3000; evaluationStreamPreview.value = merged.length > maxLength ? `...${merged.slice(-maxLength)}` : merged; syncStreamDraft(); };
+    const AGENT_TOOL_LABELS = { search_stock_news: '搜索新闻', get_news_fulltext: '阅读全文', get_profit_forecast: '查询盈利预测', get_trading_data: '查询交易数据' };
     const handleEvaluationStreamEvent = ({ event, data }) => {
       if (event === 'start') { evaluationProgressText.value = data?.message || '开始刷新个股评价...'; return; }
-      if (event === 'progress') { evaluationProgressText.value = data?.message || '正在生成投资建议...'; return; }
+      if (event === 'progress') {
+        // Agent 模式下 progress 事件的 message 可能是 Agent 步骤描述
+        const msg = data?.message || data?.data?.message || '正在生成投资建议...';
+        evaluationProgressText.value = msg;
+        return;
+      }
+      if (event === 'agent_step') {
+        const stepType = data?.type;
+        const round = data?.round;
+        if (stepType === 'agent.thinking') {
+          evaluationProgressText.value = `Agent 第 ${round} 轮思考中...`;
+        } else if (stepType === 'agent.tool_call') {
+          const toolName = data?.data?.tool || '';
+          const toolLabel = AGENT_TOOL_LABELS[toolName] || toolName;
+          evaluationProgressText.value = `Agent 正在${toolLabel}...`;
+        } else if (stepType === 'agent.tool_result') {
+          evaluationProgressText.value = '检索完成，Agent 正在分析...';
+        } else if (stepType === 'agent.final') {
+          evaluationProgressText.value = `Agent 已得出结论: ${data?.data?.conclusion || ''}`;
+        }
+        return;
+      }
       if (event === 'model.delta') { hasStreamDelta.value = true; evaluationProgressText.value = 'AI 正在生成投资建议...'; appendStreamPreview(typeof data === 'string' ? data : data?.content); return; }
       if (event === 'result') { evaluationProgressText.value = data?.message || '正在整理评估结果...'; return; }
       if (event === 'done') { evaluationProgressText.value = data?.message || '评估完成'; return; }

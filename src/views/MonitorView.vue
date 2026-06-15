@@ -18,6 +18,7 @@
 
         <!-- 风口爆发列表 -->
         <div class="monitor-content">
+          <HotspotOutbreakPanel />
           <StockMonitorList
             :events="allEvents"
             :show-cycle-filter="true"
@@ -33,11 +34,12 @@
 import { ref, computed, onMounted } from 'vue'
 import TheNavbar from '@/components/TheNavbar.vue'
 import StockMonitorList from '@/components/StockMonitorList.vue'
+import HotspotOutbreakPanel from '@/components/HotspotOutbreakPanel.vue'
 import { trendHotspotApi } from '@/services/api'
 
 export default {
   name: 'MonitorView',
-  components: { TheNavbar, StockMonitorList },
+  components: { TheNavbar, StockMonitorList, HotspotOutbreakPanel },
   setup() {
     const allEvents = ref([])
 
