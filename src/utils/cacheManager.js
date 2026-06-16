@@ -4,7 +4,6 @@ class CacheManager {
     this.VERSION_KEY = 'app_version';
     this.CURRENT_VERSION = process.env.VUE_APP_VERSION || Date.now().toString();
     this.STOCK_PRICES_KEY = 'stock_prices_cache';
-    this.HOT_STOCKS_KEY = 'hot_stocks_cache';
     this.STOCK_PRICES_TIMESTAMP_KEY = 'stock_prices_timestamp';
     this.STOCK_PRICES_MAX_AGE = 2 * 60 * 1000;
   }
@@ -142,46 +141,11 @@ class CacheManager {
   }
 
   /**
-   * 保存热门股票列表
-   * @param {Array} stocks - 热门股票列表
-   */
-  saveHotStocks(stocks) {
-    try {
-      const data = {
-        stocks: stocks,
-        timestamp: Date.now()
-      };
-      localStorage.setItem(this.HOT_STOCKS_KEY, JSON.stringify(data));
-      console.log(`[CacheManager] 已保存热门股票列表 (${stocks.length}支)`);
-    } catch (error) {
-      console.error('[CacheManager] 保存热门股票失败:', error);
-    }
-  }
-
-  /**
-   * 获取热门股票列表
-   * @returns {Array} 热门股票列表
-   */
-  getHotStocks() {
-    try {
-      const dataStr = localStorage.getItem(this.HOT_STOCKS_KEY);
-      if (!dataStr) return null;
-      
-      const data = JSON.parse(dataStr);
-      return data.stocks || [];
-    } catch (error) {
-      console.error('[CacheManager] 获取热门股票失败:', error);
-      return null;
-    }
-  }
-
-  /**
    * 清除股票价格缓存
    */
   clearStockPricesCache() {
     try {
       localStorage.removeItem(this.STOCK_PRICES_KEY);
-      localStorage.removeItem(this.HOT_STOCKS_KEY);
       localStorage.removeItem(this.STOCK_PRICES_TIMESTAMP_KEY);
       console.log('[CacheManager] 已清除股票价格缓存');
     } catch (error) {

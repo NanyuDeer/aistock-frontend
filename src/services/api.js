@@ -394,16 +394,6 @@ export const stockApi = {
     });
   },
 
-  // 获取热门股票（旧版）
-  getHotStocks: (symbol) => api.get(`/api/stocks/hot?symbol=${symbol || '国内人气榜'}`),
-
-  // --- 新版热门股票API ---
-  // 获取股票人气榜
-  getStockRank: () => {
-    return api.get('/api/cn/market/stockrank/', {
-      timeout: 8000
-    });
-  },
 
   // 批量获取股票基本信息
   getStockInfos: (symbols) => {
@@ -422,13 +412,6 @@ export const stockApi = {
   // 批量获取股票核心行情（首页榜单用）
   getStockCoreQuotes: (symbols) => {
     return api.get(`/api/cn/stock/quotes/core?symbols=${symbols}`, {
-      timeout: 8000
-    });
-  },
-
-  // 批量获取股票实时行情（盘中追踪用）
-  getStockRealtimeQuotes: (symbols) => {
-    return api.get(`/api/cn/stock/quotes/realtime?symbols=${symbols}`, {
       timeout: 8000
     });
   },
@@ -769,7 +752,7 @@ export const stockApi = {
   },
 };
 
-// 风口爆发 API
+// 趋势风口 API
 export const trendHotspotApi = {
   /** 查询公告/新闻研判事件列表 */
   getEvents: ({ cycle = 'all', change_type, stock_code, limit = 20, offset = 0 } = {}) => {
@@ -779,12 +762,12 @@ export const trendHotspotApi = {
     return api.get(`/api/cn/trend-hotspots/events?${params.toString()}`, { timeout: 8000 });
   },
 
-  /** 查询指定股票的风口爆发事件 */
+  /** 查询指定股票的趋势风口事件 */
   getEventsByStock: (stockCode, { cycle = 'all', limit = 20 } = {}) => {
     return api.get(`/api/cn/trend-hotspots/events/${encodeURIComponent(stockCode)}?cycle=${cycle}&limit=${limit}`, { timeout: 8000 });
   },
 
-  /** 获取风口爆发统计概览 */
+  /** 获取趋势风口统计概览 */
   getStats: () => {
     return api.get('/api/cn/trend-hotspots/stats', { timeout: 8000 });
   },
@@ -870,6 +853,30 @@ export const hotSectorApi = {
   detectHotKeywords: () => api.post('/api/cn/hot-keywords/detect', {}, {
     timeout: 30000,
   }),
+};
+
+// AI产业链知识图谱 API
+export const aiGraphApi = {
+  /** 获取所有概念列表 */
+  getConcepts: () => api.get('/api/aigraph/concepts', { timeout: 10000 }),
+  /** 根据概念代码获取图谱数据 */
+  getGraphByConcept: (conceptCode) => api.get(`/api/aigraph/concept/${conceptCode}`, { timeout: 15000 }),
+};
+
+// 行业知识图谱 API
+export const industryKGApi = {
+  /** 获取完整知识图谱（594行业+边+概念） */
+  getFullGraph: () => api.get('/api/kg/graph', { timeout: 30000 }),
+  /** 获取AI产业链子图（关键词匹配+BFS扩展） */
+  getAISubGraph: () => api.get('/api/kg/ai-graph', { timeout: 30000 }),
+  /** 获取概念子图（用于层级流向图） */
+  getSubGraph: (conceptId, depth = 1) => api.get('/api/kg/subgraph', { params: { concept: conceptId, depth }, timeout: 15000 }),
+  /** 获取所有概念列表 */
+  getConcepts: () => api.get('/api/kg/concepts', { timeout: 10000 }),
+  /** 获取行业龙头股 */
+  getIndustryStocks: (industryId) => api.get(`/api/kg/industry/${industryId}/stocks`, { timeout: 10000 }),
+  /** 手动触发知识图谱重建 */
+  refresh: () => api.post('/api/kg/refresh', {}, { timeout: 120000 }),
 };
 
 export default api;
