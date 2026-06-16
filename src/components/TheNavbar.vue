@@ -125,6 +125,8 @@
 import { computed, ref, onMounted } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import 'element-plus/es/components/message/style/css'
 import CacheManager from '../utils/cacheManager'
 import api from '../services/api'
 
@@ -211,6 +213,7 @@ export default {
         
         if (!feishuAppId) {
           console.error('[TheNavbar] 未配置飞书 App ID')
+          ElMessage.error('飞书配置未加载，请稍后重试')
           return
         }
         
@@ -220,6 +223,7 @@ export default {
         window.location.href = authUrl
       } catch (err) {
         console.error('[TheNavbar] 获取飞书配置失败:', err)
+        ElMessage.error('获取飞书配置失败，请检查网络连接后重试')
       } finally {
         oauthLoading.value = false
       }
