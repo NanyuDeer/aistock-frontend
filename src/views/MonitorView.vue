@@ -4,8 +4,8 @@
     <div class="page-container">
       <div class="container">
         <div class="page-header">
-          <h2 class="page-title">风口爆发</h2>
-          <p class="page-desc">聚合外部爬虫返回的公告和新闻研判，发现个股趋势线索</p>
+          <h2 class="page-title">【风口爆发】</h2>
+          <p class="page-desc">聚合格隆汇/财联社快讯 + 飞书群消息 + 同花顺热点掘金，三重共振发现风口爆发个股</p>
         </div>
 
         <!-- 统计概览 -->

@@ -17,7 +17,7 @@
         <router-link to="/search" class="menu-item" @click="closeMobileMenu">搜索股票</router-link>
         <router-link to="/forecast" class="menu-item" @click="closeMobileMenu">业绩预测</router-link>
         <router-link to="/tenx" class="menu-item" @click="closeMobileMenu">十倍股评分</router-link>
-        <router-link to="/hotspot-outbreak" class="menu-item" @click="closeMobileMenu">风口爆发</router-link>
+        <router-link to="/hotspot-outbreak" class="menu-item" @click="closeMobileMenu">【风口爆发】</router-link>
         <router-link v-if="isLoggedIn" to="/favorites" class="menu-item" @click="closeMobileMenu">我的自选股</router-link>
         <template v-if="isLoggedIn">
           <div class="menu-item" @click="openSubscribeDialog">消息订阅</div>
@@ -33,7 +33,7 @@
         <router-link to="/search" class="nav-item" @click="closeMobileMenu">搜索股票</router-link>
         <router-link to="/forecast" class="nav-item" @click="closeMobileMenu">业绩预测</router-link>
         <router-link to="/tenx" class="nav-item" @click="closeMobileMenu">十倍股评分</router-link>
-        <router-link to="/hotspot-outbreak" class="nav-item" @click="closeMobileMenu">风口爆发</router-link>
+        <router-link to="/hotspot-outbreak" class="nav-item" @click="closeMobileMenu">【风口爆发】</router-link>
         <router-link v-if="isLoggedIn" to="/favorites" class="nav-item" @click="closeMobileMenu">我的自选股</router-link>
       </div>
       <div class="user-area">
@@ -77,20 +77,20 @@
     >
       <div class="subscribe-content">
         <div class="subscribe-desc">
-          订阅后，飞书机器人将每日推送3次资讯到您的飞书账号：
+          订阅后，飞书机器人将每日推送2次资讯到您的账号：
         </div>
         <div class="subscribe-features">
           <div class="feature-item">
             <i class="el-icon-document"></i>
-            <span>自选股资讯推送（个股公告/新闻研判）</span>
+            <span>【个股资讯】自选股公告/新闻研判</span>
           </div>
           <div class="feature-item">
             <i class="el-icon-trophy"></i>
-            <span>风口爆发股推送（每日3支风口股票）</span>
+            <span>【风口爆发】每日3支风口爆发股</span>
           </div>
           <div class="feature-item">
             <i class="el-icon-time"></i>
-            <span>推送时间：9:00 / 13:00 / 19:00</span>
+            <span>推送时间：9:00 / 17:00</span>
           </div>
         </div>
 
@@ -202,14 +202,27 @@ export default {
       }
     }
 
-    const handleFeishuAuth = () => {
+    const handleFeishuAuth = async () => {
       oauthLoading.value = true
-      // 跳转到飞书OAuth授权页面
-      const feishuAppId = process.env.VUE_APP_FEISHU_APP_ID || ''
-      const redirectUri = encodeURIComponent(`${window.location.origin}/api/auth/feishu/callback`)
-      const state = encodeURIComponent(window.location.pathname)
-      const authUrl = `https://open.feishu.cn/open-apis/authen/v1/authorize?app_id=${feishuAppId}&redirect_uri=${redirectUri}&state=${state}`
-      window.location.href = authUrl
+      try {
+        // 从后端获取飞书配置
+        const { getFeishuAppId } = await import('@/utils/configManager')
+        const feishuAppId = await getFeishuAppId()
+        
+        if (!feishuAppId) {
+          console.error('[TheNavbar] 未配置飞书 App ID')
+          return
+        }
+        
+        const redirectUri = encodeURIComponent(`${window.location.origin}/api/auth/feishu/callback`)
+        const state = encodeURIComponent(window.location.pathname)
+        const authUrl = `https://open.feishu.cn/open-apis/authen/v1/authorize?app_id=${feishuAppId}&redirect_uri=${redirectUri}&state=${state}`
+        window.location.href = authUrl
+      } catch (err) {
+        console.error('[TheNavbar] 获取飞书配置失败:', err)
+      } finally {
+        oauthLoading.value = false
+      }
     }
 
     onMounted(() => {

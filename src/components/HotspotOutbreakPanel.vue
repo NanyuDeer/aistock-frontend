@@ -1,7 +1,7 @@
 <template>
   <div class="resonance-panel">
     <div class="panel-header">
-      <h3>三重共振信号</h3>
+      <h3>【风口爆发】三重共振信号</h3>
       <span class="subtitle" v-if="signals.length">共 {{ signals.length }} 只股票</span>
     </div>
 

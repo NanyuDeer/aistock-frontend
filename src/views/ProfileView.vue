@@ -135,12 +135,23 @@ export default {
       }
     }
 
-    const handleFeishuAuth = () => {
-      const feishuAppId = process.env.VUE_APP_FEISHU_APP_ID || ''
-      const redirectUri = encodeURIComponent(`${window.location.origin}/api/auth/feishu/callback`)
-      const state = encodeURIComponent('/profile')
-      const authUrl = `https://open.feishu.cn/open-apis/authen/v1/authorize?app_id=${feishuAppId}&redirect_uri=${redirectUri}&state=${state}`
-      window.location.href = authUrl
+    const handleFeishuAuth = async () => {
+      try {
+        const { getFeishuAppId } = await import('@/utils/configManager')
+        const feishuAppId = await getFeishuAppId()
+        
+        if (!feishuAppId) {
+          console.error('[ProfileView] 未配置飞书 App ID')
+          return
+        }
+        
+        const redirectUri = encodeURIComponent(`${window.location.origin}/api/auth/feishu/callback`)
+        const state = encodeURIComponent('/profile')
+        const authUrl = `https://open.feishu.cn/open-apis/authen/v1/authorize?app_id=${feishuAppId}&redirect_uri=${redirectUri}&state=${state}`
+        window.location.href = authUrl
+      } catch (err) {
+        console.error('[ProfileView] 获取飞书配置失败:', err)
+      }
     }
 
     const handleUnbind = async () => {
