@@ -48,14 +48,14 @@
               <div class="news-card">
                 <div v-if="favoriteStockNews.length > 0">
                   <NewsSlider 
-                    title="自选股推送资讯"
+                    title="【个股资讯】自选股推送资讯"
                     :news="favoriteStockNews"
                     @show-detail="showNewsDetail"
                     @tag-click="navigateToTag"
                   />
                 </div>
                 <div v-else class="empty-push-news">
-                  <h4 class="news-section-title">自选股推送资讯</h4>
+                  <h4 class="news-section-title">【个股资讯】自选股推送资讯</h4>
                   <div class="empty-content">
                     <p>暂无推送资讯，您可以添加自选股后在"<span class="profile-link" @click="goToProfile">个人信息</span>"中开启推送</p>
                   </div>

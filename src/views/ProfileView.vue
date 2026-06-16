@@ -91,7 +91,7 @@
 <script>
 import { ref, onMounted } from 'vue'
 import { useStore } from 'vuex'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import 'element-plus/es/components/message/style/css';
 import api from '@/services/api'
@@ -101,6 +101,7 @@ export default {
   setup() {
     const store = useStore()
     const router = useRouter()
+    const route = useRoute()
     const user = store.state.user
     const favoriteStocks = ref([]) // 自选股列表
     const defaultAvatar = require('@/assets/default-avatar.svg')
@@ -135,12 +136,26 @@ export default {
       }
     }
 
-    const handleFeishuAuth = () => {
-      const feishuAppId = process.env.VUE_APP_FEISHU_APP_ID || ''
-      const redirectUri = encodeURIComponent(`${window.location.origin}/api/auth/feishu/callback`)
-      const state = encodeURIComponent('/profile')
-      const authUrl = `https://open.feishu.cn/open-apis/authen/v1/authorize?app_id=${feishuAppId}&redirect_uri=${redirectUri}&state=${state}`
-      window.location.href = authUrl
+    const handleFeishuAuth = async () => {
+      try {
+        const { getFeishuAppId } = await import('@/utils/configManager')
+        const feishuAppId = await getFeishuAppId()
+        
+        if (!feishuAppId) {
+          console.error('[ProfileView] 未配置飞书 App ID')
+          ElMessage.error('飞书配置未加载，请稍后重试')
+          return
+        }
+        
+        const redirectUri = encodeURIComponent(`${window.location.origin}/api/auth/feishu/callback`)
+        const state = encodeURIComponent('/profile')
+        const scope = encodeURIComponent('contact:contact.base:readonly')
+        const authUrl = `https://open.feishu.cn/open-apis/authen/v1/authorize?app_id=${feishuAppId}&redirect_uri=${redirectUri}&state=${state}&scope=${scope}`
+        window.location.href = authUrl
+      } catch (err) {
+        console.error('[ProfileView] 获取飞书配置失败:', err)
+        ElMessage.error('获取飞书配置失败，请检查网络连接后重试')
+      }
     }
 
     const handleUnbind = async () => {
@@ -246,6 +261,24 @@ export default {
     onMounted(() => {
       // 重置滚动位置到顶部
       window.scrollTo(0, 0);
+
+      // 检测飞书授权回调结果
+      if (route.query.feishu_bind === 'success') {
+        ElMessage.success('飞书账号绑定成功！')
+        router.replace({ path: route.path, query: {} })
+        fetchFeishuStatus()
+      } else if (route.query.feishu_bind === 'failed') {
+        const reasonMap = {
+          no_code: '授权被拒绝',
+          token_failed: '获取授权令牌失败',
+          userinfo_failed: '获取用户信息失败',
+          session_expired: '登录已过期，请重新登录',
+          server_error: '服务器错误',
+        }
+        const reason = route.query.reason || 'unknown'
+        ElMessage.error(`飞书绑定失败：${reasonMap[reason] || reason}`)
+        router.replace({ path: route.path, query: {} })
+      }
 
       fetchUserData();
       fetchPushSettings();

@@ -752,7 +752,12 @@ export const stockApi = {
   },
 };
 
-// 趋势风口 API
+// 配置 API
+export const configApi = {
+  getPublicConfig: () => api.get('/api/config/public'),
+};
+
+// 风口爆发 API
 export const trendHotspotApi = {
   /** 查询公告/新闻研判事件列表 */
   getEvents: ({ cycle = 'all', change_type, stock_code, limit = 20, offset = 0 } = {}) => {
