@@ -21,7 +21,7 @@ export async function getPublicConfig() {
   // 发起请求
   fetchPromise = configApi.getPublicConfig()
     .then(response => {
-      cachedConfig = response?.data?.data || {};
+      cachedConfig = response?.data || {};
       return cachedConfig;
     })
     .catch(err => {
