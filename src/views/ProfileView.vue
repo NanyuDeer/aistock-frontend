@@ -142,6 +142,7 @@ export default {
         
         if (!feishuAppId) {
           console.error('[ProfileView] 未配置飞书 App ID')
+          ElMessage.error('飞书配置未加载，请稍后重试')
           return
         }
         
@@ -151,6 +152,7 @@ export default {
         window.location.href = authUrl
       } catch (err) {
         console.error('[ProfileView] 获取飞书配置失败:', err)
+        ElMessage.error('获取飞书配置失败，请检查网络连接后重试')
       }
     }
 
