@@ -219,7 +219,8 @@ export default {
         
         const redirectUri = encodeURIComponent(`${window.location.origin}/api/auth/feishu/callback`)
         const state = encodeURIComponent(window.location.pathname)
-        const authUrl = `https://open.feishu.cn/open-apis/authen/v1/authorize?app_id=${feishuAppId}&redirect_uri=${redirectUri}&state=${state}`
+        const scope = encodeURIComponent('contact:contact.base:readonly')
+        const authUrl = `https://open.feishu.cn/open-apis/authen/v1/authorize?app_id=${feishuAppId}&redirect_uri=${redirectUri}&state=${state}&scope=${scope}`
         window.location.href = authUrl
       } catch (err) {
         console.error('[TheNavbar] 获取飞书配置失败:', err)
