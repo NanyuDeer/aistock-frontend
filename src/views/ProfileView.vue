@@ -117,7 +117,7 @@ export default {
     const feishuName = ref('')
     const feishuUnbinding = ref(false)
 
-    const fetchFeishuStatus = async () => {
+    const fetchFeishuStatus = async (retryCount = 0) => {
       feishuLoading.value = true
       try {
         const res = await api.get('/api/users/me/subscription')
@@ -125,6 +125,11 @@ export default {
           feishuStatus.value = 'subscribed'
           feishuName.value = res.data.feishuName || ''
         } else {
+          // 首次查询未拿到 subscribed，且还有重试次数，延迟后重试
+          if (retryCount < 2 && !res?.data?.feishuName) {
+            setTimeout(() => fetchFeishuStatus(retryCount + 1), 500)
+            return
+          }
           feishuStatus.value = 'idle'
           feishuName.value = ''
         }

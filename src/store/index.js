@@ -106,7 +106,7 @@ function formatDateTime(dateText) {
 export default createStore({
   state: {
     user: JSON.parse(localStorage.getItem('user')) || null, // 从 localStorage 恢复用户信息
-    isAuthenticated: false, // 登录状态由 checkCookieAuth 动态设置
+    isAuthenticated: !!JSON.parse(localStorage.getItem('user')), // 刷新后从 localStorage 恢复，checkCookieAuth 后台校验
     stockList: [],
     marketOverview: {},
     favoriteStocks: JSON.parse(localStorage.getItem('favoriteStocks')) || [] // 自选股列表
