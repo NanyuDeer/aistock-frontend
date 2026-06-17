@@ -152,7 +152,10 @@ export default {
           return
         }
         
-        const redirectUri = encodeURIComponent(`${window.location.origin}/api/auth/feishu/callback`)
+        // 回调必须指向后端 API 域名（gupiao-api），而非前端域名（window.location.origin）
+        // 否则 Caddy 会把 /api/* 当作静态文件返回 index.html，导致后端 oauthCallback 从未被调用
+        const apiBase = process.env.NODE_ENV === 'production' ? 'https://gupiao-api.yaozhineng.com' : ''
+        const redirectUri = encodeURIComponent(`${apiBase}/api/auth/feishu/callback`)
         const state = encodeURIComponent('/profile')
         const scope = encodeURIComponent('contact:contact.base:readonly')
         const authUrl = `https://open.feishu.cn/open-apis/authen/v1/authorize?app_id=${feishuAppId}&redirect_uri=${redirectUri}&state=${state}&scope=${scope}`
