@@ -122,7 +122,7 @@
             </el-dialog>
           </div>
           
-          <!-- 风口爆发 -->
+          <!-- 趋势风口 -->
           <div class="stock-monitor-section">
             <StockMonitorCard :events="monitorEvents" />
           </div>
@@ -142,6 +142,9 @@
             :quote-map="hotSectorQuoteMap"
             @retry="fetchHotSectors(true)"
           />
+
+          <!-- AI产业链知识图谱（已隐藏） -->
+          <AiGraph v-if="false" />
 
           <!-- 近期风口板块及龙头个股（已隐藏，数据已迁移至风口爆发股） -->
           <div class="curated-stock-sections" style="display: none;">
@@ -204,17 +207,42 @@
             </section>
           </div>
           
-          <!-- 热门股票 + 预测盈利排行榜 -->
+          <!-- 我的自选股 + 预测盈利排行榜 -->
           <div class="hot-stocks-row">
-            <div class="hot-stocks-section" ref="hotStocksSectionRef">
-              <StockCardList
-                title="热门股票"
-                :stocks="hotStocks"
-                :loading="loadingHotStocks"
-                empty-text="暂无热门股票数据"
-                @view-detail="viewStockDetail"
-                @toggle-favorite="toggleFavorite"
-              />
+            <div class="hot-stocks-section">
+              <h3 v-if="!isLoggedIn" class="section-title">我的自选股</h3>
+              <div v-if="isLoggedIn">
+                <StockCardList
+                  title="我的自选股"
+                  :stocks="displayedFavoriteStocks"
+                  :loading="loadingFavorites"
+                  :show-view-more="myFavoriteStocks.length > 6"
+                  empty-text="暂无自选股数据"
+                  @view-detail="viewStockDetail"
+                  @toggle-favorite="handleToggleFavorite"
+                  @view-more="goToFavoritesPage"
+                >
+                  <template #empty>
+                    <div class="empty-state">
+                      <p>您还没有添加自选股</p>
+                      <router-link to="/search">
+                        <el-button type="primary" size="small">添加股票</el-button>
+                      </router-link>
+                    </div>
+                  </template>
+                  <template #view-more>
+                    <router-link to="/favorites">
+                      <el-button type="primary" plain>查看全部自选股</el-button>
+                    </router-link>
+                  </template>
+                </StockCardList>
+              </div>
+              <div v-else class="login-prompt">
+                <p>登录后可查看您的自选股</p>
+                <router-link to="/login">
+                  <el-button type="primary" size="small">去登录</el-button>
+                </router-link>
+              </div>
             </div>
 
             <div class="forecast-ranking-section" ref="forecastRankingSectionRef">
@@ -254,46 +282,6 @@
               </div>
             </div>
           </div>
-
-          <!-- 我的自选股 -->
-          <div class="favorite-stocks-section">
-            <div v-if="isLoggedIn">
-              <StockCardList
-                title="我的自选股"
-                :stocks="displayedFavoriteStocks"
-                :loading="loadingFavorites"
-                :show-view-more="myFavoriteStocks.length > 6"
-                @view-detail="viewStockDetail"
-                @toggle-favorite="handleToggleFavorite"
-                @view-more="goToFavoritesPage"
-              >
-                <!-- 自定义空状态 -->
-                <template #empty>
-                  <div class="empty-state">
-                    <p>您还没有添加自选股</p>
-                    <router-link to="/search">
-                      <el-button type="primary" size="small">添加股票</el-button>
-                    </router-link>
-                  </div>
-                </template>
-
-                <!-- 自定义查看更多按钮 -->
-                <template #view-more>
-                  <router-link to="/favorites">
-                    <el-button type="primary" plain>查看全部自选股</el-button>
-                  </router-link>
-                </template>
-              </StockCardList>
-            </div>
-            
-            <div v-else class="login-prompt">
-              <h3 class="section-title">我的自选股</h3>
-              <p>登录后可查看您的自选股</p>
-              <router-link to="/login">
-                <el-button type="primary" size="small">去登录</el-button>
-              </router-link>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -312,17 +300,9 @@ import NewsSlider from '@/components/NewsSlider.vue';
 import StockCardList from '@/components/StockCardList.vue';
 import StockMonitorCard from '@/components/StockMonitorCard.vue';
 import HotSectorPanel from '@/components/HotSectorPanel.vue';
+import AiGraph from '@/components/AiGraph.vue';
 import { trendHotspotApi, hotSectorApi } from '@/services/api';
-import { trendLeaderStocks as trendLeaderStockSeeds, tenbaggerStocks } from '@/mock/curatedStocks';
 import 'element-plus/es/components/message/style/css';
-
-// 风口板块mock股票代码（后端不可用时的fallback，需同步HotSectorPanel.vue中MOCK_STOCKS）
-const HOT_SECTOR_MOCK_CODES = [
-  '300308','002281','300476','002384','603773','600707',
-  '600172','301071','603986','002156','601869','600487',
-  '000636','300285','300666','603078','688507','301316',
-  '002008','688347',
-];
 
 export default {
   name: 'HomeView',
@@ -337,7 +317,7 @@ export default {
     const store = useStore();
     const router = useRouter();
 
-    // 风口爆发数据
+    // 趋势风口数据
     const monitorEvents = ref([]);
     const loadingMonitor = ref(false);
 
@@ -357,7 +337,7 @@ export default {
           event_time_display: e.event_time_display || formatEventTime(e.event_time),
         }));
       } catch (err) {
-        console.warn('[HomeView] 获取风口爆发数据失败，使用空列表:', err);
+        console.warn('[HomeView] 获取趋势风口数据失败，使用空列表:', err);
         monitorEvents.value = [];
       } finally {
         loadingMonitor.value = false;
@@ -465,7 +445,6 @@ export default {
     let foreignRefreshInterval = null;
     let headlineRefreshInterval = null;
     let favoriteNewsRefreshInterval = null; // 新增自选股资讯刷新定时器
-    let hotStocksRefreshInterval = null; // 热门股票刷新定时器
     let trendLeaderQuotesRefreshInterval = null; // 趋势龙头股行情刷新定时器
     let favoriteStocksPriceRefreshInterval = null; // 自选股价格刷新定时器
     let realtimeQuoteInterval = null; // 盘中行情3秒实时刷新
@@ -491,9 +470,6 @@ export default {
       // 收集所有需要刷新行情的股票代码
       const codes = new Set();
 
-      // 热门股票
-      hotStocks.value.forEach(s => { if (s.code) codes.add(s.code); });
-
       // 自选股
       myFavoriteStocks.value.forEach(s => { if (s.code) codes.add(s.code); });
 
@@ -503,9 +479,6 @@ export default {
         (sector.upstream_stocks || []).forEach(s => { if (s.code) codes.add(s.code); });
         (sector.downstream_stocks || []).forEach(s => { if (s.code) codes.add(s.code); });
       });
-
-      // 风口龙头股代码（当前使用mock临时数据，始终加入行情刷新）
-      HOT_SECTOR_MOCK_CODES.forEach(c => codes.add(c));
 
       if (codes.size === 0) return;
 
@@ -534,19 +507,6 @@ export default {
       ));
 
       if (Object.keys(quoteMap).length === 0) return;
-
-      // 更新热门股票价格
-      if (hotStocks.value.length > 0) {
-        hotStocks.value = hotStocks.value.map(s => {
-          const q = quoteMap[s.code];
-          if (!q) return s;
-          return {
-            ...s,
-            latest_price: q.latest_price ?? s.latest_price,
-            change_percent: q.change_percent ?? s.change_percent,
-          };
-        });
-      }
 
       // 更新自选股价格
       if (myFavoriteStocks.value.length > 0) {
@@ -723,12 +683,8 @@ export default {
     };
 
     // -------------------- 股票部分 --------------------
-    // 热门股票相关
-    const hotStocks = ref([]);
-    const loadingHotStocks = ref(true);
     const forecastRanking = ref([]);
     const loadingForecastRanking = ref(true);
-    const hotStocksSectionRef = ref(null);
     const forecastRankingSectionRef = ref(null);
     const forecastRankingCardRef = ref(null);
     const forecastRankingCardHeight = ref(null);
@@ -766,7 +722,27 @@ export default {
       return `${num >= 0 ? '+' : ''}${num.toFixed(2)}%`;
     };
 
-    const trendLeaderStocks = computed(() => trendLeaderStockSeeds.map(stock => {
+    // 从后端风口数据中提取龙头股种子
+    const trendLeaderStockSeeds = computed(() => {
+      const stocks = [];
+      for (const sector of hotSectors.value) {
+        const leadInfo = sector.leading_stock_info;
+        if (leadInfo && leadInfo.code) {
+          stocks.push({
+            code: leadInfo.code,
+            name: leadInfo.name,
+            track: sector.name,
+            leaderBasis: leadInfo.reason || '',
+            latestPrice: '--',
+            changeRate: 0,
+            changeText: '--',
+          });
+        }
+      }
+      return stocks;
+    });
+
+    const trendLeaderStocks = computed(() => trendLeaderStockSeeds.value.map(stock => {
       const quote = trendLeaderQuoteMap.value[stock.code] || {};
       const realPrice = toFiniteNumber(quote.latest_price);
       const realChange = toFiniteNumber(quote.change_percent);
@@ -781,12 +757,11 @@ export default {
     const applyForecastLayout = () => {
       if (typeof window === 'undefined') return;
 
-      const hotSection = hotStocksSectionRef.value;
       const rankingSection = forecastRankingSectionRef.value;
       const rankingCard = forecastRankingCardRef.value;
 
       // 小屏下改为纵向堆叠，不强制等高
-      if (!hotSection || !rankingSection || !rankingCard || window.innerWidth <= 992) {
+      if (!rankingSection || !rankingCard || window.innerWidth <= 992) {
         forecastRankingCardHeight.value = null;
         forecastTableMaxHeight.value = 320;
         return;
@@ -823,141 +798,8 @@ export default {
       });
     };
 
-    // 获取热门股票（先显示人气榜，再逐步补齐信息与行情）
-    const fetchHotStocks = async ({ showLoading = false } = {}) => {
-      const hadData = hotStocks.value.length > 0;
-      const shouldShowLoading = showLoading && !hadData;
-
-      try {
-        if (shouldShowLoading) {
-          loadingHotStocks.value = true;
-        }
-
-        const rankResponse = await stockApi.getStockRank();
-        const rankList = rankResponse?.code === 200
-          ? (rankResponse?.data?.人气榜 || []).slice(0, 6)
-          : [];
-
-        if (!Array.isArray(rankList) || rankList.length === 0) {
-          if (!hadData) {
-            hotStocks.value = [];
-          } else {
-            console.warn('[HomeView] 人气榜为空，保留当前热门股票');
-          }
-          return;
-        }
-
-        const orderedCodes = [];
-        const stockMap = new Map();
-
-        rankList.forEach((item, index) => {
-          const code = item?.股票代码 || item?.code || item?.symbol || '';
-          if (!code) return;
-
-          orderedCodes.push(code);
-          stockMap.set(code, {
-            code,
-            name: item?.股票简称 || item?.name || code,
-            market: item?.市场代码 || item?.market || '',
-            rank: item?.当前排名 || item?.rank || (index + 1)
-          });
-        });
-
-        if (orderedCodes.length === 0) {
-          if (!hadData) {
-            hotStocks.value = [];
-          } else {
-            console.warn('[HomeView] 人气榜缺少有效股票代码，保留当前热门股票');
-          }
-          return;
-        }
-
-        const syncHotStocksView = () => {
-          const nextStocks = orderedCodes
-            .map(code => stockMap.get(code))
-            .filter(Boolean);
-          hotStocks.value = mergeStocksWithPrevious(nextStocks, hotStocks.value);
-        };
-
-        // 第一时间渲染“仅排名基础信息”
-        syncHotStocksView();
-
-        const groups = [];
-        const groupSize = 2;
-        for (let i = 0; i < orderedCodes.length; i += groupSize) {
-          groups.push(orderedCodes.slice(i, i + groupSize).join(','));
-        }
-
-        const enrichByInfos = (infos = []) => {
-          infos.forEach(info => {
-            const code = info?.股票代码;
-            if (!code || !stockMap.has(code)) return;
-            const previous = stockMap.get(code);
-            stockMap.set(code, {
-              ...previous,
-              name: info?.股票简称 || previous?.name,
-              market: info?.市场代码 || previous?.market,
-              industry: info?.所属行业 || previous?.industry
-            });
-          });
-          syncHotStocksView();
-        };
-
-        const enrichByQuotes = (quotes = []) => {
-          quotes.forEach(quote => {
-            const code = quote?.股票代码;
-            if (!code || !stockMap.has(code)) return;
-            const previous = stockMap.get(code);
-            const latestPrice = toFiniteNumber(quote?.最新价);
-            const changePercent = toFiniteNumber(quote?.涨跌幅);
-            stockMap.set(code, {
-              ...previous,
-              latest_price: latestPrice ?? previous?.latest_price ?? null,
-              change_percent: changePercent ?? previous?.change_percent ?? null
-            });
-          });
-          syncHotStocksView();
-        };
-
-        const detailRequests = [];
-        groups.forEach(group => {
-          detailRequests.push(
-            stockApi.getStockInfos(group)
-              .then((response) => {
-                if (response?.code === 200) {
-                  enrichByInfos(response?.data?.股票信息 || []);
-                }
-              })
-              .catch((error) => {
-                console.warn('[HomeView] 获取热门股票基础信息失败:', error);
-              })
-          );
-
-          detailRequests.push(
-            stockApi.getStockCoreQuotes(group)
-              .then((response) => {
-                if (response?.code === 200) {
-                  enrichByQuotes(response?.data?.行情 || []);
-                }
-              })
-              .catch((error) => {
-                console.warn('[HomeView] 获取热门股票核心行情失败:', error);
-              })
-          );
-        });
-
-        await Promise.allSettled(detailRequests);
-      } catch (error) {
-        console.error('获取热门股票失败:', error);
-      } finally {
-        if (shouldShowLoading || !hadData) {
-          loadingHotStocks.value = false;
-        }
-      }
-    };
-
     const fetchTrendLeaderQuotes = async ({ showLoading = false } = {}) => {
-      const codes = trendLeaderStockSeeds.map(stock => stock.code).filter(Boolean);
+      const codes = trendLeaderStockSeeds.value.map(stock => stock.code).filter(Boolean);
       if (codes.length === 0) return;
       const hadData = Object.keys(trendLeaderQuoteMap.value).length > 0;
       const shouldShowLoading = showLoading || !hadData;
@@ -1126,7 +968,7 @@ export default {
     }, { deep: true });
 
     watch(
-      [hotStocks, forecastRanking, loadingHotStocks, loadingForecastRanking],
+      [forecastRanking, loadingForecastRanking],
       () => {
         updateForecastLayout();
       },
@@ -1251,45 +1093,6 @@ export default {
       router.push('/forecast');
     };
 
-    // 处理热门股票收藏/取消收藏
-    const toggleFavorite = async (stock, loadingStates) => {
-      if (!isLoggedIn.value) {
-        ElMessage.warning('请先登录后才能添加自选股');
-        router.push('/login');
-        return;
-      }
-      
-      try {
-        if (store.getters.favoriteStocks.some(s => s.code === stock.code)) {
-          // 取消关注
-          const result = await store.dispatch('removeFavoriteStocks', [stock.code]);
-          if (result) {
-            ElMessage.success(`已将 ${stock.name} 从自选股中移除`);
-          } else {
-            ElMessage.error(`移除 ${stock.name} 失败`);
-          }
-        } else {
-          // 添加关注
-          const result = await store.dispatch('addFavoriteStocks', [
-            { code: stock.code, name: stock.name }
-          ]);
-          
-          if (result) {
-            ElMessage.success(`成功添加 ${stock.name} 到自选股`);
-          } else {
-            ElMessage.error(`添加 ${stock.name} 到自选股失败`);
-          }
-        }
-        // 操作完成后刷新自选股列表
-        await fetchMyFavoriteStocks({ forceRefresh: true });
-      } catch (error) {
-        console.error('操作自选股失败:', error);
-        ElMessage.error('操作失败，请稍后再试');
-      } finally {
-        loadingStates[stock.code] = false;
-      }
-    };
-
     // 处理自选股操作
     const handleToggleFavorite = (stock, loadingStates) => {
       removeFromFavorite(stock, loadingStates);
@@ -1349,8 +1152,6 @@ export default {
         fetchForeignNews();
       }, 10 * 60 * 1000);
 
-      // 获取热门股票
-      fetchHotStocks({ showLoading: true });
       fetchTrendLeaderQuotes({ showLoading: true });
       fetchForecastRanking({ showLoading: true });
       updateForecastLayout();
@@ -1360,20 +1161,11 @@ export default {
         rankingLayoutObserver = new ResizeObserver(() => {
           updateForecastLayout();
         });
-        if (hotStocksSectionRef.value) {
-          rankingLayoutObserver.observe(hotStocksSectionRef.value);
-        }
         if (forecastRankingSectionRef.value) {
           rankingLayoutObserver.observe(forecastRankingSectionRef.value);
         }
       }
       
-      // 热门股票每 5 分钟刷新一次价格
-      hotStocksRefreshInterval = setInterval(() => {
-        console.log('[HomeView] 定时刷新热门股票价格');
-        fetchHotStocks();
-      }, 5 * 60 * 1000);
-
       trendLeaderQuotesRefreshInterval = setInterval(() => {
         console.log('[HomeView] 定时刷新趋势龙头股真实行情');
         fetchTrendLeaderQuotes();
@@ -1393,7 +1185,6 @@ export default {
       clearInterval(domesticRefreshInterval);
       clearInterval(foreignRefreshInterval);
       clearInterval(headlineRefreshInterval);
-      clearInterval(hotStocksRefreshInterval); // 清除热门股票刷新定时器
       clearInterval(trendLeaderQuotesRefreshInterval); // 清除趋势龙头股行情刷新定时器
       stopFavoriteAutoRefresh();
       stopRealtimeQuoteRefresh();
@@ -1406,7 +1197,7 @@ export default {
     });
 
     return {
-      // 风口爆发
+      // 趋势风口
       monitorEvents,
 
       // 风口爆发股
@@ -1429,23 +1220,18 @@ export default {
       retryLoadNewsDetail,
       navigateToTag,
       
-      // 热门股票相关
-      hotStocks,
-      loadingHotStocks,
-      toggleFavorite,
+      // 预测排行榜相关
       forecastRanking,
       loadingForecastRanking,
       onForecastRowClick,
       goToStockDetailByCode,
       goToForecastPage,
-      hotStocksSectionRef,
       forecastRankingSectionRef,
       forecastRankingCardRef,
       forecastRankingCardStyle,
       forecastTableMaxHeight,
       trendLeaderStocks,
       loadingTrendLeaderQuotes,
-      tenbaggerStocks,
       viewCuratedStock,
       isCuratedFavorite,
       toggleCuratedFavorite,
@@ -1576,6 +1362,32 @@ export default {
       :deep(.stock-card-list .stock-cards .stock-card) {
         flex: 1 1 calc(33.333% - 10px);
         max-width: calc(33.333% - 10px);
+      }
+
+      .login-prompt {
+        background: #fff;
+        border-radius: 8px;
+        padding: 30px;
+        text-align: center;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+
+        p {
+          margin-bottom: 15px;
+          color: var(--text-secondary);
+        }
+      }
+
+      .empty-state {
+        background: #fff;
+        border-radius: 8px;
+        padding: 30px;
+        text-align: center;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+
+        p {
+          margin-bottom: 15px;
+          color: var(--text-secondary);
+        }
       }
     }
 
@@ -2092,37 +1904,6 @@ export default {
     }
   }
 
-  .favorite-stocks-section {
-    margin-top: 30px;
-    margin-bottom: 30px;
-    
-    .login-prompt {
-      background: #fff;
-      border-radius: 8px;
-      padding: 30px;
-      text-align: center;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
-      
-      p {
-        margin-bottom: 15px;
-        color: var(--text-secondary);
-      }
-    }
-    
-    .empty-state {
-      background: #fff;
-      border-radius: 8px;
-      padding: 30px;
-      text-align: center;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
-      
-      p {
-        margin-bottom: 15px;
-        color: var(--text-secondary);
-      }
-    }
-  }
-  
   .button-icon {
     width: 14px;
     height: 14px;
