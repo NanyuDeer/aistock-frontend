@@ -1,7 +1,7 @@
 <template>
   <div class="stock-monitor-card">
     <div class="monitor-header">
-      <h3 class="section-title">风口爆发</h3>
+      <h3 class="section-title">爆发风口</h3>
       <div class="header-right">
         <div class="cycle-filter">
           <button
@@ -52,9 +52,9 @@
           </span>
         </div>
         <div class="change-info">
-          <div v-if="event.ai_keywords && event.ai_keywords.length > 0" class="keyword-tags">
+          <div v-if="getDisplayKeywords(event).length > 0" class="keyword-tags">
             <span
-              v-for="kw in filterDecisiveKeywords(event.ai_keywords)"
+              v-for="kw in getDisplayKeywords(event)"
               :key="kw"
               class="keyword-tag"
               :style="{ backgroundColor: getKeywordColor(kw) + '15', color: getKeywordColor(kw), borderColor: getKeywordColor(kw) + '40' }"
@@ -68,7 +68,7 @@
         <div class="time-cell">{{ event.event_time_display }}</div>
       </div>
       <div v-if="filteredEvents.length === 0" class="empty-row">
-        暂无风口爆发数据
+        暂无爆发风口数据
       </div>
     </div>
   </div>
@@ -111,6 +111,12 @@ export default {
       router.push({ name: 'stockDetail', params: { code } })
     }
 
+    const getDisplayKeywords = (event) => {
+      const decisive = filterDecisiveKeywords(event.ai_keywords)
+      if (decisive.length > 0) return decisive
+      return (event.ai_keywords || []).slice(0, 2)
+    }
+
     return {
       activeCycle,
       filteredEvents,
@@ -120,6 +126,7 @@ export default {
       getInfoTypeLabel,
       getKeywordColor,
       filterDecisiveKeywords,
+      getDisplayKeywords,
       onCycleChange,
       goToStock
     }
