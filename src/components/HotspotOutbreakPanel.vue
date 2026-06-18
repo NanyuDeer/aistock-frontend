@@ -15,20 +15,20 @@
         <div class="concept-list">
           <div
             v-for="concept in hotConcepts"
-            :key="concept.concept_name"
+            :key="concept.conceptName"
             class="concept-card"
           >
             <div class="concept-header">
-              <span class="concept-name">{{ concept.concept_name }}</span>
+              <span class="concept-name">{{ concept.conceptName }}</span>
               <span class="concept-badge">共振一通过</span>
             </div>
             <div class="concept-stats">
-              <span class="stat-item">财联社 {{ concept.cls_count }}篇</span>
-              <span class="stat-item">格隆汇 {{ concept.glh_count }}篇</span>
-              <span class="stat-ratio" v-if="concept.surge_ratio">x{{ concept.surge_ratio.toFixed(1) }}</span>
+              <span class="stat-item">财联社 {{ concept.clsCount }}篇</span>
+              <span class="stat-item">格隆汇 {{ concept.glhCount }}篇</span>
+              <span class="stat-ratio" v-if="concept.surgeRatio">x{{ concept.surgeRatio.toFixed(1) }}</span>
             </div>
-            <div class="concept-stocks" v-if="concept.stock_codes && concept.stock_codes.length">
-              <span class="stock-tag" v-for="s in concept.stock_codes.slice(0, 5)" :key="s.symbol">
+            <div class="concept-stocks" v-if="concept.stockCodes && concept.stockCodes.length">
+              <span class="stock-tag" v-for="s in concept.stockCodes.slice(0, 5)" :key="s.symbol">
                 {{ s.name || s.symbol }}
               </span>
             </div>
@@ -42,39 +42,45 @@
           v-for="sig in signals"
           :key="sig.symbol"
           class="signal-card"
-          :class="'level-' + sig.resonance_level"
+          :class="'level-' + sig.resonanceLevel"
         >
           <div class="card-header">
-            <span class="stock-name">{{ sig.stock_name }}({{ sig.symbol }})</span>
-            <span class="level-tag" :class="sig.resonance_level">
-              {{ levelLabel(sig.resonance_level) }}
+            <span class="stock-name">{{ sig.stockName }}({{ sig.symbol }})</span>
+            <span class="level-tag" :class="sig.resonanceLevel">
+              {{ levelLabel(sig.resonanceLevel) }}
             </span>
+          </div>
+
+          <div class="triple-resonance-row">
+            <span class="res-dot" :class="{ on: sig.resonance1?.verified }">共振一</span>
+            <span class="res-dot" :class="{ on: sig.resonance2?.verified }">共振二</span>
+            <span class="res-dot" :class="{ on: sig.resonance3?.verified }">共振三</span>
           </div>
 
           <div class="resonance-row">
             <div class="res-item">
               <span class="res-label">快讯</span>
-              <span class="res-val">{{ sig.news_count }}篇</span>
-              <span class="res-ratio" v-if="sig.news_surge_ratio">x{{ sig.news_surge_ratio.toFixed(1) }}</span>
+              <span class="res-val">{{ sig.newsCount }}篇</span>
+              <span class="res-ratio" v-if="sig.newsSurgeRatio">x{{ sig.newsSurgeRatio.toFixed(1) }}</span>
             </div>
             <div class="res-item">
               <span class="res-label">飞书</span>
-              <span class="res-val">{{ sig.feishu_message_count }}条</span>
+              <span class="res-val">{{ sig.feishuMessageCount }}条</span>
             </div>
-            <div class="res-item" :class="{ verified: sig.ths_verified }">
+            <div class="res-item" :class="{ verified: sig.thsVerified }">
               <span class="res-label">板块</span>
-              <span class="res-val">{{ sig.ths_verified ? '#' + sig.ths_sector_rank : '否' }}</span>
-              <span class="res-sector" v-if="sig.ths_sector_name">{{ sig.ths_sector_name }}</span>
+              <span class="res-val">{{ sig.thsVerified ? '#' + sig.thsSectorRank : '否' }}</span>
+              <span class="res-sector" v-if="sig.thsSectorName">{{ sig.thsSectorName }}</span>
             </div>
           </div>
 
           <!-- 概念共振标签 -->
-          <div class="concept-resonance-row" v-if="sig.concept_resonance">
-            <span class="concept-tag" :class="{ verified: sig.concept_resonance.concept_verified }">
-              {{ sig.concept_resonance.concept_name }}
+          <div class="concept-resonance-row" v-if="sig.conceptResonance">
+            <span class="concept-tag" :class="{ verified: sig.conceptResonance.conceptVerified }">
+              {{ sig.conceptResonance.conceptName }}
             </span>
             <span class="concept-detail">
-              财联社{{ sig.concept_resonance.cls_count }} + 格隆汇{{ sig.concept_resonance.glh_count }}
+              财联社{{ sig.conceptResonance.clsCount }} + 格隆汇{{ sig.conceptResonance.glhCount }}
             </span>
           </div>
 
@@ -87,8 +93,8 @@
           </div>
 
           <div class="score-bar">
-            <div class="score-fill" :style="{ width: sig.resonance_score + '%' }"></div>
-            <span class="score-text">{{ sig.resonance_score }}分</span>
+            <div class="score-fill" :style="{ width: sig.resonanceScore + '%' }"></div>
+            <span class="score-text">{{ sig.resonanceScore }}分</span>
           </div>
         </div>
       </div>
@@ -117,14 +123,14 @@ export default {
       return { critical: '严重', high: '强烈', medium: '中等', low: '弱' }[level] || level
     },
     uniqueKeywords(sig) {
-      return [...new Set([...(sig.news_keywords || []), ...(sig.feishu_keywords || [])])]
+      return [...new Set([...(sig.newsKeywords || []), ...(sig.feishuKeywords || [])])]
     },
     async fetchRecent() {
       this.loading = true
       try {
         const res = await hotSectorApi.getOutbreak(6)
         this.signals = res.data?.outbreaks || []
-        this.hotConcepts = res.data?.hot_concepts || []
+        this.hotConcepts = res.data?.hotConcepts || []
       } catch {
         this.signals = []
         this.hotConcepts = []
@@ -137,7 +143,7 @@ export default {
       try {
         const res = await hotSectorApi.detectOutbreak()
         this.signals = res.data?.outbreaks || []
-        this.hotConcepts = res.data?.hot_concepts || []
+        this.hotConcepts = res.data?.hotConcepts || []
       } finally {
         this.loading = false
       }
@@ -162,171 +168,229 @@ export default {
   align-items: center;
   margin-bottom: 12px;
 }
-.panel-header h3 { color: #e0e0e0; margin: 0; font-size: 15px; }
-.subtitle { color: #888; font-size: 12px; }
-.loading, .empty { color: #888; text-align: center; padding: 20px 0; font-size: 13px; }
+.panel-header h3 {
+  margin: 0;
+  color: #fff;
+  font-size: 16px;
+}
+.subtitle {
+  color: #94a3b8;
+  font-size: 12px;
+}
+.loading, .empty {
+  text-align: center;
+  padding: 30px 0;
+  color: #94a3b8;
+  font-size: 13px;
+}
 
-/* 细分概念爆发区域 */
 .concept-section {
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 .section-title {
-  color: #a78bfa;
-  font-size: 12px;
+  color: #f59e0b;
+  font-size: 13px;
   font-weight: 600;
   margin-bottom: 8px;
 }
 .concept-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 .concept-card {
-  background: rgba(124, 58, 237, 0.08);
-  border: 1px solid rgba(124, 58, 237, 0.2);
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.2);
   border-radius: 6px;
-  padding: 8px 10px;
+  padding: 10px;
 }
 .concept-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 .concept-name {
-  color: #e0e0e0;
+  color: #fff;
   font-weight: 600;
   font-size: 13px;
 }
 .concept-badge {
-  background: rgba(34, 197, 94, 0.15);
-  color: #4ade80;
-  font-size: 9px;
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  font-size: 10px;
   padding: 1px 6px;
   border-radius: 4px;
 }
 .concept-stats {
   display: flex;
   gap: 12px;
-  align-items: center;
-  margin-bottom: 4px;
-}
-.stat-item {
-  color: #94a3b8;
+  margin-bottom: 6px;
   font-size: 11px;
+  color: #94a3b8;
 }
-.stat-ratio {
-  color: #ef4444;
-  font-size: 10px;
+.concept-ratio {
+  color: #f97316;
   font-weight: 600;
 }
 .concept-stocks {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 6px;
 }
 .stock-tag {
-  background: rgba(59, 130, 246, 0.15);
-  color: #93c5fd;
+  background: rgba(124, 58, 237, 0.15);
+  color: #c4b5fd;
   font-size: 10px;
-  padding: 1px 5px;
-  border-radius: 3px;
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 
-/* 个股共振信号 */
-.signal-list { display: flex; flex-direction: column; gap: 8px; }
-
+.signal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 .signal-card {
-  background: #16213e;
+  background: rgba(30, 41, 59, 0.5);
   border-radius: 6px;
-  padding: 10px 12px;
-  border-left: 3px solid #444;
+  padding: 12px;
+  border-left: 3px solid #475569;
 }
-.signal-card.level-critical { border-color: #ef4444; }
-.signal-card.level-high { border-color: #f97316; }
-.signal-card.level-medium { border-color: #eab308; }
-
+.signal-card.level-critical { border-left-color: #ef4444; }
+.signal-card.level-high { border-left-color: #f97316; }
+.signal-card.level-medium { border-left-color: #f59e0b; }
+.signal-card.level-low { border-left-color: #64748b; }
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
 }
-.stock-name { color: #fff; font-weight: 600; font-size: 13px; }
+.stock-name {
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+}
 .level-tag {
-  font-size: 10px;
-  padding: 1px 7px;
-  border-radius: 8px;
-}
-.level-tag.critical { background: #7f1d1d; color: #fca5a5; }
-.level-tag.high { background: #7c2d12; color: #fdba74; }
-.level-tag.medium { background: #713f12; color: #fde047; }
-.level-tag.low { background: #1e293b; color: #94a3b8; }
-
-.resonance-row { display: flex; gap: 20px; margin-bottom: 6px; }
-.res-item { display: flex; align-items: center; gap: 4px; }
-.res-label { color: #666; font-size: 11px; }
-.res-val { color: #ccc; font-size: 12px; font-weight: 500; }
-.res-ratio { color: #ef4444; font-size: 10px; }
-.res-sector { color: #f97316; font-size: 10px; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.res-item.verified .res-val { color: #4ade80; }
-
-/* 概念共振标签 */
-.concept-resonance-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
-}
-.concept-tag {
-  background: rgba(124, 58, 237, 0.2);
-  color: #a78bfa;
-  font-size: 10px;
-  padding: 1px 6px;
+  font-size: 11px;
+  padding: 2px 8px;
   border-radius: 4px;
 }
-.concept-tag.verified {
+.level-tag.critical { background: #ef4444; color: #fff; }
+.level-tag.high { background: #f97316; color: #fff; }
+.level-tag.medium { background: #f59e0b; color: #1a1a2e; }
+.level-tag.low { background: #1e293b; color: #94a3b8; }
+
+.triple-resonance-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.res-dot {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(100, 116, 139, 0.2);
+  color: #64748b;
+}
+.res-dot.on {
   background: rgba(34, 197, 94, 0.2);
   color: #4ade80;
 }
-.concept-detail {
-  color: #64748b;
+
+.resonance-row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 6px;
+}
+.res-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.res-label {
+  color: #666;
+  font-size: 11px;
+}
+.res-val {
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+.res-ratio {
+  color: #f97316;
   font-size: 10px;
 }
-
-.keywords-row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
-.kw-tag {
-  background: rgba(124, 58, 237, 0.2);
-  color: #a78bfa;
+.res-sector {
+  color: #94a3b8;
   font-size: 10px;
-  padding: 1px 6px;
+}
+.res-item.verified .res-val {
+  color: #4ade80;
+}
+
+.concept-resonance-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.concept-tag {
+  background: rgba(124, 58, 237, 0.15);
+  color: #c4b5fd;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.concept-tag.verified {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+}
+.concept-detail {
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.keywords-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.kw-tag {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+  font-size: 10px;
+  padding: 2px 6px;
   border-radius: 4px;
 }
 
 .score-bar {
   position: relative;
-  height: 4px;
-  background: #333;
-  border-radius: 2px;
+  height: 6px;
+  background: #334155;
+  border-radius: 3px;
+  overflow: hidden;
 }
 .score-fill {
   height: 100%;
-  background: linear-gradient(90deg, #eab308, #f97316, #ef4444);
-  border-radius: 2px;
-  transition: width 0.4s;
+  background: linear-gradient(90deg, #f59e0b, #ef4444);
+  border-radius: 3px;
+  transition: width 0.3s;
 }
 .score-text {
   position: absolute;
   right: 0;
-  top: -15px;
-  font-size: 9px;
-  color: #666;
+  top: -16px;
+  color: #f59e0b;
+  font-size: 11px;
 }
 
 .detect-btn {
-  margin-top: 12px;
   width: 100%;
-  padding: 8px;
+  margin-top: 12px;
+  padding: 10px;
   background: #7c3aed;
   color: #fff;
   border: none;
@@ -334,6 +398,8 @@ export default {
   cursor: pointer;
   font-size: 13px;
 }
-.detect-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.detect-btn:hover:not(:disabled) { background: #6d28d9; }
+.detect-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 </style>

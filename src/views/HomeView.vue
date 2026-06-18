@@ -121,6 +121,11 @@
               </div>
             </el-dialog>
           </div>
+
+          <!-- 风口爆发 -->
+          <div class="hotspot-outbreak-section">
+            <HotspotOutbreakPanel />
+          </div>
           
           <!-- 趋势风口 -->
           <div class="stock-monitor-section">
@@ -300,6 +305,7 @@ import NewsSlider from '@/components/NewsSlider.vue';
 import StockCardList from '@/components/StockCardList.vue';
 import StockMonitorCard from '@/components/StockMonitorCard.vue';
 import HotSectorPanel from '@/components/HotSectorPanel.vue';
+import HotspotOutbreakPanel from '@/components/HotspotOutbreakPanel.vue';
 import AiGraph from '@/components/AiGraph.vue';
 import { trendHotspotApi, hotSectorApi } from '@/services/api';
 import 'element-plus/es/components/message/style/css';
@@ -311,7 +317,8 @@ export default {
     MarketOverview,
     NewsSlider,
     StockCardList,
-    StockMonitorCard
+    StockMonitorCard,
+    HotspotOutbreakPanel
   },
   setup() {
     const store = useStore();
