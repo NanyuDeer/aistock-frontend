@@ -48,14 +48,14 @@
               <div class="news-card">
                 <div v-if="favoriteStockNews.length > 0">
                   <NewsSlider 
-                    title="【个股资讯】自选股推送资讯"
+                    title="个股资讯推送"
                     :news="favoriteStockNews"
                     @show-detail="showNewsDetail"
                     @tag-click="navigateToTag"
                   />
                 </div>
                 <div v-else class="empty-push-news">
-                  <h4 class="news-section-title">【个股资讯】自选股推送资讯</h4>
+                  <h4 class="news-section-title">个股资讯推送</h4>
                   <div class="empty-content">
                     <p>暂无推送资讯，您可以添加自选股后在"<span class="profile-link" @click="goToProfile">个人信息</span>"中开启推送</p>
                   </div>
@@ -122,11 +122,6 @@
             </el-dialog>
           </div>
 
-          <!-- 风口爆发 -->
-          <div class="hotspot-outbreak-section">
-            <HotspotOutbreakPanel />
-          </div>
-          
           <!-- 趋势风口 -->
           <div class="stock-monitor-section">
             <StockMonitorCard :events="monitorEvents" />
@@ -305,7 +300,6 @@ import NewsSlider from '@/components/NewsSlider.vue';
 import StockCardList from '@/components/StockCardList.vue';
 import StockMonitorCard from '@/components/StockMonitorCard.vue';
 import HotSectorPanel from '@/components/HotSectorPanel.vue';
-import HotspotOutbreakPanel from '@/components/HotspotOutbreakPanel.vue';
 import AiGraph from '@/components/AiGraph.vue';
 import { trendHotspotApi, hotSectorApi } from '@/services/api';
 import 'element-plus/es/components/message/style/css';
@@ -317,8 +311,7 @@ export default {
     MarketOverview,
     NewsSlider,
     StockCardList,
-    StockMonitorCard,
-    HotspotOutbreakPanel
+    StockMonitorCard
   },
   setup() {
     const store = useStore();
@@ -782,7 +775,7 @@ export default {
       const sectionPaddingBottom = Number.parseFloat(sectionStyle.paddingBottom) || 0;
       const titleHeight = titleEl?.offsetHeight || 0;
       const titleMarginBottom = titleStyle ? (Number.parseFloat(titleStyle.marginBottom) || 0) : 0;
-      const availableHeight = hotSection.offsetHeight - sectionPaddingTop - sectionPaddingBottom - titleHeight - titleMarginBottom;
+      const availableHeight = rankingSection.offsetHeight - sectionPaddingTop - sectionPaddingBottom - titleHeight - titleMarginBottom;
 
       if (!Number.isFinite(availableHeight) || availableHeight <= 0) {
         forecastRankingCardHeight.value = null;
