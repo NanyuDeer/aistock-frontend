@@ -39,3 +39,11 @@ export async function getFeishuAppId() {
   const config = await getPublicConfig();
   return config.feishuAppId || process.env.VUE_APP_FEISHU_APP_ID || '';
 }
+
+export async function getFeishuEnterpriseConfig() {
+  const config = await getPublicConfig();
+  return {
+    inviteLink: config.feishuEnterpriseInviteLink || process.env.VUE_APP_FEISHU_ENTERPRISE_INVITE_LINK || '',
+    inviteQrUrl: config.feishuEnterpriseInviteQrUrl || process.env.VUE_APP_FEISHU_ENTERPRISE_INVITE_QR_URL || '',
+  };
+}

@@ -94,7 +94,8 @@
 
         <div v-if="subscribeStatus === 'unauthorized'" class="subscribe-oauth">
           <p class="oauth-tip">需要授权飞书账号以接收推送消息</p>
-          <el-button type="primary" @click="handleFeishuAuth" :loading="oauthLoading">
+          <p class="oauth-hint">当前为企业自建应用，需先加入企业</p>
+          <el-button type="primary" @click="openFeishuBindDialog">
             授权飞书账号
           </el-button>
         </div>
@@ -115,6 +116,89 @@
           </el-button>
         </div>
       </div>
+    </el-dialog>
+
+    <!-- 飞书两步绑定弹窗 -->
+    <el-dialog
+      v-model="feishuBindDialogVisible"
+      title="绑定飞书账号"
+      width="460px"
+      :close-on-click-modal="true"
+      class="feishu-bind-dialog"
+    >
+      <div class="bind-dialog-content">
+        <el-steps :active="bindStep" finish-status="success" simple>
+          <el-step title="加入企业" />
+          <el-step title="授权登录" />
+        </el-steps>
+
+        <div v-if="bindStep === 0" class="bind-step">
+          <p class="step-title">第一步：加入企业</p>
+          <p class="step-desc">
+            当前飞书应用为<strong>企业自建应用</strong>，只有企业成员才能授权使用。请先点击下方链接或扫描二维码加入企业。
+          </p>
+
+          <div v-if="enterpriseConfig.inviteLink" class="invite-link-box">
+            <el-link
+              type="primary"
+              :href="enterpriseConfig.inviteLink"
+              target="_blank"
+              :underline="false"
+            >
+              点击加入企业
+            </el-link>
+            <el-button type="primary" link size="small" @click="copyInviteLink">
+              复制链接
+            </el-button>
+          </div>
+
+          <div v-if="enterpriseConfig.inviteQrUrl" class="invite-qr-box">
+            <p>或扫描下方二维码加入：</p>
+            <el-image
+              :src="enterpriseConfig.inviteQrUrl"
+              :preview-src-list="[enterpriseConfig.inviteQrUrl]"
+              fit="contain"
+              class="invite-qr"
+            />
+          </div>
+
+          <div v-if="!enterpriseConfig.inviteLink && !enterpriseConfig.inviteQrUrl" class="no-config-tip">
+            <el-alert
+              title="管理员尚未配置企业邀请入口"
+              type="warning"
+              :closable="false"
+              description="请联系管理员将你添加进企业后，再回来完成授权。"
+              show-icon
+            />
+          </div>
+        </div>
+
+        <div v-else class="bind-step">
+          <p class="step-title">第二步：授权登录</p>
+          <p class="step-desc">
+            加入企业后，点击下方的"继续授权"按钮，使用飞书账号完成 OAuth 授权。
+          </p>
+          <el-alert
+            title="若尚未加入企业，授权会失败"
+            type="info"
+            :closable="false"
+            show-icon
+            class="oauth-alert"
+          />
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button v-if="bindStep === 1" @click="bindStep = 0">上一步</el-button>
+          <el-button v-if="bindStep === 0" type="primary" @click="bindStep = 1">
+            已加入企业，下一步
+          </el-button>
+          <el-button v-else type="primary" :loading="oauthLoading" @click="handleFeishuAuth">
+            继续授权
+          </el-button>
+        </div>
+      </template>
     </el-dialog>
   </div>
 </template>
@@ -159,6 +243,30 @@ export default {
     const subscribeStatus = ref('idle') // idle | unauthorized | subscribed
     const subscribeLoading = ref(false)
     const oauthLoading = ref(false)
+    const feishuBindDialogVisible = ref(false)
+    const bindStep = ref(0)
+    const enterpriseConfig = ref({ inviteLink: '', inviteQrUrl: '' })
+
+    const openFeishuBindDialog = async () => {
+      try {
+        const { getFeishuEnterpriseConfig } = await import('@/utils/configManager')
+        enterpriseConfig.value = await getFeishuEnterpriseConfig()
+      } catch (err) {
+        console.error('[TheNavbar] 获取企业邀请配置失败:', err)
+      }
+      bindStep.value = 0
+      feishuBindDialogVisible.value = true
+    }
+
+    const copyInviteLink = async () => {
+      if (!enterpriseConfig.value.inviteLink) return
+      try {
+        await navigator.clipboard.writeText(enterpriseConfig.value.inviteLink)
+        ElMessage.success('邀请链接已复制')
+      } catch {
+        ElMessage.error('复制失败，请手动复制')
+      }
+    }
 
     const openSubscribeDialog = () => {
       closeMobileMenu()
@@ -249,7 +357,12 @@ export default {
       subscribeStatus,
       subscribeLoading,
       oauthLoading,
+      feishuBindDialogVisible,
+      bindStep,
+      enterpriseConfig,
       openSubscribeDialog,
+      openFeishuBindDialog,
+      copyInviteLink,
       handleSubscribe,
       handleUnsubscribe,
       handleFeishuAuth,
@@ -584,7 +697,14 @@ export default {
     .oauth-tip {
       font-size: 0.9rem;
       color: #909399;
+      margin-bottom: 8px;
+    }
+
+    .oauth-hint {
+      font-size: 0.82rem;
+      color: #f56c6c;
       margin-bottom: 12px;
+      line-height: 1.4;
     }
   }
 
@@ -629,6 +749,64 @@ export default {
     
     &:visited {
       color: inherit;
+    }
+  }
+}
+
+.bind-dialog-content {
+  .el-steps {
+    margin-bottom: 20px;
+  }
+
+  .bind-step {
+    .step-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #333;
+      margin: 0 0 10px;
+    }
+
+    .step-desc {
+      font-size: 0.88rem;
+      color: #606266;
+      line-height: 1.6;
+      margin: 0 0 16px;
+    }
+
+    .invite-link-box {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding: 12px;
+      background: #f5f7fa;
+      border-radius: 6px;
+    }
+
+    .invite-qr-box {
+      text-align: center;
+
+      p {
+        font-size: 0.85rem;
+        color: #606266;
+        margin: 0 0 8px;
+      }
+
+      .invite-qr {
+        width: 180px;
+        height: 180px;
+        border: 1px solid #ebeef5;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+    }
+
+    .no-config-tip {
+      margin-top: 8px;
+    }
+
+    .oauth-alert {
+      margin-top: 8px;
     }
   }
 }
