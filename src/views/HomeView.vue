@@ -44,10 +44,10 @@
             </div>
             
             <!-- 自选股资讯 - 修改为单独一行 -->
-            <div v-if="isLoggedIn" class="favorite-news-row">
+            <!-- <div v-if="isLoggedIn" class="favorite-news-row">
               <div class="news-card">
                 <div v-if="favoriteStockNews.length > 0">
-                  <NewsSlider 
+                  <NewsSlider
                     title="个股资讯推送"
                     :news="favoriteStockNews"
                     @show-detail="showNewsDetail"
@@ -61,7 +61,7 @@
                   </div>
                 </div>
               </div>
-            </div>
+            </div> -->
             
             <!-- 新闻详情弹窗 -->
             <el-dialog
@@ -122,10 +122,15 @@
             </el-dialog>
           </div>
 
-          <!-- 趋势风口 -->
-          <div class="stock-monitor-section">
-            <StockMonitorCard :events="monitorEvents" />
+          <!-- 爆发风口 -->
+          <div class="hotspot-outbreak-section">
+            <HotspotOutbreakPanel />
           </div>
+
+          <!-- 个股异动 -->
+          <!-- <div class="stock-monitor-section">
+            <StockMonitorCard :events="monitorEvents" />
+          </div> -->
 
           <!-- 国内市场概览 -->
           <div class="market-overview-section">
@@ -299,6 +304,7 @@ import MarketOverview from '@/components/MarketOverview.vue';
 import NewsSlider from '@/components/NewsSlider.vue';
 import StockCardList from '@/components/StockCardList.vue';
 import StockMonitorCard from '@/components/StockMonitorCard.vue';
+import HotspotOutbreakPanel from '@/components/HotspotOutbreakPanel.vue';
 import HotSectorPanel from '@/components/HotSectorPanel.vue';
 import AiGraph from '@/components/AiGraph.vue';
 import { trendHotspotApi, hotSectorApi } from '@/services/api';
@@ -311,7 +317,8 @@ export default {
     MarketOverview,
     NewsSlider,
     StockCardList,
-    StockMonitorCard
+    StockMonitorCard,
+    HotspotOutbreakPanel
   },
   setup() {
     const store = useStore();
@@ -1258,6 +1265,11 @@ export default {
 
 <style lang="scss" scoped>
 .home-page {
+  .hotspot-outbreak-section {
+    margin-top: 20px;
+    margin-bottom: 20px;
+  }
+
   .stock-monitor-section {
     margin-top: 20px;
     margin-bottom: 20px;

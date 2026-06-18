@@ -116,6 +116,7 @@ export default {
       getInfoTypeColor,
       getInfoTypeLabel,
       getKeywordColor,
+      filterDecisiveKeywords,
       goToStock
     }
   }
@@ -265,19 +266,21 @@ export default {
       }
 
       .trend-title {
-        max-width: 34%;
+        flex: 1;
+        min-width: 0;
         color: var(--text-secondary);
       }
 
       .trend-summary {
         flex: 1;
+        min-width: 0;
       }
 
       .event-keywords {
         display: flex;
         flex-wrap: wrap;
         gap: 4px;
-        flex: 1;
+        flex-shrink: 0;
 
         .keyword-tag {
           display: inline-block;
@@ -291,7 +294,7 @@ export default {
       }
 
       .meta-time {
-        margin-left: auto;
+        flex-shrink: 0;
         font-size: 0.75rem;
         color: var(--text-tertiary);
       }

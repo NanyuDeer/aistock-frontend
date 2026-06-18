@@ -11,6 +11,7 @@ const UpdateLogsView = () => import('@/views/UpdateLogsView.vue')
 const PerformanceForecastView = () => import('@/views/PerformanceForecastView.vue')
 const TenxScoreView = () => import('@/views/TenxScoreView.vue')
 const MonitorView = () => import('@/views/MonitorView.vue')
+const StockMonitorView = () => import('@/views/StockMonitorView.vue')
 const PotentialStockPushHistoryView = () => import('@/views/PotentialStockPushHistoryView.vue')
 
 const routes = [
@@ -91,6 +92,14 @@ const routes = [
     component: MonitorView,
     meta: {
       title: '股票资讯AI智能分析 - 风口爆发'
+    }
+  },
+  {
+    path: '/stock-monitor',
+    name: 'stockMonitor',
+    component: StockMonitorView,
+    meta: {
+      title: '股票资讯AI智能分析 - 个股异动'
     }
   },
   {

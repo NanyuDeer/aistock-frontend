@@ -1,8 +1,11 @@
 <template>
   <div class="resonance-panel">
     <div class="panel-header">
-      <h3>【风口爆发】三重共振信号</h3>
-      <span class="subtitle" v-if="signals.length">共 {{ signals.length }} 只股票</span>
+      <h3>风口爆发<span class="title-sub">三重共振信号</span></h3>
+      <div class="header-right">
+        <span class="subtitle" v-if="signals.length">共 {{ signals.length }} 只股票</span>
+        <router-link v-if="showMoreLink" to="/hotspot-outbreak" class="more-link">查看全部 <span class="arrow">&rarr;</span></router-link>
+      </div>
     </div>
 
     <div v-if="loading" class="loading">检测中...</div>
@@ -111,6 +114,12 @@ import { hotSectorApi } from '@/services/api'
 
 export default {
   name: 'HotspotOutbreakPanel',
+  props: {
+    showMoreLink: {
+      type: Boolean,
+      default: true
+    }
+  },
   data() {
     return {
       signals: [],
@@ -157,7 +166,7 @@ export default {
 
 <style scoped>
 .resonance-panel {
-  background: #1a1a2e;
+  background: #fff;
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 16px;
@@ -170,17 +179,36 @@ export default {
 }
 .panel-header h3 {
   margin: 0;
-  color: #fff;
-  font-size: 16px;
+  color: var(--text-primary, #1f2937);
+  font-size: 1.1rem;
+  .title-sub {
+    margin-left: 6px;
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: var(--text-tertiary, #94a3b8);
+  }
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 .subtitle {
-  color: #94a3b8;
+  color: var(--text-tertiary, #94a3b8);
   font-size: 12px;
+}
+.more-link {
+  font-size: 0.85rem;
+  color: var(--primary-color, #4f7cff);
+  text-decoration: none;
+  white-space: nowrap;
+  .arrow { margin-left: 2px; }
+  &:hover { text-decoration: underline; }
 }
 .loading, .empty {
   text-align: center;
   padding: 30px 0;
-  color: #94a3b8;
+  color: var(--text-tertiary, #94a3b8);
   font-size: 13px;
 }
 
@@ -199,8 +227,8 @@ export default {
   gap: 8px;
 }
 .concept-card {
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.2);
+  background: rgba(245, 158, 11, 0.06);
+  border: 1px solid rgba(245, 158, 11, 0.25);
   border-radius: 6px;
   padding: 10px;
 }
@@ -211,13 +239,13 @@ export default {
   margin-bottom: 6px;
 }
 .concept-name {
-  color: #fff;
+  color: var(--text-primary, #1f2937);
   font-weight: 600;
   font-size: 13px;
 }
 .concept-badge {
-  background: rgba(245, 158, 11, 0.2);
-  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.15);
+  color: #b45309;
   font-size: 10px;
   padding: 1px 6px;
   border-radius: 4px;
@@ -227,10 +255,10 @@ export default {
   gap: 12px;
   margin-bottom: 6px;
   font-size: 11px;
-  color: #94a3b8;
+  color: var(--text-tertiary, #94a3b8);
 }
 .concept-ratio {
-  color: #f97316;
+  color: #ea580c;
   font-weight: 600;
 }
 .concept-stocks {
@@ -239,8 +267,8 @@ export default {
   gap: 6px;
 }
 .stock-tag {
-  background: rgba(124, 58, 237, 0.15);
-  color: #c4b5fd;
+  background: rgba(124, 58, 237, 0.08);
+  color: #6d28d9;
   font-size: 10px;
   padding: 2px 6px;
   border-radius: 4px;
@@ -252,15 +280,15 @@ export default {
   gap: 10px;
 }
 .signal-card {
-  background: rgba(30, 41, 59, 0.5);
+  background: #f8fafc;
   border-radius: 6px;
   padding: 12px;
-  border-left: 3px solid #475569;
+  border-left: 3px solid #cbd5e1;
 }
 .signal-card.level-critical { border-left-color: #ef4444; }
 .signal-card.level-high { border-left-color: #f97316; }
 .signal-card.level-medium { border-left-color: #f59e0b; }
-.signal-card.level-low { border-left-color: #64748b; }
+.signal-card.level-low { border-left-color: #94a3b8; }
 .card-header {
   display: flex;
   justify-content: space-between;
@@ -268,7 +296,7 @@ export default {
   margin-bottom: 8px;
 }
 .stock-name {
-  color: #fff;
+  color: var(--text-primary, #1f2937);
   font-weight: 600;
   font-size: 14px;
 }
@@ -279,8 +307,8 @@ export default {
 }
 .level-tag.critical { background: #ef4444; color: #fff; }
 .level-tag.high { background: #f97316; color: #fff; }
-.level-tag.medium { background: #f59e0b; color: #1a1a2e; }
-.level-tag.low { background: #1e293b; color: #94a3b8; }
+.level-tag.medium { background: #f59e0b; color: #fff; }
+.level-tag.low { background: #e2e8f0; color: #64748b; }
 
 .triple-resonance-row {
   display: flex;
@@ -291,12 +319,12 @@ export default {
   font-size: 9px;
   padding: 1px 5px;
   border-radius: 4px;
-  background: rgba(100, 116, 139, 0.2);
-  color: #64748b;
+  background: #f1f5f9;
+  color: #94a3b8;
 }
 .res-dot.on {
-  background: rgba(34, 197, 94, 0.2);
-  color: #4ade80;
+  background: rgba(34, 197, 94, 0.12);
+  color: #16a34a;
 }
 
 .resonance-row {
@@ -310,24 +338,24 @@ export default {
   gap: 4px;
 }
 .res-label {
-  color: #666;
+  color: var(--text-tertiary, #94a3b8);
   font-size: 11px;
 }
 .res-val {
-  color: #fff;
+  color: var(--text-primary, #1f2937);
   font-size: 12px;
   font-weight: 600;
 }
 .res-ratio {
-  color: #f97316;
+  color: #ea580c;
   font-size: 10px;
 }
 .res-sector {
-  color: #94a3b8;
+  color: var(--text-tertiary, #94a3b8);
   font-size: 10px;
 }
 .res-item.verified .res-val {
-  color: #4ade80;
+  color: #16a34a;
 }
 
 .concept-resonance-row {
@@ -337,18 +365,18 @@ export default {
   margin-bottom: 6px;
 }
 .concept-tag {
-  background: rgba(124, 58, 237, 0.15);
-  color: #c4b5fd;
+  background: rgba(124, 58, 237, 0.08);
+  color: #6d28d9;
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 4px;
 }
 .concept-tag.verified {
-  background: rgba(34, 197, 94, 0.15);
-  color: #4ade80;
+  background: rgba(34, 197, 94, 0.1);
+  color: #16a34a;
 }
 .concept-detail {
-  color: #94a3b8;
+  color: var(--text-tertiary, #94a3b8);
   font-size: 11px;
 }
 
@@ -359,8 +387,8 @@ export default {
   margin-bottom: 8px;
 }
 .kw-tag {
-  background: rgba(59, 130, 246, 0.15);
-  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.08);
+  color: #2563eb;
   font-size: 10px;
   padding: 2px 6px;
   border-radius: 4px;
@@ -369,7 +397,7 @@ export default {
 .score-bar {
   position: relative;
   height: 6px;
-  background: #334155;
+  background: #e2e8f0;
   border-radius: 3px;
   overflow: hidden;
 }
@@ -383,7 +411,7 @@ export default {
   position: absolute;
   right: 0;
   top: -16px;
-  color: #f59e0b;
+  color: #b45309;
   font-size: 11px;
 }
 
@@ -391,7 +419,7 @@ export default {
   width: 100%;
   margin-top: 12px;
   padding: 10px;
-  background: #7c3aed;
+  background: var(--primary-color, #4f7cff);
   color: #fff;
   border: none;
   border-radius: 6px;

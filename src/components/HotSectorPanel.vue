@@ -57,12 +57,23 @@
             <div class="hs-card-actions">
               <el-button size="small" type="primary" plain @click.stop="goToStockByCode(stock.code)">查看详情</el-button>
               <el-button
+                v-if="isLoggedIn"
                 size="small"
                 :type="isFollowed(stock.code) ? 'danger' : 'primary'"
                 plain
-                @click.stop="toggleFollow(stock.code)"
+                :loading="followLoading[stock.code]"
+                @click.stop="toggleFollow(stock)"
               >
                 {{ isFollowed(stock.code) ? '取消关注' : '添加关注' }}
+              </el-button>
+              <el-button
+                v-else
+                size="small"
+                type="primary"
+                plain
+                @click.stop="router.push('/login')"
+              >
+                登录关注
               </el-button>
             </div>
           </div>
@@ -217,6 +228,8 @@
 <script>
 import { ref, computed, nextTick, watch, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useStore } from 'vuex';
+import { ElMessage } from 'element-plus';
 import * as d3 from 'd3';
 
 /**
@@ -300,6 +313,7 @@ export default {
   emits: ['retry'],
   setup(props) {
     const router = useRouter();
+    const store = useStore();
     const bubbleWrap = ref(null);
     const bubbleSvg = ref(null);
     const bubbleWrapSide = ref(null);
@@ -308,10 +322,53 @@ export default {
     const modalVisible = ref(false);
     const modalTitle = ref('');
     const currentSector = ref(null);
-    const followedSet = ref(new Set());
+    const followLoading = ref({});
     let resizeTimer = null;
     let bubbleObservers = [];
     let panelResizeObserver = null;
+
+    const isLoggedIn = computed(() => store.getters.isLoggedIn);
+
+    const isFollowed = (code) => {
+      if (!code) return false;
+      return (store.getters.favoriteStocks || []).some(item => String(item.code) === String(code));
+    };
+
+    const toggleFollow = async (stock) => {
+      const code = stock?.code || stock;
+      if (!code) return;
+      if (!isLoggedIn.value) {
+        ElMessage.warning('请先登录后才能添加自选股');
+        router.push('/login');
+        return;
+      }
+      followLoading.value = { ...followLoading.value, [code]: true };
+      try {
+        const wasFollowed = isFollowed(code);
+        if (wasFollowed) {
+          const result = await store.dispatch('removeFavoriteStocks', [code]);
+          if (result) {
+            ElMessage.success(`已取消关注 ${stock?.name || code}`);
+          } else {
+            ElMessage.error('取消关注失败');
+          }
+        } else {
+          const result = await store.dispatch('addFavoriteStocks', [
+            { code, name: stock?.name }
+          ]);
+          if (result) {
+            ElMessage.success(`已添加 ${stock?.name || code} 到自选股`);
+          } else {
+            ElMessage.error('添加关注失败');
+          }
+        }
+      } catch (err) {
+        console.error('[HotSectorPanel] 关注操作失败:', err);
+        ElMessage.error('操作失败，请稍后再重试');
+      } finally {
+        followLoading.value = { ...followLoading.value, [code]: false };
+      }
+    };
 
     const useBackendData = computed(() => props.sectors && props.sectors.length > 0);
 
@@ -368,13 +425,6 @@ export default {
       if (code.startsWith('0') || code.startsWith('3')) return 'SZ';
       if (code.startsWith('4') || code.startsWith('8')) return 'BJ';
       return '';
-    };
-
-    const isFollowed = (code) => code && followedSet.value.has(code);
-    const toggleFollow = (code) => {
-      if (!code) return;
-      if (followedSet.value.has(code)) followedSet.value.delete(code);
-      else followedSet.value.add(code);
     };
 
     const goToStockByCode = (code) => {
@@ -620,11 +670,12 @@ export default {
     };
 
     return {
+      router,
       bubbleWrap, bubbleSvg, bubbleWrapSide, bubbleSvgSide, flowChartWrap,
       modalVisible, modalTitle, currentSector,
       displayStocks, displayBubbles, displayUpdateTime,
       formatChange, formatNetInflow, getMarketCode,
-      isFollowed, toggleFollow, goToStockByCode, goToHistoryPerformance,
+      isLoggedIn, isFollowed, toggleFollow, followLoading, goToStockByCode, goToHistoryPerformance,
     };
   },
 };
@@ -641,7 +692,7 @@ export default {
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 0 10px; border-bottom: 1px solid #e5e7eb; margin-bottom: 12px;
 }
-.hs-header .section-title { font-size: 1.4rem; font-weight: 700; color: var(--text-primary, #1a56db); margin: 0; }
+.hs-header .section-title { font-size: 1.4rem; font-weight: 500; color: var(--text-primary); margin: 0; }
 .hs-header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
 .hs-header-meta { font-size: 12px; color: #9ca3af; white-space: nowrap; }
 .hs-history-btn { font-weight: 600; }
@@ -803,7 +854,7 @@ export default {
 
 .hs-bubble-title {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 400;
   color: #111827;
   margin-bottom: 8px;
   text-align: center;

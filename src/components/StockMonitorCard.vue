@@ -1,7 +1,7 @@
 <template>
   <div class="stock-monitor-card">
     <div class="monitor-header">
-      <h3 class="section-title">爆发风口</h3>
+      <h3 class="section-title">个股异动</h3>
       <div class="header-right">
         <div class="cycle-filter">
           <button
@@ -13,7 +13,7 @@
             {{ opt.label }}
           </button>
         </div>
-        <router-link to="/trend-hotspots" class="monitor-more-link">
+        <router-link to="/stock-monitor" class="monitor-more-link">
           查看全部 <span class="arrow">&rarr;</span>
         </router-link>
       </div>
@@ -37,7 +37,7 @@
         <div class="stock-identity">
           <div class="stock-title-wrap">
             <h4>{{ event.stock_name }}</h4>
-            <span class="industry-tag">{{ event.industry }}</span>
+            <span v-if="event.industry" class="industry-tag">{{ event.industry }}</span>
             <span class="stock-code-line">{{ event.stock_code }}</span>
           </div>
         </div>
@@ -68,7 +68,7 @@
         <div class="time-cell">{{ event.event_time_display }}</div>
       </div>
       <div v-if="filteredEvents.length === 0" class="empty-row">
-        暂无爆发风口数据
+        暂无个股异动数据
       </div>
     </div>
   </div>
