@@ -849,6 +849,11 @@ export const windLeaderApi = {
     params: { hours },
     timeout: 10000,
   }),
+  /** 获取热点爆发历史记录 */
+  getHotBurstHistory: (limit = 50, offset = 0) => api.get('/api/cn/hot-burst/history', {
+    params: { limit, offset },
+    timeout: 10000,
+  }),
   /** 获取爆发关键词 */
   getHotKeywords: (hours = 6, limit = 20) => api.get('/api/cn/hot-keywords', {
     params: { hours, limit },

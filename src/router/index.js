@@ -13,6 +13,7 @@ const TenxScoreView = () => import('@/views/TenxScoreView.vue')
 const MonitorView = () => import('@/views/MonitorView.vue')
 const StockMonitorView = () => import('@/views/StockMonitorView.vue')
 const PotentialStockPushHistoryView = () => import('@/views/PotentialStockPushHistoryView.vue')
+const HotBurstHistoryView = () => import('@/views/HotBurstHistoryView.vue')
 
 const routes = [
   {
@@ -92,6 +93,14 @@ const routes = [
     component: MonitorView,
     meta: {
       title: '股票资讯AI智能分析 - 热点爆发'
+    }
+  },
+  {
+    path: '/hot-burst/history',
+    name: 'hotBurstHistory',
+    component: HotBurstHistoryView,
+    meta: {
+      title: '股票资讯AI智能分析 - 热点爆发历史'
     }
   },
   {

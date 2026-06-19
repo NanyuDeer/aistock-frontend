@@ -10,7 +10,7 @@
 
         <!-- 热点爆发列表 -->
         <div class="monitor-content">
-          <HotBurstPanel :show-more-link="false" />
+          <HotBurstPanel :show-more-link="false" :show-detect-btn="true" />
         </div>
       </div>
     </div>
