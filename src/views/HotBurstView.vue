@@ -5,7 +5,7 @@
       <div class="container">
         <div class="page-header">
           <h2 class="page-title">
-            热点爆发
+            媒体关注榜
             <button
               class="detect-btn-small"
               @click="runDetect"
@@ -170,7 +170,7 @@ export default {
     const hasMore = computed(() => records.value.length < total.value)
 
     const levelLabel = (level) => ({
-      critical: '严重', high: '强烈', medium: '中等', low: '弱'
+      critical: '极高', high: '高', medium: '中', low: '低'
     })[level] || level
 
     const formatChange = (pct) => {
