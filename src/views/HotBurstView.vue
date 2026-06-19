@@ -5,7 +5,7 @@
       <div class="container">
         <div class="page-header">
           <h2 class="page-title">
-            热点爆发
+            媒体关注榜
             <button
               class="detect-btn-small"
               @click="runDetect"
@@ -14,7 +14,7 @@
               {{ detecting ? '检测中...' : '执行监测' }}
             </button>
           </h2>
-          <p class="page-desc">聚合格隆汇/财联社快讯 + 飞书群消息 + 同花顺热点掘金，三重共振发现热点爆发个股</p>
+          <p class="page-desc">聚合格隆汇/财联社快讯 + 飞书群消息 + 同花顺热点掘金，三重共振发现媒体关注个股</p>
         </div>
 
         <div class="monitor-content">
@@ -170,7 +170,7 @@ export default {
     const hasMore = computed(() => records.value.length < total.value)
 
     const levelLabel = (level) => ({
-      critical: '严重', high: '强烈', medium: '中等', low: '弱'
+      critical: '极高', high: '高', medium: '中', low: '低'
     })[level] || level
 
     const formatChange = (pct) => {

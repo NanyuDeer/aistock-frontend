@@ -68,7 +68,7 @@
                   @change="updatePushSettings('outbreak_push')"
                 />
                 <div class="setting-info">
-                  <strong>热点爆发推送</strong>
+                  <strong>媒体关注榜推送</strong>
                   <span>每日9:00和17:00推送三重共振信号检测结果</span>
                 </div>
               </div>
@@ -147,6 +147,9 @@
             fit="contain"
             class="invite-qr"
           />
+          <p class="invite-qr-tip">
+            使用飞书扫描以上二维码，在加入到企业后，账号登录需要使用aistock组织的账号才可以正确授权
+          </p>
         </div>
 
         <div v-if="!enterpriseConfig.inviteLink && !enterpriseConfig.inviteQrUrl" class="no-config-tip">
@@ -715,6 +718,18 @@ export default {
         border: 1px solid #ebeef5;
         border-radius: 8px;
         overflow: hidden;
+      }
+
+      .invite-qr-tip {
+        margin-top: 12px;
+        padding: 8px 12px;
+        font-size: 0.8rem;
+        line-height: 1.5;
+        color: #8a8f99;
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        text-align: center;
       }
     }
 

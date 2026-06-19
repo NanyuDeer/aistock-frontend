@@ -122,7 +122,7 @@
             </el-dialog>
           </div>
 
-          <!-- 热点爆发 -->
+          <!-- 媒体关注榜 -->
           <div class="hot-burst-section">
             <HotBurstPanel />
           </div>

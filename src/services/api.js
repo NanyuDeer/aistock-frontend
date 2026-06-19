@@ -840,17 +840,17 @@ export const windLeaderApi = {
   refreshAnalysis: () => api.post('/api/cn/wind-leaders/refresh', {}, {
     timeout: 120000,
   }),
-  /** 执行三步热点爆发检测 */
-  detectHotBurst: () => api.post('/api/cn/hot-burst/detect', {}, {
+  /** 执行三步媒体关注榜检测 */
+  detectHotBurst: () => api.post('/api/cn/media-attention/detect', {}, {
     timeout: 60000,
   }),
-  /** 获取热点爆发检测结果 */
-  getHotBurst: (hours = 6) => api.get('/api/cn/hot-burst', {
+  /** 获取媒体关注榜检测结果（默认仅返回三重共振全通过的信号） */
+  getHotBurst: (hours = 6) => api.get('/api/cn/media-attention', {
     params: { hours },
     timeout: 10000,
   }),
-  /** 获取热点爆发历史记录 */
-  getHotBurstHistory: (limit = 50, offset = 0) => api.get('/api/cn/hot-burst/history', {
+  /** 获取媒体关注榜历史记录（默认仅返回三重共振全通过的记录） */
+  getHotBurstHistory: (limit = 50, offset = 0) => api.get('/api/cn/media-attention/history', {
     params: { limit, offset },
     timeout: 10000,
   }),
