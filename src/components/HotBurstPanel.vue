@@ -2,7 +2,7 @@
   <div class="hot-burst-panel">
     <div class="panel-header">
       <h3 class="section-title">
-        热点爆发
+        媒体关注榜
         <button
           v-if="showDetectBtn"
           class="detect-btn-small"
@@ -170,7 +170,7 @@ export default {
   },
   methods: {
     levelLabel(level) {
-      return { critical: '严重', high: '强烈', medium: '中等', low: '弱' }[level] || level
+      return { critical: '极高', high: '高', medium: '中', low: '低' }[level] || level
     },
     uniqueKeywords(sig) {
       return [...new Set([...(sig.newsKeywords || []), ...(sig.feishuKeywords || [])])]
