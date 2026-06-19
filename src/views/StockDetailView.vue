@@ -49,58 +49,6 @@
           <el-tag size="small" type="info">上市日期：{{ stockInfo.listingDate }}</el-tag>
           <el-tag size="small" type="info">信息更新时间：{{ stockInfo.infoUpdatedAt }}</el-tag>
         </div>
-        <div class="stock-capital-charts">
-          <div class="capital-chart-card is-merged">
-            <div class="capital-chart-head">
-              <div class="capital-chart-title-wrap">
-                <p class="capital-chart-title">流通结构</p>
-              </div>
-              <div class="capital-chart-badge">
-                <span class="badge-label">流通占比</span>
-                <transition name="number-flip" mode="out-in">
-                  <span :key="`merged-${formatRatioText(mergedStructureChart.flowPercent)}`" class="badge-value">
-                    {{ formatRatioText(mergedStructureChart.flowPercent) }}
-                  </span>
-                </transition>
-              </div>
-            </div>
-
-            <div class="capital-stacked-track" role="img" :aria-label="`流通占比${formatRatioText(mergedStructureChart.flowPercent)}`">
-              <div class="capital-stacked-segment is-flow" :style="{ width: `${mergedStructureChart.animatedFlowPercent}%` }"></div>
-              <div class="capital-stacked-segment is-rest" :style="{ width: `${100 - mergedStructureChart.animatedFlowPercent}%` }"></div>
-            </div>
-
-            <div class="capital-chart-legend">
-              <div class="legend-item">
-                <span class="legend-dot is-flow"></span>
-                <span class="legend-label">流通部分</span>
-                <span class="legend-value">{{ formatRatioText(mergedStructureChart.flowPercent) }}</span>
-              </div>
-              <div class="legend-item">
-                <span class="legend-dot is-rest"></span>
-                <span class="legend-label">非流通部分</span>
-                <span class="legend-value">{{ formatRatioText(mergedStructureChart.restPercent) }}</span>
-              </div>
-            </div>
-
-            <div class="capital-chart-metrics">
-              <div class="metric-row">
-                <span class="metric-kind">股本</span>
-                <span class="metric-desc">{{ stockInfo.floatShares }} / {{ stockInfo.totalShares }}</span>
-                <span class="metric-ratio">{{ formatRatioText(mergedStructureChart.shareFlowPercent) }}</span>
-              </div>
-              <div class="metric-row">
-                <span class="metric-kind">市值</span>
-                <span class="metric-desc">{{ stockInfo.floatMarketCap }} / {{ stockInfo.marketCap }}</span>
-                <span class="metric-ratio">{{ formatRatioText(mergedStructureChart.marketCapFlowPercent) }}</span>
-              </div>
-            </div>
-
-            <p v-if="mergedStructureChart.ratioDiffText" class="capital-chart-note">
-              {{ mergedStructureChart.ratioDiffText }}
-            </p>
-          </div>
-        </div>
       </div>
 
       <div class="view-tabs">
@@ -115,11 +63,11 @@
         </button>
       </div>
 
-      <!-- 热点爆发 -->
-      <div class="stock-monitor-section">
+      <!-- 个股异动 -->
+      <div v-if="stockMonitorEvents.length > 0" class="stock-monitor-section">
         <div class="card">
           <div class="card-header">
-            <h3>热点爆发</h3>
+            <h3>个股异动</h3>
           </div>
           <div class="card-body">
             <StockMonitorList
@@ -400,14 +348,16 @@
               </div>
               <div class="data-item">
                 <div class="metric-line">
-                  <span class="metric-label">外盘：</span>
-                  <span class="metric-value">{{ stockInfo.outerVolume }}</span>
+                  <span class="metric-label">流通股本：</span>
+                  <span class="metric-value">{{ stockInfo.floatShares }} / {{ stockInfo.totalShares }}</span>
+                  <span v-if="mergedStructureChart.shareFlowPercent != null" class="metric-hint">{{ formatRatioText(mergedStructureChart.shareFlowPercent) }}</span>
                 </div>
               </div>
               <div class="data-item">
                 <div class="metric-line">
-                  <span class="metric-label">内盘：</span>
-                  <span class="metric-value">{{ stockInfo.innerVolume }}</span>
+                  <span class="metric-label">流通市值：</span>
+                  <span class="metric-value">{{ stockInfo.floatMarketCap }} / {{ stockInfo.marketCap }}</span>
+                  <span v-if="mergedStructureChart.marketCapFlowPercent != null" class="metric-hint">{{ formatRatioText(mergedStructureChart.marketCapFlowPercent) }}</span>
                 </div>
               </div>
             </div>
@@ -819,7 +769,7 @@ export default {
       { key: 'long', label: '长线', desc: '季/年' }
     ];
 
-    // 热点爆发数据
+    // 个股异动数据
     const stockMonitorEvents = ref([]);
 
     const fetchMonitorEvents = async () => {
@@ -839,7 +789,7 @@ export default {
           event_time_display: e.event_time_display || formatEventTime(e.event_time),
         }));
       } catch (err) {
-        console.warn('[StockDetail] 获取热点爆发数据失败:', err);
+        console.warn('[StockDetail] 获取个股异动数据失败:', err);
       }
     };
 

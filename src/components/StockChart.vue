@@ -19,7 +19,8 @@
       </div>
     </div>
     <div class="card-body">
-      <div class="signal-row">
+      <!-- 预测面板（Kronos 已下线，预留位置给后续新预测模型，启用时将 SHOW_PREDICTION 改为 true） -->
+      <div v-if="showPredictionPanel" class="signal-row">
         <div class="signal-decision">
           <strong :class="['signal-value', `is-${predictionSignal}`]">{{ predictionSignalText }}</strong>
           <el-popover trigger="click" placement="top-start" :width="360" popper-class="prediction-help-popover">
@@ -57,12 +58,12 @@
           <span class="signal-time">{{ predictionTimeText }}</span>
         </div>
       </div>
-      <p v-if="predictionLoading && predictionStatusText" class="prediction-status">{{ predictionStatusText }}</p>
-      <p v-if="predictionError" class="prediction-error">{{ predictionError }}</p>
+      <p v-if="showPredictionPanel && predictionLoading && predictionStatusText" class="prediction-status">{{ predictionStatusText }}</p>
+      <p v-if="showPredictionPanel && predictionError" class="prediction-error">{{ predictionError }}</p>
 
       <div class="stock-chart-wrap">
         <div class="stock-chart" ref="chartContainer"></div>
-        <div v-if="showPredictionPlaceholder" class="prediction-loading-mask" role="status" aria-live="polite">
+        <div v-if="showPredictionPanel && showPredictionPlaceholder" class="prediction-loading-mask" role="status" aria-live="polite">
           <span class="loading-title">技术面预测加载中</span>
           <span class="loading-desc">{{ predictionStatusText || '模型推理中，结果将自动刷新' }}</span>
         </div>
@@ -111,6 +112,9 @@ echarts.use([
   GraphicComponent,
   CanvasRenderer
 ]);
+
+// 预测面板开关：Kronos 预测已下线，预留位置给后续新预测模型
+const SHOW_PREDICTION = false;
 
 const PERIOD_OPTIONS = [
   { label: '1', klt: 1 },
@@ -1286,6 +1290,7 @@ export default {
       zoomRange,
       periodOptions,
       handlePeriodChange,
+      showPredictionPanel: SHOW_PREDICTION,
       predictionSignal,
       predictionSignalText,
       predictionProbabilityPercentText,
