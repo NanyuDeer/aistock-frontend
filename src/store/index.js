@@ -1185,10 +1185,8 @@ export default createStore({
           return {
             settings: {
               stock_push: isEnabled('stock_push'),
-              morning_report: isEnabled('daily_news_push'),
-              push_tag_short_term: settingsList.length === 0 ? true : isEnabled('push_tag_short_term'),
-              push_tag_mid_term: settingsList.length === 0 ? true : isEnabled('push_tag_mid_term'),
-              push_tag_long_term: settingsList.length === 0 ? true : isEnabled('push_tag_long_term')
+              outbreak_push: isEnabled('outbreak_push'),
+              leader_push: isEnabled('leader_push'),
             }
           };
         }
@@ -1204,10 +1202,8 @@ export default createStore({
       try {
         const settingTypeMap = {
           stock_push: 'stock_push',
-          morning_report: 'daily_news_push',
-          push_tag_short_term: 'push_tag_short_term',
-          push_tag_mid_term: 'push_tag_mid_term',
-          push_tag_long_term: 'push_tag_long_term'
+          outbreak_push: 'outbreak_push',
+          leader_push: 'leader_push',
         };
         const targetSettingType = settingTypeMap[type];
         if (!targetSettingType) {

@@ -50,23 +50,38 @@
           <div class="push-settings-section">
             <h3>推送设置</h3>
             <div class="settings-container">
-              <el-switch
-                v-model="pushSettings.stock_push"
-                active-text="自选股推送"
-                :loading="settingsLoading"
-                @change="updatePushSettings('stock_push')"
-              />
-              <el-switch
-                v-model="pushSettings.morning_report"
-                active-text="早报推送"
-                :loading="settingsLoading"
-                @change="updatePushSettings('morning_report')"
-              />
-            </div>
-            <div class="push-tags-container">
-              <div class="setting-caption">
-                <strong>热点爆发推送</strong>
-                <span>外部爬虫返回的公告和新闻研判，会按自选股推送开关发送</span>
+              <div class="setting-item">
+                <el-switch
+                  v-model="pushSettings.stock_push"
+                  :loading="settingsLoading"
+                  @change="updatePushSettings('stock_push')"
+                />
+                <div class="setting-info">
+                  <strong>自选股异动推送</strong>
+                  <span>当自选股出现重大利好/利空时实时推送</span>
+                </div>
+              </div>
+              <div class="setting-item">
+                <el-switch
+                  v-model="pushSettings.outbreak_push"
+                  :loading="settingsLoading"
+                  @change="updatePushSettings('outbreak_push')"
+                />
+                <div class="setting-info">
+                  <strong>热点爆发推送</strong>
+                  <span>每日9:00和17:00推送三重共振信号检测结果</span>
+                </div>
+              </div>
+              <div class="setting-item">
+                <el-switch
+                  v-model="pushSettings.leader_push"
+                  :loading="settingsLoading"
+                  @change="updatePushSettings('leader_push')"
+                />
+                <div class="setting-info">
+                  <strong>风口龙头推送</strong>
+                  <span>每日8:30推送风口板块及龙头股推荐</span>
+                </div>
               </div>
             </div>
           </div>
@@ -194,7 +209,8 @@ export default {
     const settingsLoading = ref(false)
     const pushSettings = ref({
       stock_push: false,
-      morning_report: false
+      outbreak_push: false,
+      leader_push: false
     })
 
     // 飞书绑定状态
@@ -238,8 +254,9 @@ export default {
         } else {
           // 首次查询未拿到 subscribed，且还有重试次数，延迟后重试
           if (retryCount < 2 && !res?.data?.feishuName) {
+            feishuLoading.value = false  // 重试前结束加载状态，避免UI闪动
             setTimeout(() => fetchFeishuStatus(retryCount + 1), 500)
-            return
+            return  // 跳过finally
           }
           feishuStatus.value = 'idle'
           feishuName.value = ''
@@ -328,18 +345,19 @@ export default {
         const response = await store.dispatch('fetchPushSettings', user.id);
         if (response && response.settings) {
           pushSettings.value.stock_push = response.settings.stock_push || false;
-          pushSettings.value.morning_report = response.settings.morning_report || false;
+          pushSettings.value.outbreak_push = response.settings.outbreak_push || false;
+          pushSettings.value.leader_push = response.settings.leader_push || false;
         } else {
-          // 如果没有设置，使用默认值
           pushSettings.value.stock_push = false;
-          pushSettings.value.morning_report = false;
+          pushSettings.value.outbreak_push = false;
+          pushSettings.value.leader_push = false;
         }
       } catch (error) {
         console.error('获取推送设置失败:', error);
         ElMessage.error('获取推送设置失败');
-        // 出错时也使用默认值
         pushSettings.value.stock_push = false;
-        pushSettings.value.morning_report = false;
+        pushSettings.value.outbreak_push = false;
+        pushSettings.value.leader_push = false;
       } finally {
         settingsLoading.value = false;
       }
@@ -500,22 +518,28 @@ export default {
 
         .settings-container {
           display: flex;
-          flex-wrap: wrap;
-          gap: 20px;
+          flex-direction: column;
+          gap: 16px;
         }
 
-        .push-tags-container {
-          margin-top: 18px;
-          padding: 14px 16px;
+        .setting-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          padding: 12px 14px;
           background: #f8fafc;
           border: 1px solid #e5e7eb;
           border-radius: 8px;
 
-          .setting-caption {
+          .el-switch {
+            margin-top: 2px;
+            flex-shrink: 0;
+          }
+
+          .setting-info {
             display: flex;
             flex-direction: column;
             gap: 4px;
-            margin-bottom: 12px;
 
             strong {
               color: #333;
@@ -524,7 +548,8 @@ export default {
 
             span {
               color: #8a8f99;
-              font-size: 0.85rem;
+              font-size: 0.82rem;
+              line-height: 1.4;
             }
           }
         }

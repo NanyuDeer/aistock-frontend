@@ -298,6 +298,7 @@ function extractBubblesFromSectors(sectors) {
     change: s.today_change || 0,
     frequency: s.frequency || 0,
     score: s.score || 0,
+    persistence: s.ai_analysis?.persistence || '短期(1-3天)',
   }));
 }
 
@@ -443,27 +444,49 @@ export default {
       const bubbles = displayBubbles.value;
       if (!bubbles || bubbles.length === 0) return;
 
-      const scores = bubbles.map(s => s.score || 0);
-      const maxScore = Math.max(...scores);
-      const minScore = Math.min(...scores);
-      const minR = 24, maxR = 41;
+      // 泡泡大小映射：按AI判断的持续时间 persistence
+      const persistenceWeight = (p) => {
+        if (!p) return 1;
+        if (p.includes('长期')) return 3;
+        if (p.includes('中期')) return 2;
+        return 1;
+      };
 
       const bubbleData = bubbles.map((s, i) => {
-        const raw = s.score || 0;
-        const scoreNorm = (maxScore > minScore) ? (raw - minScore) / (maxScore - minScore) : 0.5;
-        const r = minR + (maxR - minR) * scoreNorm;
+        const pw = persistenceWeight(s.persistence);
+        // 短期→22-27, 中期→29-34, 长期→36-42
+        const rMap = { 1: [22, 27], 2: [29, 34], 3: [36, 42] };
+        const [minP, maxP] = rMap[pw];
+        // 同级别内按score微调
+        const scores = bubbles.map(b => b.score || 0);
+        const maxScore = Math.max(...scores);
+        const minScore = Math.min(...scores);
+        const scoreNorm = (maxScore > minScore) ? ((s.score || 0) - minScore) / (maxScore - minScore) : 0.5;
+        const r = minP + (maxP - minP) * scoreNorm;
         return { ...s, idx: i, r };
       });
 
       const simulation = d3.forceSimulation(bubbleData)
-        .force('charge', d3.forceCollide().radius(d => d.r + 3).strength(0.8))
+        .force('charge', d3.forceCollide().radius(d => d.r + 4).strength(0.9))
         .force('center', d3.forceCenter(width / 2, height / 2))
-        .force('x', d3.forceX(width / 2).strength(0.06))
-        .force('y', d3.forceY(height / 2).strength(0.06))
+        .force('x', d3.forceX(width / 2).strength(0.12))
+        .force('y', d3.forceY(height / 2).strength(0.12))
         .stop();
       for (let i = 0; i < 200; i++) simulation.tick();
 
-      const colorScale = d3.scaleLinear().domain([-3, 0, 3]).range(['#16a34a', '#94a3b8', '#dc2626']);
+      // 边界约束：确保泡泡不超出画布
+      for (const d of bubbleData) {
+        d.x = Math.max(d.r + 2, Math.min(width - d.r - 2, d.x));
+        d.y = Math.max(d.r + 2, Math.min(height - d.r - 2, d.y));
+      }
+
+      // 泡泡颜色映射：按概念评分 score（低分浅色，高分深色）
+      const scores = bubbles.map(s => s.score || 0);
+      const minScore = Math.min(...scores);
+      const maxScore = Math.max(...scores);
+      const colorScale = d3.scaleLinear()
+        .domain([minScore, maxScore])
+        .range(['#bfdbfe', '#1d4ed8']);
 
       svg.selectAll('*').remove();
       const g = svg.selectAll('g')
@@ -484,8 +507,8 @@ export default {
 
       g.append('circle')
         .attr('r', d => d.r)
-        .attr('fill', d => colorScale(d.change))
-        .attr('fill-opacity', 0.8)
+        .attr('fill', d => colorScale(d.score))
+        .attr('fill-opacity', 0.85)
         .attr('stroke', '#fff')
         .attr('stroke-width', 2);
 
