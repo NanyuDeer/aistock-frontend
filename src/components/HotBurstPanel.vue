@@ -14,7 +14,7 @@
       </h3>
       <div class="header-right">
         <span class="subtitle" v-if="signals.length">共 {{ signals.length }} 只</span>
-        <router-link v-if="showMoreLink" to="/hot-burst/history" class="more-link">
+        <router-link v-if="showMoreLink" to="/hot-burst" class="more-link">
           查看全部 <span class="arrow">&rarr;</span>
         </router-link>
       </div>
@@ -24,12 +24,12 @@
 
     <div v-else class="signal-table">
       <div class="table-head">
+        <span>行情</span>
         <span>股票</span>
         <span>共振</span>
         <span>等级</span>
         <span>关键词</span>
         <span>得分</span>
-        <span>股价</span>
         <span>板块</span>
       </div>
       <div
@@ -39,6 +39,12 @@
         :class="'level-' + sig.resonanceLevel"
         @click="goToStock(sig.symbol)"
       >
+        <div class="cell-price">
+          <span class="price-val">{{ sig.price != null ? sig.price.toFixed(2) : '--' }}</span>
+          <span class="change-val" :class="changeClass(sig.changePct)">
+            {{ formatChange(sig.changePct) }}
+          </span>
+        </div>
         <div class="cell-stock">
           <span class="stock-name">{{ sig.stockName || sig.symbol }}</span>
           <span class="stock-code">{{ sig.symbol }}</span>
@@ -61,12 +67,6 @@
         <div class="cell-score">
           <span class="score-val">{{ sig.resonanceScore }}</span>
         </div>
-        <div class="cell-price">
-          <span class="price-val">{{ sig.price != null ? sig.price.toFixed(2) : '--' }}</span>
-          <span class="change-val" :class="changeClass(sig.changePct)">
-            {{ formatChange(sig.changePct) }}
-          </span>
-        </div>
         <div class="cell-sector">
           <span class="sector-text">{{ sig.sectorInfo || sig.thsSectorName || '--' }}</span>
         </div>
@@ -79,6 +79,80 @@
 <script>
 import { windLeaderApi } from '@/services/api'
 import { useRouter } from 'vue-router'
+
+// TODO: 测试用模拟数据，上线前删除
+const MOCK_SIGNALS = [
+  {
+    symbol: '300308',
+    stockName: '中际旭创',
+    resonanceScore: 95,
+    resonanceLevel: 'critical',
+    price: 156.80,
+    changePct: 9.87,
+    sectorInfo: '光模块/CPO',
+    newsKeywords: ['光模块', 'AI算力'],
+    feishuKeywords: ['CPO'],
+    resonance1: { verified: true },
+    resonance2: { verified: true },
+    resonance3: { verified: true },
+  },
+  {
+    symbol: '002475',
+    stockName: '立讯精密',
+    resonanceScore: 88,
+    resonanceLevel: 'high',
+    price: 42.35,
+    changePct: 6.52,
+    sectorInfo: '消费电子',
+    newsKeywords: ['苹果产业链', 'VR'],
+    feishuKeywords: [],
+    resonance1: { verified: true },
+    resonance2: { verified: true },
+    resonance3: { verified: true },
+  },
+  {
+    symbol: '688256',
+    stockName: '寒武纪',
+    resonanceScore: 82,
+    resonanceLevel: 'high',
+    price: 238.50,
+    changePct: 12.34,
+    sectorInfo: 'AI芯片',
+    newsKeywords: ['AI芯片', '算力'],
+    feishuKeywords: [],
+    resonance1: { verified: true },
+    resonance2: { verified: true },
+    resonance3: { verified: false },
+  },
+  {
+    symbol: '603986',
+    stockName: '兆易创新',
+    resonanceScore: 76,
+    resonanceLevel: 'medium',
+    price: 98.20,
+    changePct: 4.15,
+    sectorInfo: '存储芯片',
+    newsKeywords: ['存储', '半导体'],
+    feishuKeywords: [],
+    resonance1: { verified: true },
+    resonance2: { verified: true },
+    resonance3: { verified: false },
+  },
+  {
+    symbol: '300750',
+    stockName: '宁德时代',
+    resonanceScore: 68,
+    resonanceLevel: 'medium',
+    price: 185.60,
+    changePct: -1.23,
+    sectorInfo: '锂电池',
+    newsKeywords: ['固态电池', '新能源'],
+    feishuKeywords: [],
+    resonance1: { verified: true },
+    resonance2: { verified: false },
+    resonance3: { verified: false },
+  },
+]
 
 export default {
   name: 'HotBurstPanel',
@@ -113,9 +187,12 @@ export default {
       this.loading = true
       try {
         const res = await windLeaderApi.getHotBurst(6)
-        this.signals = res.data?.outbreaks || []
+        const outbreaks = res.data?.outbreaks || []
+        // TODO: 测试用模拟数据，上线前删除（API无数据时用模拟数据）
+        this.signals = outbreaks.length ? outbreaks : MOCK_SIGNALS
       } catch {
-        this.signals = []
+        // TODO: 测试用模拟数据，上线前删除
+        this.signals = MOCK_SIGNALS
       } finally {
         this.loading = false
       }
@@ -138,6 +215,11 @@ export default {
 
 <style lang="scss" scoped>
 .hot-burst-panel {
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+
   .panel-header {
     display: flex;
     justify-content: space-between;
@@ -211,7 +293,7 @@ export default {
   .table-head,
   .table-row {
     display: grid;
-    grid-template-columns: minmax(100px, 0.9fr) 60px 56px minmax(120px, 1fr) 44px minmax(80px, 0.6fr) minmax(80px, 0.7fr);
+    grid-template-columns: 80px minmax(90px, 0.8fr) 56px 56px minmax(120px, 1fr) 44px minmax(80px, 0.7fr);
     align-items: center;
     gap: 8px;
   }
@@ -245,6 +327,24 @@ export default {
     &.level-critical { border-left-color: #ef4444; }
     &.level-high { border-left-color: #f97316; }
     &.level-medium { border-left-color: #f59e0b; }
+  }
+
+  .cell-price {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+
+    .price-val {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .change-val {
+      font-size: 0.76rem;
+      font-weight: 500;
+      &.up { color: #ef4444; }
+      &.down { color: #16a34a; }
+    }
   }
 
   .cell-stock {
@@ -334,25 +434,6 @@ export default {
     }
   }
 
-  .cell-price {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-
-    .price-val {
-      font-size: 0.88rem;
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-    .change-val {
-      font-size: 0.76rem;
-      font-weight: 500;
-
-      &.up { color: #ef4444; }
-      &.down { color: #16a34a; }
-    }
-  }
-
   .cell-sector {
     min-width: 0;
 
@@ -371,7 +452,7 @@ export default {
   .hot-burst-panel {
     .table-head,
     .table-row {
-      grid-template-columns: minmax(80px, 0.85fr) 48px 48px minmax(80px, 0.8fr) 36px minmax(60px, 0.5fr) minmax(60px, 0.6fr);
+      grid-template-columns: 64px minmax(72px, 0.75fr) 48px 48px minmax(80px, 0.8fr) 36px minmax(60px, 0.6fr);
       gap: 4px;
     }
 

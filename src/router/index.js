@@ -10,10 +10,9 @@ const WechatMessageView = () => import('@/views/WechatMessageView.vue')
 const UpdateLogsView = () => import('@/views/UpdateLogsView.vue')
 const PerformanceForecastView = () => import('@/views/PerformanceForecastView.vue')
 const TenxScoreView = () => import('@/views/TenxScoreView.vue')
-const MonitorView = () => import('@/views/MonitorView.vue')
+const HotBurstView = () => import('@/views/HotBurstView.vue')
 const StockMonitorView = () => import('@/views/StockMonitorView.vue')
 const PotentialStockPushHistoryView = () => import('@/views/PotentialStockPushHistoryView.vue')
-const HotBurstHistoryView = () => import('@/views/HotBurstHistoryView.vue')
 
 const routes = [
   {
@@ -89,18 +88,10 @@ const routes = [
   },
   {
     path: '/hot-burst',
-    name: 'monitor',
-    component: MonitorView,
+    name: 'hotBurst',
+    component: HotBurstView,
     meta: {
       title: '股票资讯AI智能分析 - 热点爆发'
-    }
-  },
-  {
-    path: '/hot-burst/history',
-    name: 'hotBurstHistory',
-    component: HotBurstHistoryView,
-    meta: {
-      title: '股票资讯AI智能分析 - 热点爆发历史'
     }
   },
   {
