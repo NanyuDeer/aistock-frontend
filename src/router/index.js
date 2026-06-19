@@ -91,7 +91,7 @@ const routes = [
     name: 'hotBurst',
     component: HotBurstView,
     meta: {
-      title: '股票资讯AI智能分析 - 热点爆发'
+      title: '股票资讯AI智能分析 - 媒体关注榜'
     }
   },
   {
