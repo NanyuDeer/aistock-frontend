@@ -9,8 +9,7 @@
         </div>
 
         <div class="history-content">
-          <div v-if="loading" class="loading">加载中...</div>
-          <div v-else-if="!records.length" class="empty">暂无历史记录</div>
+          <div v-if="loading && !records.length" class="loading">加载中...</div>
 
           <div v-else class="history-table">
             <div class="table-head">
@@ -53,6 +52,7 @@
               </div>
               <div class="cell-time">{{ formatTime(rec.detected_at) }}</div>
             </div>
+            <div v-if="!records.length" class="empty-row">暂无历史记录</div>
           </div>
 
           <div v-if="hasMore" class="load-more">
@@ -177,11 +177,18 @@ export default {
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   }
 
-  .loading, .empty {
+  .loading {
     text-align: center;
     padding: 40px 0;
     color: var(--text-tertiary);
     font-size: 0.9rem;
+  }
+
+  .empty-row {
+    text-align: center;
+    color: var(--text-tertiary);
+    padding: 30px 0;
+    font-size: 0.88rem;
   }
 
   .history-table {

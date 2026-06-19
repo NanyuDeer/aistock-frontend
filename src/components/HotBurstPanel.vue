@@ -21,7 +21,6 @@
     </div>
 
     <div v-if="loading && !signals.length" class="loading">检测中...</div>
-    <div v-else-if="!signals.length" class="empty">暂无共振信号</div>
 
     <div v-else class="signal-table">
       <div class="table-head">
@@ -72,6 +71,7 @@
           <span class="sector-text">{{ sig.sectorInfo || sig.thsSectorName || '--' }}</span>
         </div>
       </div>
+      <div v-if="!signals.length" class="empty-row">暂无共振信号</div>
     </div>
   </div>
 </template>
@@ -188,11 +188,18 @@ export default {
     }
   }
 
-  .loading, .empty {
+  .loading {
     text-align: center;
     padding: 30px 0;
     color: var(--text-tertiary, #94a3b8);
     font-size: 13px;
+  }
+
+  .empty-row {
+    text-align: center;
+    color: var(--text-tertiary, #94a3b8);
+    padding: 30px 0;
+    font-size: 0.88rem;
   }
 
   .signal-table {
