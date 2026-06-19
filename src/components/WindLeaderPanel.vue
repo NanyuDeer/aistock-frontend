@@ -2,7 +2,7 @@
   <div class="hot-sector-panel">
     <!-- 标题栏 -->
     <div class="hs-header">
-      <h3 class="section-title">长线趋势风口及龙头股板块</h3>
+      <h3 class="section-title">风口龙头</h3>
       <div class="hs-header-actions">
         <span class="hs-header-meta" v-if="displayUpdateTime">更新时间: {{ displayUpdateTime }}</span>
         <el-button class="hs-history-btn" type="primary" plain size="small" @click="goToHistoryPerformance">
@@ -302,7 +302,7 @@ function extractBubblesFromSectors(sectors) {
 }
 
 export default {
-  name: 'HotSectorPanel',
+  name: 'WindLeaderPanel',
   props: {
     sectors: { type: Array, default: () => [] },
     loading: { type: Boolean, default: false },
@@ -363,7 +363,7 @@ export default {
           }
         }
       } catch (err) {
-        console.error('[HotSectorPanel] 关注操作失败:', err);
+        console.error('[WindLeaderPanel] 关注操作失败:', err);
         ElMessage.error('操作失败，请稍后再重试');
       } finally {
         followLoading.value = { ...followLoading.value, [code]: false };

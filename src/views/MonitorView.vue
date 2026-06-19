@@ -4,13 +4,13 @@
     <div class="page-container">
       <div class="container">
         <div class="page-header">
-          <h2 class="page-title">风口爆发</h2>
-          <p class="page-desc">聚合格隆汇/财联社快讯 + 飞书群消息 + 同花顺热点掘金，三重共振发现风口爆发个股</p>
+          <h2 class="page-title">热点爆发</h2>
+          <p class="page-desc">聚合格隆汇/财联社快讯 + 飞书群消息 + 同花顺热点掘金，三重共振发现热点爆发个股</p>
         </div>
 
-        <!-- 风口爆发列表 -->
+        <!-- 热点爆发列表 -->
         <div class="monitor-content">
-          <HotspotOutbreakPanel :show-more-link="false" />
+          <HotBurstPanel :show-more-link="false" />
         </div>
       </div>
     </div>
@@ -19,11 +19,11 @@
 
 <script>
 import TheNavbar from '@/components/TheNavbar.vue'
-import HotspotOutbreakPanel from '@/components/HotspotOutbreakPanel.vue'
+import HotBurstPanel from '@/components/HotBurstPanel.vue'
 
 export default {
   name: 'MonitorView',
-  components: { TheNavbar, HotspotOutbreakPanel },
+  components: { TheNavbar, HotBurstPanel },
   setup() {
     return {}
   }

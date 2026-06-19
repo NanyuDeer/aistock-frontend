@@ -122,9 +122,9 @@
             </el-dialog>
           </div>
 
-          <!-- 爆发风口 -->
-          <div class="hotspot-outbreak-section">
-            <HotspotOutbreakPanel />
+          <!-- 热点爆发 -->
+          <div class="hot-burst-section">
+            <HotBurstPanel />
           </div>
 
           <!-- 个股异动 -->
@@ -138,8 +138,8 @@
             <MarketOverview />
           </div>
 
-          <!-- 风口爆发股 -->
-          <HotSectorPanel
+          <!-- 风口龙头 -->
+          <WindLeaderPanel
             :sectors="hotSectors"
             :loading="loadingHotSectors"
             :error="hotSectorError"
@@ -151,7 +151,7 @@
           <!-- AI产业链知识图谱（已隐藏） -->
           <AiGraph v-if="false" />
 
-          <!-- 近期风口板块及龙头个股（已隐藏，数据已迁移至风口爆发股） -->
+          <!-- 近期风口龙头板块（已隐藏，数据已迁移至风口龙头） -->
           <div class="curated-stock-sections" style="display: none;">
             <section class="curated-panel trend-leader-panel">
               <div class="curated-panel-header">
@@ -304,10 +304,10 @@ import MarketOverview from '@/components/MarketOverview.vue';
 import NewsSlider from '@/components/NewsSlider.vue';
 import StockCardList from '@/components/StockCardList.vue';
 import StockMonitorCard from '@/components/StockMonitorCard.vue';
-import HotspotOutbreakPanel from '@/components/HotspotOutbreakPanel.vue';
-import HotSectorPanel from '@/components/HotSectorPanel.vue';
+import HotBurstPanel from '@/components/HotBurstPanel.vue';
+import WindLeaderPanel from '@/components/WindLeaderPanel.vue';
 import AiGraph from '@/components/AiGraph.vue';
-import { trendHotspotApi, hotSectorApi } from '@/services/api';
+import { trendHotspotApi, windLeaderApi } from '@/services/api';
 import 'element-plus/es/components/message/style/css';
 
 export default {
@@ -318,7 +318,7 @@ export default {
     NewsSlider,
     StockCardList,
     StockMonitorCard,
-    HotspotOutbreakPanel
+    HotBurstPanel
   },
   setup() {
     const store = useStore();
@@ -363,12 +363,12 @@ export default {
 
     fetchMonitorEvents();
 
-    // -------------------- 风口爆发股部分 --------------------
+    // -------------------- 风口龙头部分 --------------------
     const hotSectors = ref([]);
     const loadingHotSectors = ref(false);
     const hotSectorUpdateTime = ref('');
     const hotSectorError = ref('');
-    const hotSectorQuoteMap = ref({}); // 风口股票实时行情
+    const hotSectorQuoteMap = ref({}); // 风口龙头股票实时行情
 
     const fetchHotSectors = async (forceRefresh = false) => {
       loadingHotSectors.value = true;
@@ -377,25 +377,25 @@ export default {
         // 如果是手动重试，先触发后端刷新
         if (forceRefresh) {
           try {
-            await hotSectorApi.refreshAnalysis();
+            await windLeaderApi.refreshAnalysis();
           } catch (e) {
-            console.warn('[HomeView] 风口爆发股刷新请求失败，仍尝试读取缓存:', e);
+            console.warn('[HomeView] 风口龙头刷新请求失败，仍尝试读取缓存:', e);
           }
         }
-        const res = await hotSectorApi.getHotSectors(8);
+        const res = await windLeaderApi.getWindLeaders(8);
         if (res?.code === 200 && res?.data) {
           hotSectors.value = res.data.hot_sectors || [];
           hotSectorUpdateTime.value = res.data.update_time || '';
         } else if (res?.code === 404) {
-          hotSectorError.value = '暂无风口爆发股数据，请稍后再试';
+          hotSectorError.value = '暂无风口龙头数据，请稍后再试';
           hotSectors.value = [];
         } else {
-          hotSectorError.value = res?.message || '获取风口爆发股数据失败';
+          hotSectorError.value = res?.message || '获取风口龙头数据失败';
           hotSectors.value = [];
         }
       } catch (err) {
-        console.warn('[HomeView] 获取风口爆发股数据失败:', err);
-        hotSectorError.value = '网络异常，无法获取风口爆发股数据';
+        console.warn('[HomeView] 获取风口龙头数据失败:', err);
+        hotSectorError.value = '网络异常，无法获取风口龙头数据';
         hotSectors.value = [];
       } finally {
         loadingHotSectors.value = false;
@@ -480,7 +480,7 @@ export default {
       // 自选股
       myFavoriteStocks.value.forEach(s => { if (s.code) codes.add(s.code); });
 
-      // 风口爆发股龙头
+      // 风口龙头
       hotSectors.value.forEach(sector => {
         (sector.main_stocks || []).forEach(s => { if (s.code) codes.add(s.code); });
         (sector.upstream_stocks || []).forEach(s => { if (s.code) codes.add(s.code); });
@@ -528,7 +528,7 @@ export default {
         });
       }
 
-      // 更新风口爆发股行情
+      // 更新风口龙头行情
       hotSectorQuoteMap.value = { ...hotSectorQuoteMap.value, ...quoteMap };
     };
 
@@ -1207,7 +1207,7 @@ export default {
       // 趋势风口
       monitorEvents,
 
-      // 风口爆发股
+      // 风口龙头
       hotSectors,
       loadingHotSectors,
       hotSectorUpdateTime,
@@ -1265,7 +1265,7 @@ export default {
 
 <style lang="scss" scoped>
 .home-page {
-  .hotspot-outbreak-section {
+  .hot-burst-section {
     margin-top: 20px;
     margin-bottom: 20px;
   }

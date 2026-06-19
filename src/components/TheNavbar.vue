@@ -20,7 +20,6 @@
         <router-link v-if="isLoggedIn" to="/potential-push-history" class="menu-item" @click="closeMobileMenu">推送历史</router-link>
         <router-link v-if="isLoggedIn" to="/favorites" class="menu-item" @click="closeMobileMenu">我的自选股</router-link>
         <template v-if="isLoggedIn">
-          <div class="menu-item" @click="openSubscribeDialog">消息订阅</div>
           <router-link to="/profile" class="menu-item" @click="closeMobileMenu">个人信息</router-link>
           <div class="menu-item" @click="handleLogout">退出登录</div>
         </template>
@@ -38,11 +37,6 @@
       </div>
       <div class="user-area">
         <template v-if="isLoggedIn">
-          <!-- 消息订阅按钮 -->
-          <div class="subscribe-btn" @click="openSubscribeDialog" title="消息订阅">
-            <i class="el-icon-bell"></i>
-            <span v-if="subscribeStatus === 'subscribed'" class="subscribe-dot"></span>
-          </div>
           <el-dropdown trigger="click">
             <div class="user-avatar">
               <img :src="currentUser?.avatar || defaultAvatar" alt="头像" />
@@ -66,153 +60,14 @@
         </template>
       </div>
     </div>
-
-    <!-- 消息订阅弹窗 -->
-    <el-dialog
-      v-model="subscribeDialogVisible"
-      title="消息订阅"
-      width="420px"
-      :close-on-click-modal="true"
-      class="subscribe-dialog"
-    >
-      <div class="subscribe-content">
-        <div class="subscribe-desc">
-          订阅后，飞书机器人将每日推送2次资讯到您的账号：
-        </div>
-        <div class="subscribe-features">
-          <div class="feature-item">
-            <i class="el-icon-document"></i>
-            <span>【个股资讯】自选股公告/新闻研判</span>
-          </div>
-          <div class="feature-item">
-            <i class="el-icon-trophy"></i>
-            <span>风口爆发：每日3支风口爆发股</span>
-          </div>
-          <div class="feature-item">
-            <i class="el-icon-time"></i>
-            <span>推送时间：9:00 / 17:00</span>
-          </div>
-        </div>
-
-        <div v-if="subscribeStatus === 'unauthorized'" class="subscribe-oauth">
-          <p class="oauth-tip">需要授权飞书账号以接收推送消息</p>
-          <p class="oauth-hint">当前为企业自建应用，需先加入企业</p>
-          <el-button type="primary" @click="openFeishuBindDialog">
-            授权飞书账号
-          </el-button>
-        </div>
-
-        <div v-else-if="subscribeStatus === 'subscribed'" class="subscribe-active">
-          <div class="active-status">
-            <i class="el-icon-success"></i>
-            <span>已订阅，飞书推送已开启</span>
-          </div>
-          <el-button type="danger" plain size="small" @click="handleUnsubscribe">
-            取消订阅
-          </el-button>
-        </div>
-
-        <div v-else class="subscribe-idle">
-          <el-button type="primary" @click="handleSubscribe" :loading="subscribeLoading">
-            开启订阅
-          </el-button>
-        </div>
-      </div>
-    </el-dialog>
-
-    <!-- 飞书两步绑定弹窗 -->
-    <el-dialog
-      v-model="feishuBindDialogVisible"
-      title="绑定飞书账号"
-      width="460px"
-      :close-on-click-modal="true"
-      class="feishu-bind-dialog"
-    >
-      <div class="bind-dialog-content">
-        <el-steps :active="bindStep" finish-status="success" simple>
-          <el-step title="加入企业" />
-          <el-step title="授权登录" />
-        </el-steps>
-
-        <div v-if="bindStep === 0" class="bind-step">
-          <p class="step-title">第一步：加入企业</p>
-          <p class="step-desc">
-            当前飞书应用为<strong>企业自建应用</strong>，只有企业成员才能授权使用。请先点击下方链接或扫描二维码加入企业。
-          </p>
-
-          <div v-if="enterpriseConfig.inviteLink" class="invite-link-box">
-            <el-link
-              type="primary"
-              :href="enterpriseConfig.inviteLink"
-              target="_blank"
-              :underline="false"
-            >
-              点击加入企业
-            </el-link>
-            <el-button type="primary" link size="small" @click="copyInviteLink">
-              复制链接
-            </el-button>
-          </div>
-
-          <div v-if="enterpriseConfig.inviteQrUrl" class="invite-qr-box">
-            <p>或扫描下方二维码加入：</p>
-            <el-image
-              :src="enterpriseConfig.inviteQrUrl"
-              :preview-src-list="[enterpriseConfig.inviteQrUrl]"
-              fit="contain"
-              class="invite-qr"
-            />
-          </div>
-
-          <div v-if="!enterpriseConfig.inviteLink && !enterpriseConfig.inviteQrUrl" class="no-config-tip">
-            <el-alert
-              title="管理员尚未配置企业邀请入口"
-              type="warning"
-              :closable="false"
-              description="请联系管理员将你添加进企业后，再回来完成授权。"
-              show-icon
-            />
-          </div>
-        </div>
-
-        <div v-else class="bind-step">
-          <p class="step-title">第二步：授权登录</p>
-          <p class="step-desc">
-            加入企业后，点击下方的"继续授权"按钮，使用飞书账号完成 OAuth 授权。
-          </p>
-          <el-alert
-            title="若尚未加入企业，授权会失败"
-            type="info"
-            :closable="false"
-            show-icon
-            class="oauth-alert"
-          />
-        </div>
-      </div>
-
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button v-if="bindStep === 1" @click="bindStep = 0">上一步</el-button>
-          <el-button v-if="bindStep === 0" type="primary" @click="bindStep = 1">
-            已加入企业，下一步
-          </el-button>
-          <el-button v-else type="primary" :loading="oauthLoading" @click="handleFeishuAuth">
-            继续授权
-          </el-button>
-        </div>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import 'element-plus/es/components/message/style/css'
 import CacheManager from '../utils/cacheManager'
-import api from '../services/api'
 
 export default {
   name: 'TheNavbar',
@@ -240,113 +95,6 @@ export default {
       mobileMenuOpen.value = false
     }
 
-    // 消息订阅相关
-    const subscribeDialogVisible = ref(false)
-    const subscribeStatus = ref('idle') // idle | unauthorized | subscribed
-    const subscribeLoading = ref(false)
-    const oauthLoading = ref(false)
-    const feishuBindDialogVisible = ref(false)
-    const bindStep = ref(0)
-    const enterpriseConfig = ref({ inviteLink: '', inviteQrUrl: '' })
-
-    const openFeishuBindDialog = async () => {
-      try {
-        const { getFeishuEnterpriseConfig } = await import('@/utils/configManager')
-        enterpriseConfig.value = await getFeishuEnterpriseConfig()
-      } catch (err) {
-        console.error('[TheNavbar] 获取企业邀请配置失败:', err)
-      }
-      bindStep.value = 0
-      feishuBindDialogVisible.value = true
-    }
-
-    const copyInviteLink = async () => {
-      if (!enterpriseConfig.value.inviteLink) return
-      try {
-        await navigator.clipboard.writeText(enterpriseConfig.value.inviteLink)
-        ElMessage.success('邀请链接已复制')
-      } catch {
-        ElMessage.error('复制失败，请手动复制')
-      }
-    }
-
-    const openSubscribeDialog = () => {
-      closeMobileMenu()
-      subscribeDialogVisible.value = true
-      checkSubscribeStatus()
-    }
-
-    const checkSubscribeStatus = async () => {
-      try {
-        const res = await api.get('/api/users/me/subscription')
-        if (res?.data?.status === 'subscribed') {
-          subscribeStatus.value = 'subscribed'
-        } else if (res?.data?.status === 'unauthorized') {
-          subscribeStatus.value = 'unauthorized'
-        } else {
-          subscribeStatus.value = 'idle'
-        }
-      } catch {
-        subscribeStatus.value = 'idle'
-      }
-    }
-
-    const handleSubscribe = async () => {
-      subscribeLoading.value = true
-      try {
-        await api.post('/api/users/me/subscription', { action: 'subscribe' })
-        subscribeStatus.value = 'subscribed'
-      } catch (err) {
-        console.warn('[Navbar] 订阅失败:', err)
-      } finally {
-        subscribeLoading.value = false
-      }
-    }
-
-    const handleUnsubscribe = async () => {
-      try {
-        await api.post('/api/users/me/subscription', { action: 'unsubscribe' })
-        subscribeStatus.value = 'idle'
-      } catch (err) {
-        console.warn('[Navbar] 取消订阅失败:', err)
-      }
-    }
-
-    const handleFeishuAuth = async () => {
-      oauthLoading.value = true
-      try {
-        // 从后端获取飞书配置
-        const { getFeishuAppId } = await import('@/utils/configManager')
-        const feishuAppId = await getFeishuAppId()
-        
-        if (!feishuAppId) {
-          console.error('[TheNavbar] 未配置飞书 App ID')
-          ElMessage.error('飞书配置未加载，请稍后重试')
-          return
-        }
-        
-        // 回调必须指向后端 API 域名（gupiao-api），而非前端域名（window.location.origin）
-        // 否则 Caddy 会把 /api/* 当作静态文件返回 index.html，导致后端 oauthCallback 从未被调用
-        const apiBase = process.env.NODE_ENV === 'production' ? 'https://gupiao-api.yaozhineng.com' : ''
-        const redirectUri = encodeURIComponent(`${apiBase}/api/auth/feishu/callback`)
-        const state = encodeURIComponent(window.location.pathname)
-        const scope = encodeURIComponent('contact:contact.base:readonly')
-        const authUrl = `https://open.feishu.cn/open-apis/authen/v1/authorize?app_id=${feishuAppId}&redirect_uri=${redirectUri}&state=${state}&scope=${scope}`
-        window.location.href = authUrl
-      } catch (err) {
-        console.error('[TheNavbar] 获取飞书配置失败:', err)
-        ElMessage.error('获取飞书配置失败，请检查网络连接后重试')
-      } finally {
-        oauthLoading.value = false
-      }
-    }
-
-    onMounted(() => {
-      if (isLoggedIn.value) {
-        checkSubscribeStatus()
-      }
-    })
-    
     return {
       isLoggedIn,
       currentUser,
@@ -355,19 +103,6 @@ export default {
       mobileMenuOpen,
       toggleMobileMenu,
       closeMobileMenu,
-      subscribeDialogVisible,
-      subscribeStatus,
-      subscribeLoading,
-      oauthLoading,
-      feishuBindDialogVisible,
-      bindStep,
-      enterpriseConfig,
-      openSubscribeDialog,
-      openFeishuBindDialog,
-      copyInviteLink,
-      handleSubscribe,
-      handleUnsubscribe,
-      handleFeishuAuth,
     }
   }
 }
@@ -541,38 +276,6 @@ export default {
     align-items: center;
     gap: 12px;
     
-    .subscribe-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      cursor: pointer;
-      transition: background 0.2s;
-      position: relative;
-
-      &:hover {
-        background: #f5f5f5;
-      }
-
-      i {
-        font-size: 20px;
-        color: #666;
-      }
-
-      .subscribe-dot {
-        position: absolute;
-        top: 6px;
-        right: 6px;
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #67c23a;
-        border: 2px solid #fff;
-      }
-    }
-    
     .user-avatar {
       display: flex;
       align-items: center;
@@ -660,84 +363,6 @@ export default {
   }
 }
 
-// 消息订阅弹窗样式
-.subscribe-content {
-  .subscribe-desc {
-    font-size: 0.95rem;
-    color: #606266;
-    margin-bottom: 16px;
-  }
-
-  .subscribe-features {
-    background: #f8f9fa;
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 20px;
-
-    .feature-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 8px 0;
-      font-size: 0.9rem;
-      color: #303133;
-
-      i {
-        font-size: 18px;
-        color: var(--primary-color);
-      }
-
-      &:not(:last-child) {
-        border-bottom: 1px solid #ebeef5;
-      }
-    }
-  }
-
-  .subscribe-oauth {
-    text-align: center;
-
-    .oauth-tip {
-      font-size: 0.9rem;
-      color: #909399;
-      margin-bottom: 8px;
-    }
-
-    .oauth-hint {
-      font-size: 0.82rem;
-      color: #f56c6c;
-      margin-bottom: 12px;
-      line-height: 1.4;
-    }
-  }
-
-  .subscribe-active {
-    text-align: center;
-
-    .active-status {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      margin-bottom: 12px;
-
-      i {
-        font-size: 20px;
-        color: #67c23a;
-      }
-
-      span {
-        font-size: 0.95rem;
-        color: #67c23a;
-        font-weight: 500;
-      }
-    }
-  }
-
-  .subscribe-idle {
-    text-align: center;
-  }
-}
-
 :deep(.el-dropdown-menu__item) {
   a {
     text-decoration: none;
@@ -751,64 +376,6 @@ export default {
     
     &:visited {
       color: inherit;
-    }
-  }
-}
-
-.bind-dialog-content {
-  .el-steps {
-    margin-bottom: 20px;
-  }
-
-  .bind-step {
-    .step-title {
-      font-size: 1rem;
-      font-weight: 600;
-      color: #333;
-      margin: 0 0 10px;
-    }
-
-    .step-desc {
-      font-size: 0.88rem;
-      color: #606266;
-      line-height: 1.6;
-      margin: 0 0 16px;
-    }
-
-    .invite-link-box {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 16px;
-      padding: 12px;
-      background: #f5f7fa;
-      border-radius: 6px;
-    }
-
-    .invite-qr-box {
-      text-align: center;
-
-      p {
-        font-size: 0.85rem;
-        color: #606266;
-        margin: 0 0 8px;
-      }
-
-      .invite-qr {
-        width: 180px;
-        height: 180px;
-        border: 1px solid #ebeef5;
-        border-radius: 8px;
-        overflow: hidden;
-      }
-    }
-
-    .no-config-tip {
-      margin-top: 8px;
-    }
-
-    .oauth-alert {
-      margin-top: 8px;
     }
   }
 }

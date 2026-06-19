@@ -829,23 +829,23 @@ export const tenxApi = {
   }),
 };
 
-// 风口爆发股 API
-export const hotSectorApi = {
-  /** 获取风口爆发股分析结果 */
-  getHotSectors: (limit = 8) => api.get('/api/cn/hot-sectors', {
+// 风口龙头 API
+export const windLeaderApi = {
+  /** 获取风口龙头分析结果 */
+  getWindLeaders: (limit = 8) => api.get('/api/cn/wind-leaders', {
     params: { limit },
     timeout: 10000,
   }),
-  /** 手动触发风口爆发股分析刷新 */
-  refreshAnalysis: () => api.post('/api/cn/hot-sectors/refresh', {}, {
+  /** 手动触发风口龙头分析刷新 */
+  refreshAnalysis: () => api.post('/api/cn/wind-leaders/refresh', {}, {
     timeout: 120000,
   }),
-  /** 执行三步风口爆发检测 */
-  detectOutbreak: () => api.post('/api/cn/hotspot-outbreak/detect', {}, {
+  /** 执行三步热点爆发检测 */
+  detectHotBurst: () => api.post('/api/cn/hot-burst/detect', {}, {
     timeout: 60000,
   }),
-  /** 获取风口爆发检测结果 */
-  getOutbreak: (hours = 6) => api.get('/api/cn/hotspot-outbreak', {
+  /** 获取热点爆发检测结果 */
+  getHotBurst: (hours = 6) => api.get('/api/cn/hot-burst', {
     params: { hours },
     timeout: 10000,
   }),

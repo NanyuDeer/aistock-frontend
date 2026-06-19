@@ -1,10 +1,10 @@
 <template>
   <div class="resonance-panel">
     <div class="panel-header">
-      <h3>风口爆发<span class="title-sub">三重共振信号</span></h3>
+      <h3>热点爆发<span class="title-sub">三重共振信号</span></h3>
       <div class="header-right">
         <span class="subtitle" v-if="signals.length">共 {{ signals.length }} 只股票</span>
-        <router-link v-if="showMoreLink" to="/hotspot-outbreak" class="more-link">查看全部 <span class="arrow">&rarr;</span></router-link>
+        <router-link v-if="showMoreLink" to="/hot-burst" class="more-link">查看全部 <span class="arrow">&rarr;</span></router-link>
       </div>
     </div>
 
@@ -110,10 +110,10 @@
 </template>
 
 <script>
-import { hotSectorApi } from '@/services/api'
+import { windLeaderApi } from '@/services/api'
 
 export default {
-  name: 'HotspotOutbreakPanel',
+  name: 'HotBurstPanel',
   props: {
     showMoreLink: {
       type: Boolean,
@@ -137,7 +137,7 @@ export default {
     async fetchRecent() {
       this.loading = true
       try {
-        const res = await hotSectorApi.getOutbreak(6)
+        const res = await windLeaderApi.getHotBurst(6)
         this.signals = res.data?.outbreaks || []
         this.hotConcepts = res.data?.hotConcepts || []
       } catch {
@@ -150,7 +150,7 @@ export default {
     async runDetect() {
       this.loading = true
       try {
-        const res = await hotSectorApi.detectOutbreak()
+        const res = await windLeaderApi.detectHotBurst()
         this.signals = res.data?.outbreaks || []
         this.hotConcepts = res.data?.hotConcepts || []
       } finally {

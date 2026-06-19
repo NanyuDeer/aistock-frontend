@@ -115,18 +115,13 @@
         </button>
       </div>
 
-      <!-- 风口爆发 -->
+      <!-- 热点爆发 -->
       <div class="stock-monitor-section">
         <div class="card">
           <div class="card-header">
-            <h3>风口爆发</h3>
+            <h3>热点爆发</h3>
           </div>
           <div class="card-body">
-            <StockResonancePanel
-              :resonance="stockResonance"
-              :loading="stockResonanceLoading"
-              :error="stockResonanceError"
-            />
             <StockMonitorList
               :events="stockMonitorEvents"
               :show-cycle-filter="true"
@@ -779,7 +774,6 @@ import { ttsApi } from '@/services/api';
 import { getCuratedStockProfile } from '@/mock/curatedStocks';
 import { trendHotspotApi } from '@/services/api';
 import StockMonitorList from '@/components/StockMonitorList.vue';
-import StockResonancePanel from '@/components/StockResonancePanel.vue';
 import { tenxApi } from '@/services/api';
 import 'element-plus/es/components/message/style/css';
 import * as echarts from 'echarts/core';
@@ -813,7 +807,7 @@ const invalidateCache = (code) => {
 
 export default {
   name: 'StockDetailView',
-  components: { StockChart, CycleSelect, StockMonitorList, StockResonancePanel },
+  components: { StockChart, CycleSelect, StockMonitorList },
   setup() {
     const route = useRoute();
     const router = useRouter();
@@ -825,21 +819,15 @@ export default {
       { key: 'long', label: '长线', desc: '季/年' }
     ];
 
-    // 风口爆发数据
+    // 热点爆发数据
     const stockMonitorEvents = ref([]);
-    const stockResonance = ref(null);
-    const stockResonanceLoading = ref(false);
-    const stockResonanceError = ref('');
 
     const fetchMonitorEvents = async () => {
       try {
         const stockCode = route.params.code || '';
         if (!stockCode) return;
-        stockResonanceLoading.value = true;
-        stockResonanceError.value = '';
         const res = await trendHotspotApi.getEventsByStock(stockCode, { cycle: 'all', limit: 20 });
         const events = res?.data?.events || [];
-        stockResonance.value = res?.data?.resonance || null;
         stockMonitorEvents.value = events.map(e => ({
           ...e,
           stock_code: (e.stock_code || e.symbol || '').replace(/^(SH|SZ)/, ''),
@@ -851,10 +839,7 @@ export default {
           event_time_display: e.event_time_display || formatEventTime(e.event_time),
         }));
       } catch (err) {
-        console.warn('[StockDetail] 获取风口爆发数据失败:', err);
-        stockResonanceError.value = '加载共振数据失败';
-      } finally {
-        stockResonanceLoading.value = false;
+        console.warn('[StockDetail] 获取热点爆发数据失败:', err);
       }
     };
 
@@ -2258,7 +2243,6 @@ export default {
       activeView, viewTabs, stockInfo, isLoggedIn, isFavorite, addingToFavorites,
       stockCycle, onStockCycleChange,
       stockMonitorEvents,
-      stockResonance, stockResonanceLoading, stockResonanceError,
       stockNews, analysisResult, currentNewsDetail, newsDetailDialogVisible,
       totalNews, hasMoreNews, loadingMoreNews, loadMoreNews,
       refreshAIEvaluation, loadingEvaluation, evaluationErrorMessage, evaluationProgressText,

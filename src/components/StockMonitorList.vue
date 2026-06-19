@@ -12,7 +12,7 @@
       </button>
     </div>
 
-    <!-- 风口爆发列表 -->
+    <!-- 热点爆发列表 -->
     <div class="monitor-events">
       <div
         v-for="event in filteredEvents"
@@ -61,7 +61,7 @@
       </div>
 
       <div v-if="filteredEvents.length === 0" class="empty-state">
-        <p>暂无风口爆发数据</p>
+        <p>暂无热点爆发数据</p>
       </div>
     </div>
   </div>
