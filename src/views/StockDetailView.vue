@@ -929,11 +929,18 @@ export default {
       !loadingEvaluation.value && Boolean(String(evaluationTtsText.value || '').trim())
     ));
 
-    // 研判标签提取：从长文本中提取关键词标签
+    // 研判标签提取：支持"标签::解释"格式，回退到首句提取
     const extractTagFromText = (text) => {
       if (!text) return { tag: '', full: '' };
       const full = String(text).trim();
-      // 取第一个分句（逗号/句号/分号前），最多30字
+      // 优先匹配"标签::解释"格式
+      const tagMatch = full.match(/^([^:]{1,30})::([\s\S]+)$/);
+      if (tagMatch) {
+        let tag = tagMatch[1].trim();
+        if (tag.length > 30) tag = tag.substring(0, 30) + '…';
+        return { tag, full: tagMatch[2].trim() || full };
+      }
+      // 回退：取第一个分句，最多30字
       const firstClause = full.split(/[，。；！？\n]/)[0]?.trim() || full;
       const tag = firstClause.length > 30 ? firstClause.substring(0, 30) + '…' : firstClause;
       return { tag, full };
@@ -941,12 +948,25 @@ export default {
 
     const extractTagsFromArray = (arr) => {
       if (!Array.isArray(arr)) return [];
-      return arr.map(item => extractTagFromText(item)).filter(t => t.tag);
+      // 支持数组元素为 {tag, detail} 对象或字符串
+      return arr.map(item => {
+        if (item && typeof item === 'object' && (item.tag || item.detail)) {
+          return { tag: String(item.tag || '').slice(0, 30), full: String(item.detail || item.tag || '') };
+        }
+        return extractTagFromText(item);
+      }).filter(t => t.tag);
     };
 
     const extractTagsFromText = (text) => {
       if (!text) return [];
-      const sentences = String(text).split(/[。\n]/).map(s => s.trim()).filter(s => s);
+      const str = String(text);
+      // 按 \n 分割，每行用"标签::解释"格式解析
+      const lines = str.split(/\n+/).map(s => s.trim()).filter(s => s);
+      if (lines.length > 1) {
+        return lines.map(line => extractTagFromText(line)).filter(t => t.tag);
+      }
+      // 单行回退到分句
+      const sentences = str.split(/[。\n]/).map(s => s.trim()).filter(s => s);
       return sentences.map(s => extractTagFromText(s)).filter(t => t.tag);
     };
 
@@ -1153,37 +1173,35 @@ export default {
       const roe = finance.find(item => item.label === 'ROE');
       const planStatement = getFifteenthPlanStatement(profileTheme.value);
       const summary = `${profileName.value}中线核心在于${focus.slice(0, 2).join('和')}，财报增速、毛利率与行业景气度同步改善，说明这轮行情更像业绩与赛道共同验证。`;
-      const advice = score >= 90
-        ? [
-          `已持有者可继续按趋势跟踪，重点观察回踩关键均线时是否仍有主力承接。`,
-          `关注者不宜在连续放量急涨后追高，更适合等待缩量回踩或业绩预期再次确认。`,
-          `若${focus[2] || '业绩兑现'}继续改善，同时行业景气指数维持高位，中线仓位可以保持偏积极。`,
-          `若资金流向从连续净流入转为放量净流出，应先降低中线预期，等待下一次承接确认。`
-        ]
-        : [
-          `已持有者可维持观察仓位，优先看${focus[0] || '趋势结构'}是否保持完整。`,
-          `关注者建议等待放量确认或财报预期更清晰后再提高关注级别。`,
-          `若行业景气指数继续上行，同时毛利率和ROE改善，中线判断可从观察转为偏积极。`,
-          `若股价脱离业绩兑现过快，应以分批观察为主，不把主题热度当成中线确定性。`
-        ];
-      const riskTips = [
-        `若${risks[0]}，中线逻辑会从业绩验证转为题材交易，估值支撑会变弱。`,
-        `若行业景气指数回落到70分以下，说明赛道热度和订单预期开始降温。`,
-        `若主力资金连续转净流出且成交放大，持有者需要防范趋势破位后的回撤。`
-      ];
       return {
         conclusion,
         badgeClass: score >= 90 ? 'is-bull' : 'is-hold',
         logic: summary,
         basis: [
-          `财报分析显示营收增速为${revenue?.value || '--'}、净利增速为${profit?.value || '--'}，利润弹性高于收入弹性，说明中线业绩拐点正在被数据支撑。`,
-          `毛利率为${margin?.value || '--'}、ROE为${roe?.value || '--'}，若后续继续改善，说明公司不是单纯题材上涨，而是经营质量同步抬升。`,
-          `行业景气指数为${health.score}分，标签集中在“${health.tags.map(tag => tag.text).join('、')}”，说明中线逻辑和所属赛道景气度保持一致。`,
-          `政策维度上，${planStatement} 这会强化中线资金对赛道景气和订单兑现的跟踪，但仍需要用财报增速与资金承接继续验证。`,
-          `第二步股票画像中的中线关注点为“${focus.join('、')}”，与当前财报和景气卡片方向一致，因此AI给出${conclusion}。`
+          { tag: '业绩拐点验证', detail: `财报分析显示营收增速为${revenue?.value || '--'}、净利增速为${profit?.value || '--'}，利润弹性高于收入弹性，说明中线业绩拐点正在被数据支撑。` },
+          { tag: '经营质量改善', detail: `毛利率为${margin?.value || '--'}、ROE为${roe?.value || '--'}，若后续继续改善，说明公司不是单纯题材上涨，而是经营质量同步抬升。` },
+          { tag: '赛道景气同步', detail: `行业景气指数为${health.score}分，标签集中在"${health.tags.map(tag => tag.text).join('、')}"，说明中线逻辑和所属赛道景气度保持一致。` },
+          { tag: '政策方向支撑', detail: `${planStatement} 这会强化中线资金对赛道景气和订单兑现的跟踪，但仍需要用财报增速与资金承接继续验证。` },
+          { tag: '画像方向一致', detail: `第二步股票画像中的中线关注点为"${focus.join('、')}"，与当前财报和景气卡片方向一致，因此AI给出${conclusion}。` }
         ],
-        advice,
-        riskTips
+        advice: score >= 90
+          ? [
+            { tag: '顺势跟踪', detail: `已持有者可继续按趋势跟踪，重点观察回踩关键均线时是否仍有主力承接。` },
+            { tag: '回踩再关注', detail: `关注者不宜在连续放量急涨后追高，更适合等待缩量回踩或业绩预期再次确认。` },
+            { tag: '景气可加仓', detail: `若${focus[2] || '业绩兑现'}继续改善，同时行业景气指数维持高位，中线仓位可以保持偏积极。` },
+            { tag: '资金转弱减仓', detail: `若资金流向从连续净流入转为放量净流出，应先降低中线预期，等待下一次承接确认。` }
+          ]
+          : [
+            { tag: '观察仓位', detail: `已持有者可维持观察仓位，优先看${focus[0] || '趋势结构'}是否保持完整。` },
+            { tag: '放量再确认', detail: `关注者建议等待放量确认或财报预期更清晰后再提高关注级别。` },
+            { tag: '景气上行转积极', detail: `若行业景气指数继续上行，同时毛利率和ROE改善，中线判断可从观察转为偏积极。` },
+            { tag: '脱离业绩需谨慎', detail: `若股价脱离业绩兑现过快，应以分批观察为主，不把主题热度当成中线确定性。` }
+          ],
+        riskTips: [
+          { tag: '逻辑转题材化', detail: `若${risks[0]}，中线逻辑会从业绩验证转为题材交易，估值支撑会变弱。` },
+          { tag: '景气指数回落', detail: `若行业景气指数回落到70分以下，说明赛道热度和订单预期开始降温。` },
+          { tag: '趋势破位风险', detail: `若主力资金连续转净流出且成交放大，持有者需要防范趋势破位后的回撤。` }
+        ]
       };
     });
 
@@ -1235,42 +1253,40 @@ export default {
       const hasMultipleModel = Boolean(curatedProfile.value) && expectedMultipleNumber.value >= 1.5;
       const planStatement = getFifteenthPlanStatement(profileTheme.value);
       const tenxBasis = hasMultipleModel
-        ? `倍数潜力模型给出${tenxModel.value.score}分和“${tenxModel.value.label}”，当前倍数预期为${multiple}，因此AI给出${conclusion}。`
-        : `当前股票未进入精选倍数模型池，长线判断暂以行业政策、护城河和年报质量为主，不单独给出倍数预期。`;
+        ? { tag: '倍数模型高分', detail: `倍数潜力模型给出${tenxModel.value.score}分和"${tenxModel.value.label}"，当前倍数预期为${multiple}，因此AI给出${conclusion}。` }
+        : { tag: '未入倍数池', detail: `当前股票未进入精选倍数模型池，长线判断暂以行业政策、护城河和年报质量为主，不单独给出倍数预期。` };
       const summary = `${profileName.value}长线核心在于${focus.slice(0, 2).join('和')}，行业政策、护城河和年报投入共同支撑长期估值弹性。`;
-      const advice = multiple === '10倍'
-        ? [
-          `已持有者可按长线高弹性样本跟踪，避免一次性重仓，适合用分批方式等待产业验证。`,
-          `关注者优先等估值回落、业绩公告或订单数据确认，不把短期题材上涨直接等同于十倍股兑现。`,
-          `若${focus[0] || '产业空间'}和${focus[1] || '核心壁垒'}持续验证，倍数潜力模型的高分才有继续上修基础。`,
-          `长期跟踪重点放在研发投入、客户突破、现金流改善和政策落地四个维度。`
-        ]
-        : [
-          `已持有者可按趋势龙头做长期观察，核心是验证${focus[0] || '产业空间'}能否持续兑现。`,
-          `关注者不必按十倍股预期定价，更适合在估值和业绩匹配时分批跟踪。`,
-          `若护城河、研发投入和资本回报率继续改善，${multiple}空间的可信度会提高。`,
-          `若长期逻辑没有新订单或新利润验证，应降低倍数预期，把它视作稳健成长而非高弹性标的。`
-        ];
-      const riskTips = [
-        `核心风险是${risks[0]}，一旦兑现，倍数潜力模型会先从成长动能和赛道景气两项下修。`,
-        `若政策催化强但订单、利润和现金流没有同步改善，长线逻辑容易停留在主题阶段。`,
-        `若估值提前大幅透支，后续即使行业方向正确，也可能出现较长时间的震荡消化。`
-      ];
       return {
         conclusion,
         badgeClass: multiple === '10倍' ? 'is-bull' : 'is-hold',
         logic: summary,
         basis: [
-          `行业政策卡片中有${policies.filter(item => item.type === 'is-good').length}条利好线索，核心方向是“${profileTheme.value}”；${planStatement} 说明长期产业空间仍有政策、资本和场景落地推动。`,
-          `公司护城河卡片显示“${moats.map(item => item.title).join('、')}”四个维度，分别对应技术、客户、规模和成长曲线，是长线估值能否扩张的基础。`,
-          `年报对比中研发投入为${annual.find(item => item.label === '研发投入')?.value || '--'}，资本回报率为${annual.find(item => item.label === '资本回报率')?.value || '--'}，说明长期逻辑既看投入，也看回报质量。`,
+          { tag: '政策产业共振', detail: `行业政策卡片中有${policies.filter(item => item.type === 'is-good').length}条利好线索，核心方向是"${profileTheme.value}"；${planStatement} 说明长期产业空间仍有政策、资本和场景落地推动。` },
+          { tag: '护城河四维支撑', detail: `公司护城河卡片显示"${moats.map(item => item.title).join('、')}"四个维度，分别对应技术、客户、规模和成长曲线，是长线估值能否扩张的基础。` },
+          { tag: '研发回报双验证', detail: `年报对比中研发投入为${annual.find(item => item.label === '研发投入')?.value || '--'}，资本回报率为${annual.find(item => item.label === '资本回报率')?.value || '--'}，说明长期逻辑既看投入，也看回报质量。` },
           tenxBasis,
           hasMultipleModel
-            ? `需要反向跟踪的风险是：${risks[0]}，如果这个风险兑现，长线倍数模型会先于股价表现下修。`
-            : `需要反向跟踪的风险是：${risks[0]}，如果这个风险兑现，长线判断会先从护城河和年报质量两项下修。`
+            ? { tag: '反向跟踪风险', detail: `需要反向跟踪的风险是：${risks[0]}，如果这个风险兑现，长线倍数模型会先于股价表现下修。` }
+            : { tag: '反向跟踪风险', detail: `需要反向跟踪的风险是：${risks[0]}，如果这个风险兑现，长线判断会先从护城河和年报质量两项下修。` }
         ],
-        advice,
-        riskTips
+        advice: multiple === '10倍'
+          ? [
+            { tag: '分批跟踪高弹性', detail: `已持有者可按长线高弹性样本跟踪，避免一次性重仓，适合用分批方式等待产业验证。` },
+            { tag: '等估值回落确认', detail: `关注者优先等估值回落、业绩公告或订单数据确认，不把短期题材上涨直接等同于十倍股兑现。` },
+            { tag: '产业验证是基础', detail: `若${focus[0] || '产业空间'}和${focus[1] || '核心壁垒'}持续验证，倍数潜力模型的高分才有继续上修基础。` },
+            { tag: '四维长期跟踪', detail: `长期跟踪重点放在研发投入、客户突破、现金流改善和政策落地四个维度。` }
+          ]
+          : [
+            { tag: '趋势龙头长期观察', detail: `已持有者可按趋势龙头做长期观察，核心是验证${focus[0] || '产业空间'}能否持续兑现。` },
+            { tag: '估值业绩匹配再介入', detail: `关注者不必按十倍股预期定价，更适合在估值和业绩匹配时分批跟踪。` },
+            { tag: '护城河改善提可信度', detail: `若护城河、研发投入和资本回报率继续改善，${multiple}空间的可信度会提高。` },
+            { tag: '无验证降预期', detail: `若长期逻辑没有新订单或新利润验证，应降低倍数预期，把它视作稳健成长而非高弹性标的。` }
+          ],
+        riskTips: [
+          { tag: '核心风险下修', detail: `核心风险是${risks[0]}，一旦兑现，倍数潜力模型会先从成长动能和赛道景气两项下修。` },
+          { tag: '主题化停滞风险', detail: `若政策催化强但订单、利润和现金流没有同步改善，长线逻辑容易停留在主题阶段。` },
+          { tag: '估值透支消化风险', detail: `若估值提前大幅透支，后续即使行业方向正确，也可能出现较长时间的震荡消化。` }
+        ]
       };
     });
 
