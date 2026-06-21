@@ -844,12 +844,12 @@ export const windLeaderApi = {
   detectHotBurst: () => api.post('/api/cn/media-attention/detect', {}, {
     timeout: 60000,
   }),
-  /** 获取媒体关注榜检测结果（默认仅返回三重共振全通过的信号） */
+  /** 获取媒体关注榜检测结果（默认仅返回二重共振及以上的信号） */
   getHotBurst: (hours = 6) => api.get('/api/cn/media-attention', {
     params: { hours },
     timeout: 10000,
   }),
-  /** 获取媒体关注榜历史记录（默认仅返回三重共振全通过的记录） */
+  /** 获取媒体关注榜历史记录（默认仅返回二重共振及以上的记录） */
   getHotBurstHistory: (limit = 50, offset = 0) => api.get('/api/cn/media-attention/history', {
     params: { limit, offset },
     timeout: 10000,
