@@ -19,54 +19,8 @@
       </div>
     </div>
     <div class="card-body">
-      <!-- 预测面板（Kronos 已下线，预留位置给后续新预测模型，启用时将 SHOW_PREDICTION 改为 true） -->
-      <div v-if="showPredictionPanel" class="signal-row">
-        <div class="signal-decision">
-          <strong :class="['signal-value', `is-${predictionSignal}`]">{{ predictionSignalText }}</strong>
-          <el-popover trigger="click" placement="top-start" :width="360" popper-class="prediction-help-popover">
-            <template #reference>
-              <button type="button" class="signal-help" aria-label="查看技术面预测说明">?</button>
-            </template>
-            <div class="prediction-help-content">
-              <div class="help-title-row">
-                <span class="help-chip">Kronos</span>
-                <span class="help-title">技术面预测说明</span>
-              </div>
-              <p class="help-meta">
-                当前输入窗口：最近
-                <strong>{{ predictionLookbackDays }}</strong>
-                天历史K线；预测范围：未来
-                <strong>{{ predictionPredLenDays }}</strong>
-                个交易日。
-              </p>
-              <p>
-                基于清华大学 Kronos 金融 K 线基础大模型
-                （<a href="https://arxiv.org/abs/2508.02739" target="_blank" rel="noopener noreferrer">https://arxiv.org/abs/2508.02739</a>）
-                进行A股价格区间预测。
-              </p>
-              <p class="risk-tip">
-                风险提示：技术面预测依赖历史价格统计规律与模型假设，受政策、业绩、流动性和突发事件影响较大，存在偏差风险，不构成任何投资建议。
-              </p>
-            </div>
-          </el-popover>
-        </div>
-        <div class="signal-progress-wrap">
-          <div class="signal-progress" :aria-label="`决策概率 ${predictionProbabilityPercentText}`">
-            <span class="signal-progress-fill" :style="predictionProbabilityStyle"></span>
-          </div>
-          <span class="signal-probability">{{ predictionProbabilityPercentText }}</span>
-          <span class="signal-time">{{ predictionTimeText }}</span>
-        </div>
-      </div>
-      <p v-if="showPredictionPanel && predictionLoading && predictionStatusText" class="prediction-status">{{ predictionStatusText }}</p>
-      <p v-if="showPredictionPanel && predictionError" class="prediction-error">{{ predictionError }}</p>
-
       <div class="stock-chart-wrap">
         <div class="stock-chart" ref="chartContainer"></div>
-        <div v-if="showPredictionPanel && showPredictionPlaceholder" class="prediction-loading-mask" role="status" aria-live="polite">
-          <span class="loading-title">技术面预测加载中</span>
-          <span class="loading-desc">{{ predictionStatusText || '模型推理中，结果将自动刷新' }}</span>
-        </div>
       </div>
 
       <div v-if="klineItems.length > 1" class="chart-range-slider">

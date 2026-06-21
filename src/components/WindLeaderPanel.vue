@@ -2,7 +2,7 @@
   <div class="hot-sector-panel">
     <!-- 标题栏 -->
     <div class="hs-header">
-      <h3 class="section-title">风口龙头</h3>
+      <h3 class="section-title">长线风口龙头</h3>
       <div class="hs-header-actions">
         <span class="hs-header-meta" v-if="displayUpdateTime">更新时间: {{ displayUpdateTime }}</span>
         <el-button class="hs-history-btn" type="primary" plain size="small" @click="goToHistoryPerformance">

@@ -866,9 +866,13 @@ export default createStore({
       const refresh = typeof payload === 'object' ? !!payload.refresh : false;
       if (!stockCode) return [];
       try {
-        const response = refresh
+        let response = refresh
           ? await stockApi.createForecast(stockCode)
           : await stockApi.getForecast(stockCode);
+        // GET 返回 404（数据库无记录）时，自动 POST 抓取
+        if (!refresh && response.code === 404) {
+          response = await stockApi.createForecast(stockCode);
+        }
         if (response.code === 200) {
           return response.data;
         }

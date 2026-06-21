@@ -150,12 +150,26 @@
             
             <div class="analysis-detail">
               <h4>核心逻辑</h4>
-              <div class="markdown-content" v-html="displayedCoreLogic"></div>
+              <div class="research-tags">
+                <el-popover v-for="(t, i) in shortLogicTags" :key="'sl'+i" trigger="click" placement="top" :width="320" popper-class="research-tag-popover">
+                  <template #reference>
+                    <span class="research-tag is-logic">{{ t.tag }}</span>
+                  </template>
+                  <div class="research-tag-detail">{{ t.full }}</div>
+                </el-popover>
+              </div>
             </div>
 
             <div class="analysis-detail">
               <h4>风险提示</h4>
-              <div class="markdown-content" v-html="displayedRiskWarning"></div>
+              <div class="research-tags">
+                <el-popover v-for="(t, i) in shortRiskTags" :key="'sr'+i" trigger="click" placement="top" :width="320" popper-class="research-tag-popover">
+                  <template #reference>
+                    <span class="research-tag is-risk">{{ t.tag }}</span>
+                  </template>
+                  <div class="research-tag-detail">{{ t.full }}</div>
+                </el-popover>
+              </div>
             </div>
 
             <div v-if="showEvaluationOverlay" class="analysis-loading-overlay" role="status" aria-live="polite" aria-label="资讯面AI投资建议生成中">
@@ -381,19 +395,34 @@
             </div>
             <div class="ai-basis">
               <h4>研判依据</h4>
-              <ul>
-                <li v-for="item in midAiAnalysis.basis" :key="item">{{ item }}</li>
-              </ul>
+              <div class="research-tags">
+                <el-popover v-for="(t, i) in midBasisTags" :key="'mb'+i" trigger="click" placement="top" :width="360" popper-class="research-tag-popover">
+                  <template #reference>
+                    <span class="research-tag is-basis">{{ t.tag }}</span>
+                  </template>
+                  <div class="research-tag-detail">{{ t.full }}</div>
+                </el-popover>
+              </div>
             </div>
             <div class="ai-risk">
               <h4>投资建议</h4>
-              <ul class="ai-advice-list">
-                <li v-for="item in midAiAnalysis.advice" :key="item">{{ item }}</li>
-              </ul>
+              <div class="research-tags">
+                <el-popover v-for="(t, i) in midAdviceTags" :key="'ma'+i" trigger="click" placement="top" :width="360" popper-class="research-tag-popover">
+                  <template #reference>
+                    <span class="research-tag is-advice">{{ t.tag }}</span>
+                  </template>
+                  <div class="research-tag-detail">{{ t.full }}</div>
+                </el-popover>
+              </div>
               <h4 class="risk-title">风险提示</h4>
-              <ul class="ai-risk-list">
-                <li v-for="item in midAiAnalysis.riskTips" :key="item">{{ item }}</li>
-              </ul>
+              <div class="research-tags">
+                <el-popover v-for="(t, i) in midRiskTags" :key="'mr'+i" trigger="click" placement="top" :width="360" popper-class="research-tag-popover">
+                  <template #reference>
+                    <span class="research-tag is-risk">{{ t.tag }}</span>
+                  </template>
+                  <div class="research-tag-detail">{{ t.full }}</div>
+                </el-popover>
+              </div>
             </div>
           </div>
         </div>
@@ -496,19 +525,34 @@
             </div>
             <div class="ai-basis">
               <h4>研判依据</h4>
-              <ul>
-                <li v-for="item in longAiAnalysis.basis" :key="item">{{ item }}</li>
-              </ul>
+              <div class="research-tags">
+                <el-popover v-for="(t, i) in longBasisTags" :key="'lb'+i" trigger="click" placement="top" :width="360" popper-class="research-tag-popover">
+                  <template #reference>
+                    <span class="research-tag is-basis">{{ t.tag }}</span>
+                  </template>
+                  <div class="research-tag-detail">{{ t.full }}</div>
+                </el-popover>
+              </div>
             </div>
             <div class="ai-risk">
               <h4>投资建议</h4>
-              <ul class="ai-advice-list">
-                <li v-for="item in longAiAnalysis.advice" :key="item">{{ item }}</li>
-              </ul>
+              <div class="research-tags">
+                <el-popover v-for="(t, i) in longAdviceTags" :key="'la'+i" trigger="click" placement="top" :width="360" popper-class="research-tag-popover">
+                  <template #reference>
+                    <span class="research-tag is-advice">{{ t.tag }}</span>
+                  </template>
+                  <div class="research-tag-detail">{{ t.full }}</div>
+                </el-popover>
+              </div>
               <h4 class="risk-title">风险提示</h4>
-              <ul class="ai-risk-list">
-                <li v-for="item in longAiAnalysis.riskTips" :key="item">{{ item }}</li>
-              </ul>
+              <div class="research-tags">
+                <el-popover v-for="(t, i) in longRiskTags" :key="'lr'+i" trigger="click" placement="top" :width="360" popper-class="research-tag-popover">
+                  <template #reference>
+                    <span class="research-tag is-risk">{{ t.tag }}</span>
+                  </template>
+                  <div class="research-tag-detail">{{ t.full }}</div>
+                </el-popover>
+              </div>
             </div>
           </div>
         </div>
@@ -884,6 +928,41 @@ export default {
     const canPlayEvaluationAudio = computed(() => (
       !loadingEvaluation.value && Boolean(String(evaluationTtsText.value || '').trim())
     ));
+
+    // 研判标签提取：从长文本中提取关键词标签
+    const extractTagFromText = (text) => {
+      if (!text) return { tag: '', full: '' };
+      const full = String(text).trim();
+      // 取第一个分句（逗号/句号/分号前），最多30字
+      const firstClause = full.split(/[，。；！？\n]/)[0]?.trim() || full;
+      const tag = firstClause.length > 30 ? firstClause.substring(0, 30) + '…' : firstClause;
+      return { tag, full };
+    };
+
+    const extractTagsFromArray = (arr) => {
+      if (!Array.isArray(arr)) return [];
+      return arr.map(item => extractTagFromText(item)).filter(t => t.tag);
+    };
+
+    const extractTagsFromText = (text) => {
+      if (!text) return [];
+      const sentences = String(text).split(/[。\n]/).map(s => s.trim()).filter(s => s);
+      return sentences.map(s => extractTagFromText(s)).filter(t => t.tag);
+    };
+
+    // 短线研判标签
+    const shortLogicTags = computed(() => extractTagsFromText(displayedCoreLogicText.value));
+    const shortRiskTags = computed(() => extractTagsFromText(displayedRiskWarningText.value));
+
+    // 中线研判标签
+    const midBasisTags = computed(() => extractTagsFromArray(midAiAnalysis.value.basis));
+    const midAdviceTags = computed(() => extractTagsFromArray(midAiAnalysis.value.advice));
+    const midRiskTags = computed(() => extractTagsFromArray(midAiAnalysis.value.riskTips));
+
+    // 长线研判标签
+    const longBasisTags = computed(() => extractTagsFromArray(longAiAnalysis.value.basis));
+    const longAdviceTags = computed(() => extractTagsFromArray(longAiAnalysis.value.advice));
+    const longRiskTags = computed(() => extractTagsFromArray(longAiAnalysis.value.riskTips));
 
     const curatedProfile = computed(() => getCuratedStockProfile(stockInfo.value.code));
     const profileScore = computed(() => Number(curatedProfile.value?.aiScore || 78));
@@ -2205,6 +2284,7 @@ export default {
       forecastChartRef, forecastData, forecastSummary, loadingForecast, refreshForecast,
       hasForecastChartData, capitalFlowChartRef, capitalSplitChartRef, industryHealthChartRef,
       midMockData, midAiAnalysis, longMockData, longAiAnalysis, shouldShowTenxModel, tenxModel, capitalFlowInfo,
+      shortLogicTags, shortRiskTags, midBasisTags, midAdviceTags, midRiskTags, longBasisTags, longAdviceTags, longRiskTags,
       tenxVetoed, tenxVetoReasons,
       TENX_DIMS, tenxSColor, tenxSGrad, tenxExpandedDims, tenxAllOpen, tenxRadarCanvas, tenxToggleDim, tenxToggleAll,
       toggleFavorite, getEvaluationClass, goToTagBoard, formatRatioText,
@@ -2381,6 +2461,51 @@ export default {
     margin: 0;
     line-height: 1.7;
     color: var(--text-secondary);
+  }
+
+  // 研判标签
+  .research-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .research-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+    max-width: 100%;
+    line-height: 1.4;
+
+    &.is-logic {
+      background: rgba(59, 130, 246, 0.08);
+      color: #2563eb;
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      &:hover { background: rgba(59, 130, 246, 0.15); }
+    }
+    &.is-basis {
+      background: rgba(99, 102, 241, 0.08);
+      color: #4f46e5;
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      &:hover { background: rgba(99, 102, 241, 0.15); }
+    }
+    &.is-advice {
+      background: rgba(34, 197, 94, 0.08);
+      color: #16a34a;
+      border: 1px solid rgba(34, 197, 94, 0.25);
+      &:hover { background: rgba(34, 197, 94, 0.15); }
+    }
+    &.is-risk {
+      background: rgba(239, 68, 68, 0.08);
+      color: #dc2626;
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      &:hover { background: rgba(239, 68, 68, 0.15); }
+    }
   }
   .ai-basis {
     margin: 12px 0 14px;

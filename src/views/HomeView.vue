@@ -122,23 +122,13 @@
             </el-dialog>
           </div>
 
-          <!-- 媒体关注榜 -->
-          <div class="hot-burst-section">
-            <HotBurstPanel />
-          </div>
-
-          <!-- 个股异动 -->
-          <!-- <div class="stock-monitor-section">
-            <StockMonitorCard :events="monitorEvents" />
-          </div> -->
-
           <!-- 国内市场概览 -->
           <div class="market-overview-section">
             <h3 class="section-title">市场概览</h3>
             <MarketOverview />
           </div>
 
-          <!-- 风口龙头 -->
+          <!-- 长线风口龙头 -->
           <WindLeaderPanel
             :sectors="hotSectors"
             :loading="loadingHotSectors"
@@ -147,6 +137,11 @@
             :quote-map="hotSectorQuoteMap"
             @retry="fetchHotSectors(true)"
           />
+
+          <!-- 媒体关注热点榜 -->
+          <div class="hot-burst-section">
+            <HotBurstPanel />
+          </div>
 
           <!-- AI产业链知识图谱（已隐藏） -->
           <AiGraph v-if="false" />
