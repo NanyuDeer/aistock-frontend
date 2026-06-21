@@ -86,75 +86,6 @@ import { useRouter } from 'vue-router'
 import TheNavbar from '@/components/TheNavbar.vue'
 import { windLeaderApi } from '@/services/api'
 
-// TODO: 测试用模拟数据，上线前删除
-const MOCK_RECORDS = [
-  {
-    id: 1,
-    detected_at: '2026-06-19T10:30:00+08:00',
-    symbol: '300308',
-    stock_name: '中际旭创',
-    resonance_score: 95,
-    resonance_level: 'critical',
-    price: 156.80,
-    change_pct: 9.87,
-    sector_info: '光模块/CPO',
-    keywords: '光模块、AI算力、CPO',
-    resonance_count: 3,
-  },
-  {
-    id: 2,
-    detected_at: '2026-06-19T10:15:00+08:00',
-    symbol: '002475',
-    stock_name: '立讯精密',
-    resonance_score: 88,
-    resonance_level: 'high',
-    price: 42.35,
-    change_pct: 6.52,
-    sector_info: '消费电子',
-    keywords: '苹果产业链、VR',
-    resonance_count: 3,
-  },
-  {
-    id: 3,
-    detected_at: '2026-06-19T09:45:00+08:00',
-    symbol: '688256',
-    stock_name: '寒武纪',
-    resonance_score: 82,
-    resonance_level: 'high',
-    price: 238.50,
-    change_pct: 12.34,
-    sector_info: 'AI芯片',
-    keywords: 'AI芯片、算力',
-    resonance_count: 2,
-  },
-  {
-    id: 4,
-    detected_at: '2026-06-19T09:30:00+08:00',
-    symbol: '603986',
-    stock_name: '兆易创新',
-    resonance_score: 76,
-    resonance_level: 'medium',
-    price: 98.20,
-    change_pct: 4.15,
-    sector_info: '存储芯片',
-    keywords: '存储、半导体',
-    resonance_count: 2,
-  },
-  {
-    id: 5,
-    detected_at: '2026-06-18T14:50:00+08:00',
-    symbol: '300750',
-    stock_name: '宁德时代',
-    resonance_score: 68,
-    resonance_level: 'medium',
-    price: 185.60,
-    change_pct: -1.23,
-    sector_info: '锂电池',
-    keywords: '固态电池、新能源',
-    resonance_count: 1,
-  },
-]
-
 export default {
   name: 'HotBurstView',
   components: { TheNavbar },
@@ -206,10 +137,9 @@ export default {
           records.value = data.records || []
         }
       } catch {
-        // TODO: 测试用模拟数据，上线前删除
         if (!append) {
-          records.value = MOCK_RECORDS
-          total.value = MOCK_RECORDS.length
+          records.value = []
+          total.value = 0
         }
       } finally {
         loading.value = false
