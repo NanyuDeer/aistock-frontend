@@ -80,80 +80,6 @@
 import { windLeaderApi } from '@/services/api'
 import { useRouter } from 'vue-router'
 
-// TODO: 测试用模拟数据，上线前删除
-const MOCK_SIGNALS = [
-  {
-    symbol: '300308',
-    stockName: '中际旭创',
-    resonanceScore: 95,
-    resonanceLevel: 'critical',
-    price: 156.80,
-    changePct: 9.87,
-    sectorInfo: '光模块/CPO',
-    newsKeywords: ['光模块', 'AI算力'],
-    feishuKeywords: ['CPO'],
-    resonance1: { verified: true },
-    resonance2: { verified: true },
-    resonance3: { verified: true },
-  },
-  {
-    symbol: '002475',
-    stockName: '立讯精密',
-    resonanceScore: 88,
-    resonanceLevel: 'high',
-    price: 42.35,
-    changePct: 6.52,
-    sectorInfo: '消费电子',
-    newsKeywords: ['苹果产业链', 'VR'],
-    feishuKeywords: [],
-    resonance1: { verified: true },
-    resonance2: { verified: true },
-    resonance3: { verified: true },
-  },
-  {
-    symbol: '688256',
-    stockName: '寒武纪',
-    resonanceScore: 82,
-    resonanceLevel: 'high',
-    price: 238.50,
-    changePct: 12.34,
-    sectorInfo: 'AI芯片',
-    newsKeywords: ['AI芯片', '算力'],
-    feishuKeywords: [],
-    resonance1: { verified: true },
-    resonance2: { verified: true },
-    resonance3: { verified: false },
-  },
-  {
-    symbol: '603986',
-    stockName: '兆易创新',
-    resonanceScore: 76,
-    resonanceLevel: 'medium',
-    price: 98.20,
-    changePct: 4.15,
-    sectorInfo: '存储芯片',
-    newsKeywords: ['存储', '半导体'],
-    feishuKeywords: [],
-    resonance1: { verified: true },
-    resonance2: { verified: true },
-    resonance3: { verified: false },
-  },
-  {
-    symbol: '300750',
-    stockName: '宁德时代',
-    resonanceScore: 68,
-    resonanceLevel: 'medium',
-    price: 185.60,
-    changePct: -1.23,
-    sectorInfo: '锂电池',
-    newsKeywords: ['固态电池', '新能源'],
-    feishuKeywords: [],
-    resonance1: { verified: true },
-    resonance2: { verified: false },
-    resonance3: { verified: false },
-  },
-]
-
 export default {
   name: 'HotBurstPanel',
   props: {
@@ -187,12 +113,9 @@ export default {
       this.loading = true
       try {
         const res = await windLeaderApi.getHotBurst(6)
-        const outbreaks = res.data?.outbreaks || []
-        // TODO: 测试用模拟数据，上线前删除（API无数据时用模拟数据）
-        this.signals = outbreaks.length ? outbreaks : MOCK_SIGNALS
+        this.signals = res.data?.outbreaks || []
       } catch {
-        // TODO: 测试用模拟数据，上线前删除
-        this.signals = MOCK_SIGNALS
+        this.signals = []
       } finally {
         this.loading = false
       }
