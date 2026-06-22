@@ -2,8 +2,8 @@
   <div class="potential-page">
     <section class="page-header">
       <div>
-        <h1>风口潜力股推送追踪</h1>
-        <p>记录每日推送股票，并追踪从推送日至今的收益表现</p>
+        <h1>长线风口龙头历史表现</h1>
+        <p>记录每日长线风口龙头推送股票，并追踪从推送日至今的真实收益表现</p>
       </div>
       <el-button type="primary" :loading="loading || realtimeLoading" @click="loadData">刷新</el-button>
     </section>
@@ -58,7 +58,7 @@
       </div>
 
       <el-tabs v-model="activeTab">
-        <el-tab-pane label="推送历史" name="history">
+        <el-tab-pane label="龙头历史" name="history">
           <el-table
             v-loading="loading"
             :data="sortedRecords"
