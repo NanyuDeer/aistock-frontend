@@ -31,8 +31,31 @@
               <el-form-item>
                 <el-button type="primary" @click="handleSearch">查询</el-button>
                 <el-button @click="handleReset">重置</el-button>
+                <el-button type="warning" :loading="batchRunning" @click="handleBatchRefresh">
+                  {{ batchRunning ? '爬取中...' : '批量爬取' }}
+                </el-button>
               </el-form-item>
             </el-form>
+          </div>
+
+          <div v-if="batchRunning || batchFinished" class="batch-status-bar">
+            <el-progress
+              v-if="batchRunning"
+              :percentage="batchProgress"
+              :format="() => `${batchStatus.current}/${batchStatus.total} (${batchStatus.success}成功/${batchStatus.failed}失败)`"
+              :stroke-width="18"
+              :text-inside="true"
+              status="warning"
+            />
+            <div v-if="batchRunning && batchStatus.currentSymbol" class="batch-current">
+              正在爬取: {{ batchStatus.currentSymbol }}
+            </div>
+            <div v-if="batchFinished" class="batch-result">
+              批量爬取完成: 成功 {{ batchStatus.success }} / {{ batchStatus.total }}
+              <span v-if="batchStatus.failed > 0" class="batch-failed">, 失败 {{ batchStatus.failed }}</span>
+              ，耗时 {{ batchElapsedSec }} 秒
+              <el-button link type="primary" @click="batchFinished = false">关闭</el-button>
+            </div>
           </div>
 
           <el-table
@@ -125,6 +148,7 @@
 
 <script>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { RouterLink } from 'vue-router'
 import TheNavbar from '@/components/TheNavbar.vue'
 import { stockApi } from '@/services/api'
@@ -393,14 +417,96 @@ export default {
       viewportWidth.value = window.innerWidth
     }
 
+    // ============ 批量爬取 ============
+    const batchRunning = ref(false)
+    const batchFinished = ref(false)
+    const batchStatus = ref({ total: 0, success: 0, failed: 0, current: 0, currentSymbol: '', running: false })
+    const batchProgress = computed(() => batchStatus.value.total > 0 ? Math.round((batchStatus.value.current / batchStatus.value.total) * 100) : 0)
+    const batchElapsedSec = computed(() => {
+      const s = batchStatus.value
+      if (!s.startedAt) return 0
+      const end = s.finishedAt || Date.now()
+      return ((end - s.startedAt) / 1000).toFixed(1)
+    })
+    let batchTimer = null
+
+    const pollBatchStatus = async () => {
+      try {
+        const res = await stockApi.getBatchForecastStatus()
+        if (res?.code === 200 && res.data) {
+          const d = res.data
+          batchStatus.value = {
+            total: d.total || 0,
+            success: d.success || 0,
+            failed: d.failed || 0,
+            current: d.current || 0,
+            currentSymbol: d.currentSymbol || '',
+            running: !!d.running,
+            startedAt: d.startedAt || 0,
+            finishedAt: d.finishedAt || 0,
+          }
+          if (!d.running) {
+            batchRunning.value = false
+            batchFinished.value = true
+            if (batchTimer) { clearInterval(batchTimer); batchTimer = null }
+            fetchData()
+          }
+        }
+      } catch {}
+    }
+
+    const handleBatchRefresh = async () => {
+      try {
+        await ElMessageBox.confirm(
+          '将批量爬取全市场股票的业绩预测数据（从同花顺），可能耗时较长。是否继续？',
+          '批量爬取确认',
+          { confirmButtonText: '开始爬取', cancelButtonText: '取消', type: 'warning' }
+        )
+      } catch {
+        return
+      }
+
+      try {
+        const res = await stockApi.batchRefreshForecast({ concurrency: 3, intervalMs: 500, timeoutMs: 15000, maxRetries: 1 })
+        if (res?.code === 200) {
+          ElMessage.success(res.message || '批量爬取已启动')
+          batchRunning.value = true
+          batchFinished.value = false
+          batchStatus.value = { total: res.data?.total || 0, success: 0, failed: 0, current: 0, currentSymbol: '', running: true, startedAt: Date.now(), finishedAt: 0 }
+          if (batchTimer) clearInterval(batchTimer)
+          batchTimer = setInterval(pollBatchStatus, 2000)
+          pollBatchStatus()
+        } else if (res?.code === 409) {
+          ElMessage.warning(res.message || '已有批量任务在运行')
+          batchRunning.value = true
+          if (batchTimer) clearInterval(batchTimer)
+          batchTimer = setInterval(pollBatchStatus, 2000)
+          pollBatchStatus()
+        } else {
+          ElMessage.error(res?.message || '启动批量爬取失败')
+        }
+      } catch (err) {
+        ElMessage.error('启动批量爬取失败: ' + (err?.message || err))
+      }
+    }
+
     onMounted(() => {
       handleResize()
       window.addEventListener('resize', handleResize)
       fetchData()
+      // 页面加载时检查是否有正在进行的批量任务
+      stockApi.getBatchForecastStatus().then(res => {
+        if (res?.code === 200 && res.data?.running) {
+          batchRunning.value = true
+          batchTimer = setInterval(pollBatchStatus, 2000)
+          pollBatchStatus()
+        }
+      }).catch(() => {})
     })
 
     onUnmounted(() => {
       window.removeEventListener('resize', handleResize)
+      if (batchTimer) { clearInterval(batchTimer); batchTimer = null }
     })
 
     return {
@@ -427,7 +533,13 @@ export default {
       handleCurrentChange,
       formatSummary,
       getHeaderCellStyle,
-      getCellStyle
+      getCellStyle,
+      batchRunning,
+      batchFinished,
+      batchStatus,
+      batchProgress,
+      batchElapsedSec,
+      handleBatchRefresh
     }
   }
 }
@@ -480,6 +592,30 @@ export default {
       flex-wrap: wrap;
       row-gap: 8px;
       justify-content: flex-end;
+    }
+  }
+
+  .batch-status-bar {
+    margin: 12px 0;
+    padding: 12px 16px;
+    background: #fffbe6;
+    border: 1px solid #ffe58f;
+    border-radius: 6px;
+
+    .batch-current {
+      margin-top: 8px;
+      font-size: 0.85rem;
+      color: #874d00;
+    }
+
+    .batch-result {
+      font-size: 0.9rem;
+      color: #333;
+
+      .batch-failed {
+        color: #f56c6c;
+        margin-left: 4px;
+      }
     }
   }
 

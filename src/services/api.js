@@ -541,6 +541,18 @@ export const stockApi = {
     });
   },
 
+  // 批量爬取业绩预测（不指定 symbols 则全量）
+  batchRefreshForecast: ({ symbols = [], concurrency = 3, intervalMs = 500, timeoutMs = 15000, maxRetries = 1 } = {}) => {
+    return api.post(`/api/cn/stocks/profit-forecast/batch`, {
+      symbols, concurrency, intervalMs, timeoutMs, maxRetries
+    }, { timeout: 10000 });
+  },
+
+  // 查询批量爬取进度
+  getBatchForecastStatus: () => {
+    return api.get(`/api/cn/stocks/profit-forecast/batch/status`, { timeout: 5000 });
+  },
+
   // 获取个股新闻（财联社）
   getStockNews: (symbol, limit = 5, lastTime = 0) => {
     return api.get(`/api/cn/stocks/${encodeURIComponent(symbol)}/news?limit=${limit}&lastTime=${lastTime}`);
