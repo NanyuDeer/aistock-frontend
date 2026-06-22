@@ -14,7 +14,7 @@
               {{ detecting ? '检测中...' : '执行监测' }}
             </button>
           </h2>
-          <p class="page-desc">聚合格隆汇/财联社快讯 + 飞书群消息 + 同花顺热点掘金，三重共振发现媒体关注个股（仅展示三重共振）</p>
+          <p class="page-desc">聚合格隆汇/财联社快讯 + 同花顺热点掘金 + 研报验证，多源共振发现媒体关注个股</p>
         </div>
 
         <div class="monitor-content">
@@ -22,7 +22,6 @@
             <div class="table-head">
               <span>行情</span>
               <span>股票</span>
-              <span>共振</span>
               <span>等级</span>
               <span>关键词</span>
               <span>得分</span>
@@ -46,16 +45,11 @@
                 <span class="stock-name">{{ rec.stock_name }}</span>
                 <span class="stock-code">{{ rec.symbol }}</span>
               </div>
-              <div class="cell-resonance">
-                <span class="res-dot" :class="{ on: rec.resonance_count >= 1 }">1</span>
-                <span class="res-dot" :class="{ on: rec.resonance_count >= 2 }">2</span>
-                <span class="res-dot" :class="{ on: rec.resonance_count >= 3 }">3</span>
-              </div>
               <div class="cell-level">
                 <span class="level-tag" :class="rec.resonance_level">{{ levelLabel(rec.resonance_level) }}</span>
               </div>
               <div class="cell-keywords">
-                <span v-if="rec.keywords" class="kw-tag" v-for="(kw, i) in rec.keywords.split('、').slice(0, 3)" :key="i">{{ kw }}</span>
+                <span v-if="rec.keywords" class="kw-tag" v-for="(tag, i) in rec.keywords.split('、').slice(0, 4)" :key="i">{{ tag }}</span>
               </div>
               <div class="cell-score">
                 <span class="score-val">{{ rec.resonance_score }}</span>
@@ -237,7 +231,7 @@ export default {
   .table-head,
   .table-row {
     display: grid;
-    grid-template-columns: 80px minmax(90px, 0.8fr) 56px 56px minmax(120px, 1fr) 44px minmax(80px, 0.7fr) 72px;
+    grid-template-columns: 80px minmax(90px, 0.8fr) 56px minmax(120px, 1fr) 44px minmax(80px, 0.7fr) 72px;
     align-items: center;
     gap: 8px;
   }
@@ -306,28 +300,6 @@ export default {
     .stock-code {
       font-size: 0.72rem;
       color: var(--text-tertiary);
-    }
-  }
-
-  .cell-resonance {
-    display: flex;
-    gap: 3px;
-
-    .res-dot {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      font-size: 0.62rem;
-      background: #f1f5f9;
-      color: #94a3b8;
-
-      &.on {
-        background: rgba(34, 197, 94, 0.15);
-        color: #16a34a;
-      }
     }
   }
 
@@ -418,7 +390,7 @@ export default {
   .hot-burst-page {
     .table-head,
     .table-row {
-      grid-template-columns: 64px minmax(72px, 0.75fr) 48px 48px minmax(80px, 0.8fr) 36px minmax(60px, 0.6fr) 60px;
+      grid-template-columns: 64px minmax(72px, 0.75fr) 48px minmax(80px, 0.8fr) 36px minmax(60px, 0.6fr) 60px;
       gap: 4px;
     }
 

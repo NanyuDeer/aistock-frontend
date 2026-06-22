@@ -26,7 +26,6 @@
       <div class="table-head">
         <span>行情</span>
         <span>股票</span>
-        <span>共振</span>
         <span>等级</span>
         <span>关键词</span>
         <span>得分</span>
@@ -49,20 +48,15 @@
           <span class="stock-name">{{ sig.stockName || sig.symbol }}</span>
           <span class="stock-code">{{ sig.symbol }}</span>
         </div>
-        <div class="cell-resonance">
-          <span class="res-dot" :class="{ on: sig.resonance1?.verified }">1</span>
-          <span class="res-dot" :class="{ on: sig.resonance2?.verified }">2</span>
-          <span class="res-dot" :class="{ on: sig.resonance3?.verified }">3</span>
-        </div>
         <div class="cell-level">
           <span class="level-tag" :class="sig.resonanceLevel">{{ levelLabel(sig.resonanceLevel) }}</span>
         </div>
         <div class="cell-keywords">
           <span
-            v-for="kw in uniqueKeywords(sig).slice(0, 3)"
-            :key="kw"
+            v-for="tag in (sig.triggerTags || []).slice(0, 4)"
+            :key="tag"
             class="kw-tag"
-          >{{ kw }}</span>
+          >{{ tag }}</span>
         </div>
         <div class="cell-score">
           <span class="score-val">{{ sig.resonanceScore }}</span>
@@ -97,9 +91,6 @@ export default {
   methods: {
     levelLabel(level) {
       return { critical: '极高', high: '高', medium: '中', low: '低' }[level] || level
-    },
-    uniqueKeywords(sig) {
-      return [...new Set([...(sig.newsKeywords || []), ...(sig.feishuKeywords || [])])]
     },
     formatChange(pct) {
       if (pct == null) return '--'
@@ -216,7 +207,7 @@ export default {
   .table-head,
   .table-row {
     display: grid;
-    grid-template-columns: 80px minmax(90px, 0.8fr) 56px 56px minmax(120px, 1fr) 44px minmax(80px, 0.7fr);
+    grid-template-columns: 80px minmax(90px, 0.8fr) 56px minmax(120px, 1fr) 44px minmax(80px, 0.7fr);
     align-items: center;
     gap: 8px;
   }
@@ -290,28 +281,6 @@ export default {
     }
   }
 
-  .cell-resonance {
-    display: flex;
-    gap: 3px;
-
-    .res-dot {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      font-size: 0.62rem;
-      background: #f1f5f9;
-      color: #94a3b8;
-
-      &.on {
-        background: rgba(34, 197, 94, 0.15);
-        color: #16a34a;
-      }
-    }
-  }
-
   .cell-level {
     .level-tag {
       display: inline-flex;
@@ -375,7 +344,7 @@ export default {
   .hot-burst-panel {
     .table-head,
     .table-row {
-      grid-template-columns: 64px minmax(72px, 0.75fr) 48px 48px minmax(80px, 0.8fr) 36px minmax(60px, 0.6fr);
+      grid-template-columns: 64px minmax(72px, 0.75fr) 48px minmax(80px, 0.8fr) 36px minmax(60px, 0.6fr);
       gap: 4px;
     }
 
