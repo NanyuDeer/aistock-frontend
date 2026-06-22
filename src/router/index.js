@@ -107,7 +107,7 @@ const routes = [
     name: 'potentialPushHistory',
     component: PotentialStockPushHistoryView,
     meta: {
-      title: '股票资讯AI智能分析 - 风口潜力股推送追踪'
+      title: '股票资讯AI智能分析 - 长线风口龙头历史表现'
     }
   },
   {

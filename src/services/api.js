@@ -342,10 +342,10 @@ export const stockApi = {
   // 批量添加自选股票（新版 API）
   addStocks: (symbols) => api.post('/api/users/me/favorites', { symbols }),
 
-  // 获取风口潜力股推送历史（模拟数据）
+  // 获取长线风口龙头推送历史
   getPotentialPushHistory: (params = {}) => api.get(`/api/potential-stocks/push-history${buildQueryString(params)}`),
 
-  // 获取风口潜力股收益榜单（模拟数据）
+  // 获取长线风口龙头收益榜单
   getPotentialPushRanking: (params = {}) => api.get(`/api/potential-stocks/push-ranking${buildQueryString(params)}`),
 
   // 批量删除自选股票（用户态 API；优先 DELETE，失败回退兼容 POST）
