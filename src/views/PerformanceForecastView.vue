@@ -481,6 +481,7 @@ export default {
             cancelButtonText: '取消',
             type: 'warning',
             center: true,
+            showClose: false,
             customClass: 'batch-confirm-dialog'
           }
         )

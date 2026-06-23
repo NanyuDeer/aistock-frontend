@@ -107,12 +107,48 @@ a:visited {
   left: 50% !important;
   transform: translate(-50%, -50%) !important;
   background: #fff !important;
-  border-radius: 8px !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
   z-index: 2000 !important;
+  padding: 24px 32px !important;
+  min-width: 400px !important;
+  max-width: 500px !important;
+}
+
+.el-message-box__header {
+  padding-bottom: 16px !important;
+  border-bottom: 1px solid #f0f0f0 !important;
+}
+
+.el-message-box__title {
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  color: #303133 !important;
+}
+
+.el-message-box__content {
+  padding: 20px 0 !important;
+  font-size: 15px !important;
+  line-height: 1.6 !important;
+  color: #606266 !important;
+}
+
+.el-message-box__btns {
+  padding-top: 20px !important;
+  display: flex !important;
+  justify-content: center !important;
+  gap: 16px !important;
+}
+
+.el-message-box__btns button {
+  min-width: 100px !important;
+  padding: 10px 20px !important;
+  font-size: 14px !important;
+  border-radius: 6px !important;
 }
 
 .batch-confirm-dialog {
-  min-width: 360px;
-  padding: 20px;
+  .el-message-box__headerbtn {
+    display: none !important;
+  }
 }
