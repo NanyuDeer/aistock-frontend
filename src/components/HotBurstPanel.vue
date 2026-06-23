@@ -2,7 +2,7 @@
   <div class="hot-burst-panel">
     <div class="panel-header">
       <h3 class="section-title">
-        媒体关注榜
+        机构调研推荐热门股
         <button
           v-if="showDetectBtn"
           class="detect-btn-small"

@@ -4,17 +4,8 @@
     <div class="page-container">
       <div class="container">
         <div class="page-header">
-          <h2 class="page-title">
-            媒体关注榜
-            <button
-              class="detect-btn-small"
-              @click="runDetect"
-              :disabled="detecting"
-            >
-              {{ detecting ? '检测中...' : '执行监测' }}
-            </button>
-          </h2>
-          <p class="page-desc">聚合格隆汇/财联社快讯 + 同花顺热点掘金 + 研报验证，多源共振发现媒体关注个股</p>
+          <h2 class="page-title">机构调研推荐热门股</h2>
+          <p class="page-desc">聚合格隆汇/财联社快讯 + 同花顺热点掘金 + 研报验证，多源共振发现机构调研热门个股</p>
         </div>
 
         <div class="monitor-content">
@@ -88,7 +79,6 @@ export default {
     const records = ref([])
     const loading = ref(false)
     const loadingMore = ref(false)
-    const detecting = ref(false)
     const total = ref(0)
     const pageSize = 50
 
@@ -143,22 +133,12 @@ export default {
 
     const loadMore = () => fetchHistory(true)
 
-    const runDetect = async () => {
-      detecting.value = true
-      try {
-        await windLeaderApi.detectHotBurst()
-        await fetchHistory(false)
-      } finally {
-        detecting.value = false
-      }
-    }
-
     fetchHistory()
 
     return {
-      records, loading, loadingMore, hasMore, detecting,
+      records, loading, loadingMore, hasMore,
       levelLabel, formatChange, changeClass, formatTime,
-      goToStock, loadMore, runDetect,
+      goToStock, loadMore,
     }
   }
 }
