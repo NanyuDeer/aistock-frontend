@@ -13,7 +13,7 @@
         </button>
       </h3>
       <div class="header-right">
-        <span class="subtitle" v-if="signals.length">共 {{ signals.length }} 只</span>
+        <span class="subtitle" v-if="signals.length">共 {{ signals.length }} 只<span v-if="displayedSignals.length < signals.length" class="subtitle-extra">（展示前 {{ displayedSignals.length }} 只）</span></span>
         <router-link v-if="showMoreLink" to="/hot-burst" class="more-link">
           查看全部 <span class="arrow">&rarr;</span>
         </router-link>
@@ -32,7 +32,7 @@
         <span>板块</span>
       </div>
       <div
-        v-for="sig in signals"
+        v-for="sig in displayedSignals"
         :key="sig.symbol"
         class="table-row"
         :class="'level-' + sig.resonanceLevel"
@@ -79,6 +79,7 @@ export default {
   props: {
     showMoreLink: { type: Boolean, default: true },
     showDetectBtn: { type: Boolean, default: false },
+    displayLimit: { type: Number, default: 5 },
   },
   data() {
     return { signals: [], loading: false }
@@ -87,6 +88,12 @@ export default {
     const router = useRouter()
     const goToStock = (code) => router.push({ name: 'stockDetail', params: { code } })
     return { goToStock }
+  },
+  computed: {
+    displayedSignals() {
+      const limit = this.displayLimit > 0 ? this.displayLimit : this.signals.length
+      return this.signals.slice(0, limit)
+    },
   },
   methods: {
     levelLabel(level) {
@@ -172,6 +179,12 @@ export default {
     .subtitle {
       color: var(--text-tertiary, #94a3b8);
       font-size: 12px;
+    }
+
+    .subtitle-extra {
+      color: var(--text-tertiary, #94a3b8);
+      font-size: 12px;
+      margin-left: 2px;
     }
 
     .more-link {
