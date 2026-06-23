@@ -863,7 +863,7 @@ export const windLeaderApi = {
   }),
   /** 获取媒体关注榜历史记录（默认仅返回三重共振的记录） */
   getHotBurstHistory: (limit = 50, offset = 0) => api.get('/api/cn/media-attention/history', {
-    params: { limit, offset, triple_resonance_only: true },
+    params: { limit, offset, min_resonance_only: true },
     timeout: 10000,
   }),
   /** 获取爆发关键词 */
