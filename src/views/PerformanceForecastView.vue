@@ -31,9 +31,15 @@
               <el-form-item>
                 <el-button type="primary" @click="handleSearch">查询</el-button>
                 <el-button @click="handleReset">重置</el-button>
-                <el-button type="warning" :loading="batchRunning" :disabled="batchDisabled" @click="handleBatchRefresh">
-                  {{ batchDisabled ? '今日已爬取' : (batchRunning ? '爬取中...' : '批量爬取') }}
-                </el-button>
+                <el-tooltip
+                  :content="batchDisabled ? '今天已经爬取过，每天最多一次' : '批量爬取全市场股票的业绩预测数据'"
+                  placement="top"
+                  :disabled="!batchDisabled"
+                >
+                  <el-button type="warning" :loading="batchRunning" :disabled="batchDisabled" @click="handleBatchRefresh">
+                    {{ batchDisabled ? '今日已爬取' : (batchRunning ? '爬取中...' : '批量爬取') }}
+                  </el-button>
+                </el-tooltip>
               </el-form-item>
             </el-form>
           </div>
