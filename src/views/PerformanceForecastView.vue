@@ -476,7 +476,13 @@ export default {
         await ElMessageBox.confirm(
           '将批量爬取全市场股票的业绩预测数据（从同花顺），可能耗时较长。每天最多执行一次。是否继续？',
           '批量爬取确认',
-          { confirmButtonText: '开始爬取', cancelButtonText: '取消', type: 'warning' }
+          {
+            confirmButtonText: '开始爬取',
+            cancelButtonText: '取消',
+            type: 'warning',
+            center: true,
+            customClass: 'batch-confirm-dialog'
+          }
         )
       } catch {
         return

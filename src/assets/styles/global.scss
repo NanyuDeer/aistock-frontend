@@ -99,3 +99,20 @@ a:visited {
     }
   }
 }
+
+/* Element Plus MessageBox 弹窗样式修复 */
+.el-message-box {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  background: #fff !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15) !important;
+  z-index: 2000 !important;
+}
+
+.batch-confirm-dialog {
+  min-width: 360px;
+  padding: 20px;
+}
