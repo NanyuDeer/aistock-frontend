@@ -138,7 +138,7 @@
             @retry="fetchHotSectors(true)"
           />
 
-          <!-- 媒体关注热点榜 -->
+          <!-- 机构调研推荐热门股 -->
           <div class="hot-burst-section">
             <HotBurstPanel />
           </div>

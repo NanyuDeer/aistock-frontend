@@ -852,17 +852,17 @@ export const windLeaderApi = {
   refreshAnalysis: () => api.post('/api/cn/wind-leaders/refresh', {}, {
     timeout: 120000,
   }),
-  /** 执行三步媒体关注榜检测 */
-  detectHotBurst: () => api.post('/api/cn/media-attention/detect', {}, {
+  /** 执行三步机构调研推荐热门股检测 */
+  detectHotBurst: () => api.post('/api/cn/institution-research/detect', {}, {
     timeout: 60000,
   }),
-  /** 获取媒体关注榜检测结果（默认返回二重共振及以上的信号） */
-  getHotBurst: (hours = 6, minResonance = 2) => api.get('/api/cn/media-attention', {
+  /** 获取机构调研推荐热门股检测结果（默认返回三源共振及以上的信号） */
+  getHotBurst: (hours = 6, minResonance = 3) => api.get('/api/cn/institution-research', {
     params: { hours, min_resonance: minResonance },
     timeout: 10000,
   }),
-  /** 获取媒体关注榜历史记录（默认仅返回三重共振的记录） */
-  getHotBurstHistory: (limit = 50, offset = 0) => api.get('/api/cn/media-attention/history', {
+  /** 获取机构调研推荐热门股历史记录（默认仅返回三源共振的记录） */
+  getHotBurstHistory: (limit = 50, offset = 0) => api.get('/api/cn/institution-research/history', {
     params: { limit, offset, min_resonance_only: true },
     timeout: 10000,
   }),

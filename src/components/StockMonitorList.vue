@@ -12,7 +12,7 @@
       </button>
     </div>
 
-    <!-- 媒体关注榜列表 -->
+    <!-- 机构调研推荐热门股列表 -->
     <div class="monitor-events">
       <div
         v-for="event in filteredEvents"
@@ -61,7 +61,7 @@
       </div>
 
       <div v-if="filteredEvents.length === 0" class="empty-state">
-        <p>暂无媒体关注榜数据</p>
+        <p>暂无机构调研推荐热门股数据</p>
       </div>
     </div>
   </div>

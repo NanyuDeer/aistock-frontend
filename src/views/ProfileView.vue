@@ -68,7 +68,7 @@
                   @change="updatePushSettings('outbreak_push')"
                 />
                 <div class="setting-info">
-                  <strong>媒体关注榜推送</strong>
+                  <strong>机构调研推荐热门股推送</strong>
                   <span>每日9:00和17:00推送三重共振信号检测结果</span>
                 </div>
               </div>
