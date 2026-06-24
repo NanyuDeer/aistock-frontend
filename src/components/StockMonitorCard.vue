@@ -32,7 +32,7 @@
         v-for="event in filteredEvents"
         :key="event.event_id"
         class="monitor-row"
-        @click="goToStock(event.stock_code)"
+        @click="goToDetail(event)"
       >
         <div class="stock-identity">
           <div class="stock-title-wrap">
@@ -107,8 +107,12 @@ export default {
       activeCycle.value = cycle
     }
 
-    const goToStock = (code) => {
-      router.push({ name: 'stockDetail', params: { code } })
+    const goToDetail = (event) => {
+      if (event.detail_url) {
+        window.open(event.detail_url, '_blank');
+      } else {
+        router.push({ name: 'stockDetail', params: { code: event.stock_code } });
+      }
     }
 
     const getDisplayKeywords = (event) => {
@@ -128,7 +132,7 @@ export default {
       filterDecisiveKeywords,
       getDisplayKeywords,
       onCycleChange,
-      goToStock
+      goToDetail
     }
   }
 }
@@ -202,7 +206,7 @@ export default {
   .monitor-list-head,
   .monitor-row {
     display: grid;
-    grid-template-columns: minmax(120px, 0.9fr) minmax(86px, 0.6fr) minmax(82px, 0.55fr) minmax(180px, 1.4fr) 56px 72px;
+    grid-template-columns: minmax(120px, 0.9fr) minmax(86px, 0.6fr) minmax(82px, 0.55fr) minmax(180px, 1.4fr) 56px 110px;
     align-items: center;
     gap: 8px;
   }
@@ -397,7 +401,7 @@ export default {
 
     .monitor-list-head,
     .monitor-row {
-      grid-template-columns: minmax(90px, 0.85fr) minmax(64px, 0.55fr) minmax(64px, 0.55fr) minmax(96px, 0.9fr) 44px 60px;
+      grid-template-columns: minmax(90px, 0.85fr) minmax(64px, 0.55fr) minmax(64px, 0.55fr) minmax(96px, 0.9fr) 44px 90px;
       gap: 4px;
     }
 

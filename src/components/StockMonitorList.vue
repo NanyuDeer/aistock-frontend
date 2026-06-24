@@ -12,56 +12,58 @@
       </button>
     </div>
 
-    <!-- 机构调研推荐热门股列表 -->
-    <div class="monitor-events">
+    <!-- 个股异动列表 -->
+    <div class="monitor-table">
+      <div class="monitor-table-head">
+        <span>股票</span>
+        <span>来源</span>
+        <span>影响</span>
+        <span>关键词/摘要</span>
+        <span>周期</span>
+        <span>时间</span>
+      </div>
       <div
         v-for="event in filteredEvents"
         :key="event.event_id"
-        class="event-row"
-        @click="goToStock(event.stock_code)"
+        class="monitor-row"
+        @click="goToDetail(event)"
       >
-        <div class="event-main">
-          <div class="event-stock">
-            <span class="stock-name">{{ event.stock_name }}</span>
-            <span class="stock-code">{{ event.stock_code }}</span>
-          </div>
-          <div class="event-tags">
-            <span
-              class="change-tag"
-              :style="{ backgroundColor: getInfoTypeColor(event.change_type) + '18', color: getInfoTypeColor(event.change_type), borderColor: getInfoTypeColor(event.change_type) + '40' }"
-            >
-              {{ getInfoTypeLabel(event.change_type) }}
-            </span>
-            <span class="level-tag" :style="{ color: getImpactColor(event.level) }">
-              {{ event.level }}
-            </span>
-          </div>
-          <div class="event-price-info">
-            <span class="price">{{ event.ai_horizon || '--' }}</span>
-            <span class="change">{{ event.source || '--' }}</span>
+        <div class="stock-identity">
+          <div class="stock-title-wrap">
+            <h4>{{ event.stock_name }}</h4>
+            <span v-if="event.industry" class="industry-tag">{{ event.industry }}</span>
+            <span class="stock-code-line">{{ event.stock_code }}</span>
           </div>
         </div>
-        <div class="event-meta">
-          <span v-if="event.title" class="meta-item trend-title">
-            {{ event.title }}
+        <div class="stock-metrics">
+          <span class="info-type-tag" :style="{ color: getInfoTypeColor(event.change_type), borderColor: getInfoTypeColor(event.change_type) + '60' }">
+            {{ getInfoTypeLabel(event.change_type) }}
           </span>
-          <div v-if="event.ai_keywords && event.ai_keywords.length > 0" class="event-keywords">
+        </div>
+        <div class="event-metrics">
+          <span class="impact-tag" :style="{ color: getImpactColor(event.level), borderColor: getImpactColor(event.level) + '60' }">
+            {{ event.level }}
+          </span>
+        </div>
+        <div class="change-info">
+          <div v-if="getDisplayKeywords(event).length > 0" class="keyword-tags">
             <span
-              v-for="kw in filterDecisiveKeywords(event.ai_keywords)"
+              v-for="kw in getDisplayKeywords(event)"
               :key="kw"
               class="keyword-tag"
               :style="{ backgroundColor: getKeywordColor(kw) + '15', color: getKeywordColor(kw), borderColor: getKeywordColor(kw) + '40' }"
             >{{ kw }}</span>
           </div>
-          <span v-else-if="event.summary" class="meta-item trend-summary">
-            {{ event.summary }}
-          </span>
-          <span class="meta-time">{{ event.event_time_display }}</span>
+          <p v-else class="trend-summary">{{ event.summary || event.title || event.change_type_name }}</p>
         </div>
+        <div class="level-cell">
+          <span class="level-badge">{{ event.ai_horizon || event.cycle }}</span>
+        </div>
+        <div class="time-cell">{{ event.event_time_display }}</div>
       </div>
 
       <div v-if="filteredEvents.length === 0" class="empty-state">
-        <p>暂无机构调研推荐热门股数据</p>
+        <p>暂无个股异动数据</p>
       </div>
     </div>
   </div>
@@ -104,8 +106,18 @@ export default {
       return filterEventsByCycle(props.events, activeCycle.value)
     })
 
-    const goToStock = (code) => {
-      router.push({ name: 'stockDetail', params: { code } })
+    const goToDetail = (event) => {
+      if (event.detail_url) {
+        window.open(event.detail_url, '_blank')
+      } else {
+        router.push({ name: 'stockDetail', params: { code: event.stock_code } })
+      }
+    }
+
+    const getDisplayKeywords = (event) => {
+      const decisive = filterDecisiveKeywords(event.ai_keywords)
+      if (decisive.length > 0) return decisive
+      return (event.ai_keywords || []).slice(0, 2)
     }
 
     return {
@@ -117,7 +129,8 @@ export default {
       getInfoTypeLabel,
       getKeywordColor,
       filterDecisiveKeywords,
-      goToStock
+      getDisplayKeywords,
+      goToDetail
     }
   }
 }
@@ -153,152 +166,185 @@ export default {
     }
   }
 
-  .monitor-events {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+  .monitor-table {
+    border: 1px solid #edf1f7;
+    border-radius: 8px;
+    overflow: hidden;
   }
 
-  .event-row {
-    padding: 12px 14px;
+  .monitor-table-head,
+  .monitor-row {
+    display: grid;
+    grid-template-columns: minmax(120px, 0.9fr) minmax(86px, 0.6fr) minmax(82px, 0.55fr) minmax(180px, 1.4fr) 56px 110px;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .monitor-table-head {
+    min-height: 34px;
+    padding: 0 12px;
+    background: #f8fafc;
+    border-bottom: 1px solid #edf1f7;
+    color: var(--text-tertiary);
+    font-size: 0.74rem;
+    font-weight: 700;
+  }
+
+  .monitor-row {
+    min-height: 54px;
+    padding: 8px 12px;
     background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
     cursor: pointer;
-    transition: box-shadow 0.2s, transform 0.15s;
+    border-bottom: 1px solid #f0f3f8;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+
+    &:last-child {
+      border-bottom: none;
+    }
 
     &:hover {
-      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
-      transform: translateY(-1px);
+      background: #fbfdff;
+      box-shadow: inset 3px 0 0 #4f7cff;
     }
+  }
 
-    .event-main {
+  .stock-identity {
+    display: block;
+    min-width: 0;
+
+    .stock-title-wrap {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
-      gap: 14px;
+      gap: 2px 6px;
+      min-width: 0;
 
-      .event-stock {
-        flex: 0 0 110px;
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-
-        .stock-name {
-          font-size: 0.95rem;
-          font-weight: 600;
-          color: var(--text-primary);
-        }
-
-        .stock-code {
-          font-size: 0.75rem;
-          color: var(--text-tertiary);
-        }
-      }
-
-      .event-tags {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-
-        .change-tag {
-          display: inline-block;
-          padding: 2px 8px;
-          border-radius: 4px;
-          font-size: 0.78rem;
-          font-weight: 500;
-          border: 1px solid;
-          white-space: nowrap;
-        }
-
-        .level-tag {
-          font-size: 0.72rem;
-          font-weight: 600;
-          opacity: 0.8;
-        }
-      }
-
-      .event-price-info {
-        flex: 0 0 100px;
-        text-align: right;
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-
-        .price {
-          font-size: 0.95rem;
-          font-weight: 600;
-        }
-
-        .change {
-          font-size: 0.8rem;
-          font-weight: 500;
-        }
-
-        color: #475569;
-      }
-    }
-
-    .event-meta {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      margin-top: 8px;
-      padding-top: 8px;
-      border-top: 1px solid #f0f0f0;
-
-      .meta-item {
-        font-size: 0.78rem;
-        color: var(--text-tertiary);
+      h4 {
+        margin: 0;
         min-width: 0;
-
-        strong {
-          color: var(--text-secondary);
-          font-weight: 500;
-        }
-      }
-
-      .trend-title,
-      .trend-summary {
+        flex: 0 1 auto;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        color: var(--text-primary);
+        font-size: 0.92rem;
+        line-height: 1.3;
       }
 
-      .trend-title {
-        flex: 1;
-        min-width: 0;
-        color: var(--text-secondary);
-      }
-
-      .trend-summary {
-        flex: 1;
-        min-width: 0;
-      }
-
-      .event-keywords {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-        flex-shrink: 0;
-
-        .keyword-tag {
-          display: inline-block;
-          padding: 1px 8px;
-          border-radius: 10px;
-          font-size: 0.72rem;
-          font-weight: 600;
-          border: 1px solid;
-          white-space: nowrap;
-        }
-      }
-
-      .meta-time {
-        flex-shrink: 0;
-        font-size: 0.75rem;
+      .stock-code-line {
+        flex: 0 0 100%;
+        display: block;
         color: var(--text-tertiary);
+        font-size: 0.72rem;
       }
     }
+  }
+
+  .industry-tag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    max-width: 98px;
+    min-height: 20px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: #eaf2ff;
+    color: #1d4ed8;
+    border: 1px solid #bcd2ff;
+    font-size: 0.7rem;
+    font-weight: 800;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+  }
+
+  .stock-metrics {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+
+    .info-type-tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid;
+      font-size: 0.74rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+  }
+
+  .event-metrics {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+
+    .impact-tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid;
+      font-size: 0.74rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+  }
+
+  .change-info {
+    min-width: 0;
+
+    .keyword-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+
+      .keyword-tag {
+        display: inline-block;
+        padding: 1px 8px;
+        border-radius: 10px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        border: 1px solid;
+        white-space: nowrap;
+      }
+    }
+
+    .trend-summary {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 0.76rem;
+      line-height: 1.35;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  .level-cell {
+    .level-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      border: 1px solid #cbd5e1;
+      color: #475569;
+    }
+  }
+
+  .time-cell {
+    font-size: 0.76rem;
+    color: var(--text-tertiary);
+    white-space: nowrap;
   }
 
   .empty-state {
@@ -310,13 +356,43 @@ export default {
 }
 
 @media (max-width: 768px) {
-  .stock-monitor-list .event-row .event-main {
-    flex-wrap: wrap;
-    gap: 8px;
+  .stock-monitor-list {
+    .monitor-table-head,
+    .monitor-row {
+      grid-template-columns: minmax(90px, 0.85fr) minmax(64px, 0.55fr) minmax(64px, 0.55fr) minmax(96px, 0.9fr) 44px 90px;
+      gap: 4px;
+    }
 
-    .event-stock { flex: 0 0 auto; }
-    .event-tags { flex: 1; }
-    .event-price-info { flex: 0 0 auto; }
+    .monitor-table-head {
+      font-size: 0.68rem;
+    }
+
+    .monitor-row {
+      padding: 6px 8px;
+      min-height: 46px;
+    }
+
+    .stock-identity .stock-title-wrap h4 {
+      font-size: 0.82rem;
+    }
+
+    .industry-tag {
+      font-size: 0.64rem;
+      padding: 1px 6px;
+      max-width: 72px;
+    }
+
+    .stock-metrics .info-type-tag,
+    .event-metrics .impact-tag {
+      font-size: 0.66rem;
+      padding: 1px 5px;
+    }
+
+    .change-info .trend-summary {
+      font-size: 0.68rem;
+    }
+
+    .time-cell { font-size: 0.68rem; }
   }
 }
 </style>

@@ -350,7 +350,11 @@ export default {
       if (!timeStr) return '';
       try {
         const d = new Date(timeStr);
-        return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const hour = String(d.getHours()).padStart(2, '0');
+        const minute = String(d.getMinutes()).padStart(2, '0');
+        return `${month}-${day} ${hour}:${minute}`;
       } catch {
         return timeStr;
       }
