@@ -51,18 +51,6 @@
         </div>
       </div>
 
-      <div class="view-tabs">
-        <button
-          v-for="tab in viewTabs"
-          :key="tab.key"
-          :class="['view-tab', { 'is-active': activeView === tab.key }]"
-          @click="activeView = tab.key"
-        >
-          <span class="tab-label">{{ tab.label }}</span>
-          <span class="tab-desc">{{ tab.desc }}</span>
-        </button>
-      </div>
-
       <!-- 个股异动 -->
       <div v-if="stockMonitorEvents.length > 0" class="stock-monitor-section">
         <div class="card">
@@ -77,6 +65,18 @@
             />
           </div>
         </div>
+      </div>
+
+      <div class="view-tabs">
+        <button
+          v-for="tab in viewTabs"
+          :key="tab.key"
+          :class="['view-tab', { 'is-active': activeView === tab.key }]"
+          @click="activeView = tab.key"
+        >
+          <span class="tab-label">{{ tab.label }}</span>
+          <span class="tab-desc">{{ tab.desc }}</span>
+        </button>
       </div>
 
       <!-- 短线视图 -->
