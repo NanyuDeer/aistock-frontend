@@ -416,6 +416,13 @@ export const stockApi = {
     });
   },
 
+  // 批量获取股票实时行情（历史表现页用）
+  getStockRealtimeQuotes: (symbols) => {
+    return api.get(`/api/cn/stock/quotes/realtime?symbols=${symbols}`, {
+      timeout: 8000
+    });
+  },
+
   // 获取历史K线
   getStockKline: ({ symbol, klt = 101, fqt = 1, limit = DEFAULT_KLINE_LIMIT, startDate, endDate }) => {
     const parsedLimit = Number(limit);
