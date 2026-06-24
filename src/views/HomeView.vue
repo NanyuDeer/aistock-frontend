@@ -128,8 +128,8 @@
             <MarketOverview />
           </div>
 
-          <!-- 个股异动 -->
-          <div class="stock-monitor-section">
+          <!-- 个股异动（隐藏，后续可能用到） -->
+          <div v-if="false" class="stock-monitor-section">
             <h3 class="section-title">个股异动</h3>
             <StockMonitorList
               :events="monitorEvents"
