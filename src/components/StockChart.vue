@@ -745,13 +745,15 @@ export default {
       const realCategories = visibleItems.map(item => item.time);
       const candleData = visibleItems.map(item => [item.open, item.close, item.low, item.high]);
 
-      const shouldShowFutureLoadingSlots = predictionLoading.value && predictionBands.value.length === 0;
+      const shouldShowFutureLoadingSlots = SHOW_PREDICTION && predictionLoading.value && predictionBands.value.length === 0;
       const loadingFutureSlots = shouldShowFutureLoadingSlots
         ? Array.from({ length: PREDICTION_DEFAULTS.predLen }, (_, index) => `预测中${index + 1}`)
         : [];
-      const predictedCategories = predictionBands.value.length > 0
-        ? predictionBands.value.map((band, index) => band.date || `T+${band.step || index + 1}`)
-        : loadingFutureSlots;
+      const predictedCategories = SHOW_PREDICTION
+        ? (predictionBands.value.length > 0
+            ? predictionBands.value.map((band, index) => band.date || `T+${band.step || index + 1}`)
+            : loadingFutureSlots)
+        : [];
       const categories = [...realCategories, ...predictedCategories];
 
       const visibleHighs = visibleItems.map(item => item.high);

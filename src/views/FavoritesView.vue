@@ -449,6 +449,7 @@ export default {
       getInfoTypeLabel,
       getImpactColor,
       getKeywordColor,
+      filterDecisiveKeywords,
     };
   }
 };
