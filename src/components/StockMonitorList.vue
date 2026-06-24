@@ -18,7 +18,7 @@
         <span>股票</span>
         <span>来源</span>
         <span>影响</span>
-        <span>关键词/摘要</span>
+        <span>一句话摘要</span>
         <span>周期</span>
         <span>时间</span>
       </div>
@@ -46,7 +46,8 @@
           </span>
         </div>
         <div class="change-info">
-          <div v-if="getDisplayKeywords(event).length > 0" class="keyword-tags">
+          <!-- 关键词标签（隐藏，后续可能用到） -->
+          <div v-if="false && getDisplayKeywords(event).length > 0" class="keyword-tags">
             <span
               v-for="kw in getDisplayKeywords(event)"
               :key="kw"
@@ -54,12 +55,12 @@
               :style="{ backgroundColor: getKeywordColor(kw) + '15', color: getKeywordColor(kw), borderColor: getKeywordColor(kw) + '40' }"
             >{{ kw }}</span>
           </div>
-          <p v-else class="trend-summary">{{ event.summary || event.title || event.change_type_name }}</p>
+          <p class="trend-summary">{{ event.summary || event.title || event.change_type_name }}</p>
         </div>
         <div class="level-cell">
           <span class="level-badge">{{ event.ai_horizon || event.cycle }}</span>
         </div>
-        <div class="time-cell">{{ event.event_time_display }}</div>
+        <div class="time-cell">{{ formatEventTime(event.event_time_display || event.event_time) }}</div>
       </div>
 
       <div v-if="filteredEvents.length === 0" class="empty-state">
@@ -120,6 +121,23 @@ export default {
       return (event.ai_keywords || []).slice(0, 2)
     }
 
+    const formatEventTime = (timeStr) => {
+      if (!timeStr) return ''
+      // 已经是 MM-DD HH:mm 格式则直接返回
+      if (/^\d{2}-\d{2}\s\d{2}:\d{2}$/.test(timeStr)) return timeStr
+      try {
+        const d = new Date(timeStr)
+        if (isNaN(d.getTime())) return timeStr
+        const month = String(d.getMonth() + 1).padStart(2, '0')
+        const day = String(d.getDate()).padStart(2, '0')
+        const hour = String(d.getHours()).padStart(2, '0')
+        const minute = String(d.getMinutes()).padStart(2, '0')
+        return `${month}-${day} ${hour}:${minute}`
+      } catch {
+        return timeStr
+      }
+    }
+
     return {
       activeCycle,
       filteredEvents,
@@ -130,6 +148,7 @@ export default {
       getKeywordColor,
       filterDecisiveKeywords,
       getDisplayKeywords,
+      formatEventTime,
       goToDetail
     }
   }

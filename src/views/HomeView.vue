@@ -128,6 +128,16 @@
             <MarketOverview />
           </div>
 
+          <!-- 个股异动 -->
+          <div class="stock-monitor-section">
+            <h3 class="section-title">个股异动</h3>
+            <StockMonitorList
+              :events="monitorEvents"
+              :show-cycle-filter="true"
+              default-cycle="all"
+            />
+          </div>
+
           <!-- 长线风口龙头 -->
           <WindLeaderPanel
             :sectors="hotSectors"
@@ -298,7 +308,7 @@ import TheNavbar from '@/components/TheNavbar.vue';
 import MarketOverview from '@/components/MarketOverview.vue';
 import NewsSlider from '@/components/NewsSlider.vue';
 import StockCardList from '@/components/StockCardList.vue';
-import StockMonitorCard from '@/components/StockMonitorCard.vue';
+import StockMonitorList from '@/components/StockMonitorList.vue';
 import HotBurstPanel from '@/components/HotBurstPanel.vue';
 import WindLeaderPanel from '@/components/WindLeaderPanel.vue';
 import AiGraph from '@/components/AiGraph.vue';
@@ -312,7 +322,7 @@ export default {
     MarketOverview,
     NewsSlider,
     StockCardList,
-    StockMonitorCard,
+    StockMonitorList,
     HotBurstPanel
   },
   setup() {
