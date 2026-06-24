@@ -194,7 +194,7 @@ export default {
   .monitor-table-head,
   .monitor-row {
     display: grid;
-    grid-template-columns: minmax(120px, 0.9fr) minmax(86px, 0.6fr) minmax(82px, 0.55fr) minmax(180px, 1.4fr) 56px 110px;
+    grid-template-columns: minmax(120px, 0.9fr) minmax(64px, 0.4fr) minmax(60px, 0.35fr) minmax(220px, 1.8fr) 56px 110px;
     align-items: center;
     gap: 8px;
   }
@@ -378,7 +378,7 @@ export default {
   .stock-monitor-list {
     .monitor-table-head,
     .monitor-row {
-      grid-template-columns: minmax(90px, 0.85fr) minmax(64px, 0.55fr) minmax(64px, 0.55fr) minmax(96px, 0.9fr) 44px 90px;
+      grid-template-columns: minmax(90px, 0.85fr) minmax(48px, 0.35fr) minmax(48px, 0.35fr) minmax(120px, 1.2fr) 44px 90px;
       gap: 4px;
     }
 

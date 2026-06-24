@@ -839,9 +839,16 @@ export default {
 
     const formatEventTime = (timeStr) => {
       if (!timeStr) return '';
+      // 已经是 MM-DD HH:mm 格式则直接返回
+      if (/^\d{2}-\d{2}\s\d{2}:\d{2}$/.test(timeStr)) return timeStr;
       try {
         const d = new Date(timeStr);
-        return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        if (isNaN(d.getTime())) return timeStr;
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const hour = String(d.getHours()).padStart(2, '0');
+        const minute = String(d.getMinutes()).padStart(2, '0');
+        return `${month}-${day} ${hour}:${minute}`;
       } catch {
         return timeStr;
       }
