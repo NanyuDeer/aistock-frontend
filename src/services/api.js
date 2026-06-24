@@ -873,6 +873,11 @@ export const windLeaderApi = {
     params: { limit, offset, min_resonance_only: true },
     timeout: 10000,
   }),
+  /** 从 DB 获取最新的机构调研推荐热门股（轻量查询，不触发检测） */
+  getLatestRecords: (limit = 5) => api.get('/api/cn/institution-research/latest', {
+    params: { limit },
+    timeout: 10000,
+  }),
   /** 获取爆发关键词 */
   getHotKeywords: (hours = 6, limit = 20) => api.get('/api/cn/hot-keywords', {
     params: { hours, limit },

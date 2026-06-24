@@ -110,7 +110,7 @@ export default {
     async fetchRecent() {
       this.loading = true
       try {
-        const res = await windLeaderApi.getHotBurst(6)
+        const res = await windLeaderApi.getLatestRecords(this.displayLimit)
         this.signals = res.data?.outbreaks || []
       } catch {
         this.signals = []
