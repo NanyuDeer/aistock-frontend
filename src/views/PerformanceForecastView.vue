@@ -31,37 +31,8 @@
               <el-form-item>
                 <el-button type="primary" @click="handleSearch">查询</el-button>
                 <el-button @click="handleReset">重置</el-button>
-                <el-tooltip
-                  :content="batchDisabled ? '今天已经爬取过，每天最多一次' : '批量爬取全市场股票的业绩预测数据'"
-                  placement="top"
-                  :disabled="!batchDisabled"
-                >
-                  <el-button type="warning" :loading="batchRunning" :disabled="batchDisabled" @click="handleBatchRefresh">
-                    {{ batchDisabled ? '今日已爬取' : (batchRunning ? '爬取中...' : '批量爬取') }}
-                  </el-button>
-                </el-tooltip>
               </el-form-item>
             </el-form>
-          </div>
-
-          <div v-if="batchRunning || batchFinished" class="batch-status-bar">
-            <el-progress
-              v-if="batchRunning"
-              :percentage="batchProgress"
-              :format="() => `${batchStatus.current}/${batchStatus.total} (${batchStatus.success}成功/${batchStatus.failed}失败)`"
-              :stroke-width="18"
-              :text-inside="true"
-              status="warning"
-            />
-            <div v-if="batchRunning && batchStatus.currentSymbol" class="batch-current">
-              正在爬取: {{ batchStatus.currentSymbol }}
-            </div>
-            <div v-if="batchFinished" class="batch-result">
-              批量爬取完成: 成功 {{ batchStatus.success }} / {{ batchStatus.total }}
-              <span v-if="batchStatus.failed > 0" class="batch-failed">, 失败 {{ batchStatus.failed }}</span>
-              ，耗时 {{ batchElapsedSec }} 秒
-              <el-button link type="primary" @click="batchFinished = false">关闭</el-button>
-            </div>
           </div>
 
           <el-table
@@ -154,7 +125,7 @@
 
 <script>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { RouterLink } from 'vue-router'
 import TheNavbar from '@/components/TheNavbar.vue'
 import { stockApi } from '@/services/api'
@@ -423,123 +394,14 @@ export default {
       viewportWidth.value = window.innerWidth
     }
 
-    // ============ 批量爬取 ============
-    const batchRunning = ref(false)
-    const batchFinished = ref(false)
-    const batchHasRunToday = ref(false) // 今天是否已爬取过
-    const batchStatus = ref({ total: 0, success: 0, failed: 0, current: 0, currentSymbol: '', running: false })
-    const batchProgress = computed(() => batchStatus.value.total > 0 ? Math.round((batchStatus.value.current / batchStatus.value.total) * 100) : 0)
-    const batchDisabled = computed(() => !batchRunning.value && batchHasRunToday.value)
-    const batchElapsedSec = computed(() => {
-      const s = batchStatus.value
-      if (!s.startedAt) return 0
-      const end = s.finishedAt || Date.now()
-      return ((end - s.startedAt) / 1000).toFixed(1)
-    })
-    let batchTimer = null
-
-    const pollBatchStatus = async () => {
-      try {
-        const res = await stockApi.getBatchForecastStatus()
-        if (res?.code === 200 && res.data) {
-          const d = res.data
-          batchStatus.value = {
-            total: d.total || 0,
-            success: d.success || 0,
-            failed: d.failed || 0,
-            current: d.current || 0,
-            currentSymbol: d.currentSymbol || '',
-            running: !!d.running,
-            startedAt: d.startedAt || 0,
-            finishedAt: d.finishedAt || 0,
-          }
-          // 同步今天是否已爬取
-          if (d.canBatchToday === false) {
-            batchHasRunToday.value = true
-          }
-          if (!d.running) {
-            batchRunning.value = false
-            batchFinished.value = true
-            if (batchTimer) { clearInterval(batchTimer); batchTimer = null }
-            fetchData()
-          }
-        }
-      } catch {}
-    }
-
-    const handleBatchRefresh = async () => {
-      if (batchDisabled.value) {
-        ElMessage.warning('今天已经执行过批量爬取，每天最多一次，请明天再试')
-        return
-      }
-      try {
-        await ElMessageBox.confirm(
-          '将批量爬取全市场股票的业绩预测数据（从同花顺），可能耗时较长。每天最多执行一次。是否继续？',
-          '批量爬取确认',
-          {
-            confirmButtonText: '开始爬取',
-            cancelButtonText: '取消',
-            type: 'warning',
-            center: true,
-            showClose: false,
-            customClass: 'batch-confirm-dialog'
-          }
-        )
-      } catch {
-        return
-      }
-
-      try {
-        const res = await stockApi.batchRefreshForecast({ concurrency: 3, intervalMs: 500, timeoutMs: 15000, maxRetries: 1 })
-        if (res?.code === 200) {
-          ElMessage.success(res.message || '批量爬取已启动')
-          batchRunning.value = true
-          batchFinished.value = false
-          batchHasRunToday.value = true
-          batchStatus.value = { total: res.data?.total || 0, success: 0, failed: 0, current: 0, currentSymbol: '', running: true, startedAt: Date.now(), finishedAt: 0 }
-          if (batchTimer) clearInterval(batchTimer)
-          batchTimer = setInterval(pollBatchStatus, 2000)
-          pollBatchStatus()
-        } else if (res?.code === 409) {
-          ElMessage.warning(res.message || '已有批量任务在运行')
-          batchRunning.value = true
-          if (batchTimer) clearInterval(batchTimer)
-          batchTimer = setInterval(pollBatchStatus, 2000)
-          pollBatchStatus()
-        } else if (res?.code === 429) {
-          // 每天一次限制
-          ElMessage.warning(res.message || '今天已经执行过批量爬取，每天最多一次，请明天再试')
-          batchHasRunToday.value = true
-        } else {
-          ElMessage.error(res?.message || '启动批量爬取失败')
-        }
-      } catch (err) {
-        ElMessage.error('启动批量爬取失败: ' + (err?.message || err))
-      }
-    }
-
     onMounted(() => {
       handleResize()
       window.addEventListener('resize', handleResize)
       fetchData()
-      // 页面加载时检查是否有正在进行的批量任务，以及今天是否已爬取
-      stockApi.getBatchForecastStatus().then(res => {
-        if (res?.code === 200 && res.data) {
-          if (res.data.running) {
-            batchRunning.value = true
-            batchTimer = setInterval(pollBatchStatus, 2000)
-            pollBatchStatus()
-          }
-          if (res.data.canBatchToday === false) {
-            batchHasRunToday.value = true
-          }
-        }
-      }).catch(() => {})
     })
 
     onUnmounted(() => {
       window.removeEventListener('resize', handleResize)
-      if (batchTimer) { clearInterval(batchTimer); batchTimer = null }
     })
 
     return {
@@ -567,13 +429,6 @@ export default {
       formatSummary,
       getHeaderCellStyle,
       getCellStyle,
-      batchRunning,
-      batchFinished,
-      batchDisabled,
-      batchStatus,
-      batchProgress,
-      batchElapsedSec,
-      handleBatchRefresh
     }
   }
 }
@@ -626,30 +481,6 @@ export default {
       flex-wrap: wrap;
       row-gap: 8px;
       justify-content: flex-end;
-    }
-  }
-
-  .batch-status-bar {
-    margin: 12px 0;
-    padding: 12px 16px;
-    background: #fffbe6;
-    border: 1px solid #ffe58f;
-    border-radius: 6px;
-
-    .batch-current {
-      margin-top: 8px;
-      font-size: 0.85rem;
-      color: #874d00;
-    }
-
-    .batch-result {
-      font-size: 0.9rem;
-      color: #333;
-
-      .batch-failed {
-        color: #f56c6c;
-        margin-left: 4px;
-      }
     }
   }
 

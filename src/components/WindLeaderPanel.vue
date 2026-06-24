@@ -454,8 +454,8 @@ export default {
 
       const bubbleData = bubbles.map((s, i) => {
         const pw = persistenceWeight(s.persistence);
-        // 短期→22-27, 中期→29-34, 长期→36-42
-        const rMap = { 1: [22, 27], 2: [29, 34], 3: [36, 42] };
+        // 短期→22-28, 中期→32-40, 长期→45-60（各级别间有明显差距）
+        const rMap = { 1: [22, 28], 2: [32, 40], 3: [45, 60] };
         const [minP, maxP] = rMap[pw];
         // 同级别内按score微调
         const scores = bubbles.map(b => b.score || 0);

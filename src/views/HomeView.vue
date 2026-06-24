@@ -246,7 +246,7 @@
             </div>
 
             <div class="forecast-ranking-section" ref="forecastRankingSectionRef">
-              <h3 class="section-title ranking-title" @click="goToForecastPage">预测盈利排行榜</h3>
+              <h3 class="section-title ranking-title" @click="goToForecastPage">盈利预测更新榜</h3>
               <div
                 class="forecast-ranking-card"
                 ref="forecastRankingCardRef"
@@ -263,7 +263,7 @@
                   class="forecast-ranking-table"
                   @row-click="onForecastRowClick"
                 >
-                  <el-table-column prop="rankLabel" label="排名" align="center" show-overflow-tooltip />
+                  <el-table-column prop="updateTime" label="更新时间" align="center" show-overflow-tooltip />
                   <el-table-column label="股票简称(股票代码)" show-overflow-tooltip>
                     <template #default="{ row }">
                       <span class="ranking-stock-link" @click.stop="goToStockDetailByCode(row.code)">
@@ -860,22 +860,14 @@ export default {
       return `${yoy >= 0 ? '+' : ''}${yoy.toFixed(2)}%`;
     };
 
-    const getRankLabel = (rank) => {
-      if (rank === 1) return '🥇';
-      if (rank === 2) return '🥈';
-      if (rank === 3) return '🥉';
-      return String(rank);
-    };
-
     const mapForecastRanking = (item, index) => {
       const code = item.symbol || item['股票代码'] || item.code || '';
       const name = item.name || item['股票简称'] || item['股票名称'] || '--';
       const yoy = parseYoy(item.forecast_netprofit_yoy ?? item['净利润同比(%)'] ?? item['净利润同比']);
-      const rank = index + 1;
+      const updateTime = item.update_time || item['更新时间'] || '';
 
       return {
-        rank,
-        rankLabel: getRankLabel(rank),
+        updateTime: updateTime ? updateTime.slice(0, 10) : '--',
         code,
         name,
         yoy,
