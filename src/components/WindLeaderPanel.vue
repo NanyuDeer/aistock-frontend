@@ -167,6 +167,7 @@
                   {{ s.change_pct != null ? (s.change_pct > 0 ? '+' : '') + Number(s.change_pct).toFixed(2) + '%' : '--' }}
                 </span>
                 <span class="hs-detail-reason" :title="s.reason">
+                  <span v-if="s.reason_tag" class="hs-reason-tag" :class="s.reason_tag_class">{{ s.reason_tag }}</span>
                   {{ s.reason || '' }}
                 </span>
               </div>
@@ -190,6 +191,7 @@
                   {{ s.change_pct != null ? (s.change_pct > 0 ? '+' : '') + Number(s.change_pct).toFixed(2) + '%' : '--' }}
                 </span>
                 <span class="hs-detail-reason" :title="s.reason">
+                  <span v-if="s.reason_tag" class="hs-reason-tag" :class="s.reason_tag_class">{{ s.reason_tag }}</span>
                   {{ s.reason || '' }}
                 </span>
               </div>
@@ -213,6 +215,7 @@
                   {{ s.change_pct != null ? (s.change_pct > 0 ? '+' : '') + Number(s.change_pct).toFixed(2) + '%' : '--' }}
                 </span>
                 <span class="hs-detail-reason" :title="s.reason">
+                  <span v-if="s.reason_tag" class="hs-reason-tag" :class="s.reason_tag_class">{{ s.reason_tag }}</span>
                   {{ s.reason || '' }}
                 </span>
               </div>
@@ -949,7 +952,11 @@ export default {
 .pnl-up { color: #dc2626; }
 .pnl-down { color: #16a34a; }
 .pnl-flat { color: #9ca3af; }
-.hs-detail-reason { overflow: hidden; text-overflow: ellipsis; }
+.hs-detail-reason { overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 3px; }
+.hs-reason-tag { font-size: 10px; padding: 0px 4px; border-radius: 3px; white-space: nowrap; flex-shrink: 0; font-weight: 600; }
+.hs-reason-tag.tag-bullish { color: #dc2626; background: #fef2f2; }
+.hs-reason-tag.tag-trend { color: #ea580c; background: #fff7ed; }
+.hs-reason-tag.tag-fund { color: #2563eb; background: #eff6ff; }
 .hs-detail-empty { font-size: 11px; color: #d1d5db; padding: 2px 0; }
 .hs-risk-tag { display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 10px; background: #fef2f2; color: #dc2626; }
 

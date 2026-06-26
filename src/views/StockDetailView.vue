@@ -52,7 +52,7 @@
       </div>
 
       <!-- 个股异动 -->
-      <div v-if="stockMonitorEvents.length > 0" class="stock-monitor-section">
+      <div v-if="isFavorite && stockMonitorEvents.length > 0" class="stock-monitor-section">
         <div class="card">
           <div class="card-header">
             <h3>个股异动</h3>
@@ -825,7 +825,9 @@ export default {
         stockMonitorEvents.value = events.map(e => ({
           ...e,
           stock_code: (e.stock_code || e.symbol || '').replace(/^(SH|SZ)/, ''),
-          industry: e.industry || '',
+          industry: (stockInfo.value.industry && stockInfo.value.industry !== '--' && stockInfo.value.industry !== '未知行业')
+            ? stockInfo.value.industry
+            : (e.industry || ''),
           change_type: e.change_type || '',
           change_type_name: e.change_type_name || e.summary || '',
           price: e.price ?? 0,
@@ -854,7 +856,6 @@ export default {
       }
     };
 
-    fetchMonitorEvents();
     const stockInfo = ref({
       name: '加载中...', code: route.params.code || '', market: '',
       regionBoard: '--', regionBoardTagId: '', price: '--', avgPrice: '--',
@@ -869,6 +870,11 @@ export default {
     });
     const isLoggedIn = computed(() => store.getters.isLoggedIn);
     const isFavorite = ref(false);
+    // 仅对已关注该股票的用户请求个股异动数据，取消关注时清空
+    watch(isFavorite, (fav) => {
+      if (fav && stockMonitorEvents.value.length === 0) fetchMonitorEvents();
+      if (!fav) stockMonitorEvents.value = [];
+    });
     const addingToFavorites = ref(false);
     const { getCycle, setCycle } = useStockCycle();
     const stockCycle = computed(() => getCycle(stockInfo.value.code));
@@ -2072,6 +2078,15 @@ export default {
       }
     });
     watch(isLoggedIn, async (l) => { if (l) { checkIfFavorite(); if (!isCacheFresh('evaluation', stockInfo.value.code)) { loadingEvaluation.value = true; await loadAIEvaluation(false); } } });
+    // 当 stockInfo.industry 加载完成后，同步更新个股异动中的行业标签
+    watch(() => stockInfo.value.industry, (newIndustry) => {
+      if (newIndustry && newIndustry !== '--' && newIndustry !== '未知行业' && stockMonitorEvents.value.length > 0) {
+        stockMonitorEvents.value = stockMonitorEvents.value.map(e => ({
+          ...e,
+          industry: e.stock_code === stockInfo.value.code ? newIndustry : e.industry,
+        }));
+      }
+    });
     watch(historyDialogVisible, async (v) => { if (!v) { historyDetailDialogVisible.value = false; selectedHistoryRecord.value = null; disposeHistoryTimelineChart(); return; } await nextTick(); renderHistoryTimelineChart(); setTimeout(() => { if (historyTimelineChartInstance) historyTimelineChartInstance.resize(); }, 80); });
     watch(activeView, async (nv) => {
       await nextTick();
