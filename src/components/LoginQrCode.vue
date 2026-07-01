@@ -14,6 +14,10 @@
           <i class="el-icon-refresh"></i>
           <span>二维码已过期</span>
         </div>
+        <div v-else-if="status === 'error'" class="scan-error">
+          <i class="el-icon-warning"></i>
+          <span>获取失败</span>
+        </div>
         <div v-else class="loading-qrcode">
           <i class="el-icon-loading"></i>
           <span>加载中...</span>
@@ -24,12 +28,16 @@
       <p v-if="status === 'pending'">使用微信扫一扫登录</p>
       <p v-else-if="status === 'confirmed'">扫码成功，正在登录...</p>
       <p v-else-if="status === 'expired'">二维码已过期，请点击刷新</p>
+      <p v-else-if="status === 'error'">登录功能暂时不可用</p>
     </div>
-    <div class="status-hint" :class="{ 'status-expired': status === 'expired' }">
+    <div class="status-hint" :class="{ 'status-expired': status === 'expired', 'status-error': status === 'error' }">
       {{ statusMessage }}
     </div>
     <div v-if="status === 'expired'" class="refresh-button">
       <el-button type="primary" @click="refreshQrCode">刷新二维码</el-button>
+    </div>
+    <div v-else-if="status === 'error'" class="refresh-button">
+      <el-button type="primary" @click="refreshQrCode">重新尝试</el-button>
     </div>
   </div>
 </template>
@@ -53,7 +61,7 @@ export default {
     console.log('[QrCode] 组件初始化开始', props)
     
     const qrSize = ref(200)
-    const status = ref('loading') // loading, pending, confirmed, expired
+    const status = ref('loading') // loading, pending, confirmed, expired, error
     const countdownTimer = ref(null)
     const pollTimer = ref(null)
     const qrCodeValue = ref('')
@@ -63,6 +71,7 @@ export default {
     const loading = ref(false)
     const pollCount = ref(0) // 轮询计数器
     const maxPollCount = 150 // 最大轮询次数（2秒 * 150 = 5分钟）
+    const errorMessage = ref('') // 存储API错误信息
     
     const store = useStore()
 
@@ -72,7 +81,9 @@ export default {
     })
     
     const statusMessage = computed(() => {
-      if (status.value === 'expired') {
+      if (status.value === 'error') {
+        return errorMessage.value || '登录服务暂时不可用，请联系管理员'
+      } else if (status.value === 'expired') {
         return '二维码已失效，点击刷新'
       } else if (status.value === 'confirmed') {
         return '正在登录...'
@@ -132,13 +143,15 @@ export default {
           }
         } else {
           console.error('[QrCode] API响应错误:', response.code, response.message || '')
+          errorMessage.value = response.message || '服务端错误，请稍后重试'
           ElMessage.error(`获取二维码失败: ${response.message || '未知错误'}`)
-          status.value = 'expired'
+          status.value = 'error'
         }
       } catch (error) {
         console.error('[QrCode] 获取二维码异常:', error)
+        errorMessage.value = error.message || '网络请求失败'
         ElMessage.error('获取二维码失败，请重试')
-        status.value = 'expired'
+        status.value = 'error'
       } finally {
         loading.value = false
       }
@@ -332,7 +345,7 @@ export default {
         }
       }
       
-      .scan-success, .scan-expired, .loading-qrcode {
+      .scan-success, .scan-expired, .loading-qrcode, .scan-error {
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -352,6 +365,10 @@ export default {
       
       .scan-expired {
         color: var(--danger-color);
+      }
+      
+      .scan-error {
+        color: var(--warning-color);
       }
       
       .loading-qrcode {
@@ -374,6 +391,10 @@ export default {
     
     &.status-expired {
       color: var(--danger-color);
+    }
+    
+    &.status-error {
+      color: var(--warning-color);
     }
   }
   
