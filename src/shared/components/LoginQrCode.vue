@@ -201,7 +201,7 @@ export default {
         
         // 适配新的响应格式：{ code: 200, message: "pending"/"confirmed", data: { status, openid } }
         if (response && response.code === 200) {
-          const loginStatus = response.data?.status || response.message || '';
+          const loginStatus = response.data?.status || response.message || ''; 
           console.log('[QrCode] 解析到的登录状态:', loginStatus);
           
           if (loginStatus === 'confirmed') {
@@ -221,7 +221,7 @@ export default {
                 openid: response.data?.openid || '',
                 name: '用户',
                 avatar: ''
-              };
+              }; 
               
               console.log('[QrCode] 即将触发 login-success 事件');
               emit('login-success', user);
