@@ -1,18 +1,18 @@
 import { createRouter, createWebHistory } from 'vue-router'
 // 使用懒加载导入组件
-const HomeView = () => import('../views/HomeView.vue')
-const LoginView = () => import('../views/LoginView.vue')
-const ProfileView = () => import('@/views/ProfileView.vue')
-const SearchView = () => import('@/views/SearchView.vue')
-const StockDetailView = () => import('@/views/StockDetailView.vue')
-const FavoritesView = () => import('@/views/FavoritesView.vue')
-const WechatMessageView = () => import('@/views/WechatMessageView.vue')
-const UpdateLogsView = () => import('@/views/UpdateLogsView.vue')
-const PerformanceForecastView = () => import('@/views/PerformanceForecastView.vue')
-const TenxScoreView = () => import('@/views/TenxScoreView.vue')
-const HotBurstView = () => import('@/views/HotBurstView.vue')
-const StockMonitorView = () => import('@/views/StockMonitorView.vue')
-const PotentialStockPushHistoryView = () => import('@/views/PotentialStockPushHistoryView.vue')
+const HomeView = () => import('@/modules/home/views/HomeView.vue')
+const LoginView = () => import('@/modules/user/views/LoginView.vue')
+const ProfileView = () => import('@/modules/user/views/ProfileView.vue')
+const SearchView = () => import('@/modules/user/views/SearchView.vue')
+const StockDetailView = () => import('@/modules/favorites/views/StockDetailView.vue')
+const FavoritesView = () => import('@/modules/favorites/views/FavoritesView.vue')
+const WechatMessageView = () => import('@/modules/news/views/WechatMessageView.vue')
+const UpdateLogsView = () => import('@/modules/analytics/views/UpdateLogsView.vue')
+const PerformanceForecastView = () => import('@/modules/analytics/views/PerformanceForecastView.vue')
+const TenxScoreView = () => import('@/modules/market/views/TenxScoreView.vue')
+const HotBurstView = () => import('@/modules/news/views/HotBurstView.vue')
+const StockMonitorView = () => import('@/modules/market/views/StockMonitorView.vue')
+const PotentialStockPushHistoryView = () => import('@/modules/analytics/views/PotentialStockPushHistoryView.vue')
 
 const routes = [
   {
@@ -130,7 +130,7 @@ const routes = [
   {
     path: '/tags/:tagCode',
     name: 'TagView',
-    component: () => import('../views/TagView.vue'),
+    component: () => import('@/modules/market/views/TagView.vue'),
     meta: {
       title: '股票资讯AI智能分析 - 板块龙头'
     }
@@ -159,7 +159,7 @@ async function checkWechatCookieAuth() {
   
   cookieAuthChecked = true;
   try {
-    const store = (await import('@/store')).default;
+    const store = (await import('@/shared/store')).default;
     const authed = await store.dispatch('checkCookieAuth');
     return authed;
   } catch (e) {
@@ -171,7 +171,7 @@ async function checkWechatCookieAuth() {
 // 路由级别的标题管理
 router.beforeEach(async (to, from, next) => {
   // 动态导入 store 以避免循环依赖
-  const store = (await import('@/store')).default;
+  const store = (await import('@/shared/store')).default;
   let isLoggedIn = store.getters.isLoggedIn;
   
   // 设置页面标题

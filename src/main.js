@@ -1,9 +1,9 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
-import store from './store'
-import './assets/styles/global.scss'
-import CacheManager from './utils/cacheManager'
+import store from './shared/store'
+import './shared/styles/global.scss'
+import CacheManager from './shared/utils/cacheManager'
 
 const app = createApp(App)
 

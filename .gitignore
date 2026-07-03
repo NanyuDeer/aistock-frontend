@@ -380,3 +380,5 @@ size-plugin-ssr.json
 # Env files
 .env
 .env.local
+
+.trae/

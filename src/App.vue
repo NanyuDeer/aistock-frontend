@@ -15,9 +15,9 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElConfigProvider } from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
-import TheNavbar from '@/components/TheNavbar.vue'
-import TheFooter from '@/components/TheFooter.vue'
-import Analytics from '@/components/Analytics.vue'
+import TheNavbar from '@/shared/components/TheNavbar.vue'
+import TheFooter from '@/shared/components/TheFooter.vue'
+import Analytics from '@/shared/components/Analytics.vue'
 
 export default {
   name: 'App',
