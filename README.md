@@ -1,6 +1,8 @@
 # AIStock Frontend
 
 > 股票资讯AI智能分析平台 - Web 前端（Vue 2）
+>
+> **AI 开发助手请先阅读 [AGENTS.md](./AGENTS.md)** — 模块架构地图、开发规范、硬约束、API 契约。本 README 面向人类开发者，介绍项目全貌、快速开始和部署。
 
 ## 快速开始
 
@@ -9,6 +11,13 @@ pnpm install
 npm run serve     # 开发服务器
 npm run build     # 生产构建
 ```
+
+### 环境变量
+
+| 文件 | 变量 | 说明 |
+|------|------|------|
+| `.env.development` | `VUE_APP_API_TARGET` | 开发环境后端 API 地址（默认 `http://localhost:3000`） |
+| `.env.production` | `VUE_APP_API_TARGET` | 生产环境后端 API 地址（`https://gupiao-api.yaozhineng.com`） |
 
 ## 技术栈
 
@@ -85,6 +94,17 @@ src/
 本项目使用 aistock-workflow rules 规范 AI 辅助开发流程。在 Trae IDE 中开发时，AI 自动执行 9 步流程：上下文加载→需求确认→编码→跨端同步检查→验证→文档维护→用户验收→技能缺口记录→修改记录。
 
 详见：[Vibecoding 工作流文档](../docs/vibecoding-workflow.md)
+
+## 部署
+
+```bash
+# 生产构建
+npm run build
+
+# 部署到云服务器（构建产物上传到 /var/www/aistock）
+# 域名 gupiao.yaozhineng.com 指向前端
+bash deploy.sh
+```
 
 ## 相关项目
 
