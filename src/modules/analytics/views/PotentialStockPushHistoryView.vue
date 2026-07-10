@@ -10,12 +10,12 @@
 
     <section class="summary-grid">
       <div class="summary-card">
-        <span class="summary-label">推送股票</span>
+        <span class="summary-label">推送股票数量</span>
         <strong>{{ summary.total || 0 }}</strong>
         <small>当前筛选范围</small>
       </div>
       <div class="summary-card">
-        <span class="summary-label">上涨股票</span>
+        <span class="summary-label">上涨股票数量</span>
         <strong>{{ summary.winners || 0 }}</strong>
         <small>胜率 {{ formatPercent(summary.win_rate) }}</small>
       </div>
