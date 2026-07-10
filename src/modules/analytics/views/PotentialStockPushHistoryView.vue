@@ -5,26 +5,26 @@
         <h1>长线风口龙头历史表现</h1>
         <p>记录每日长线风口龙头推送股票，并追踪从推送日至今的真实收益表现</p>
       </div>
-      <el-button type="primary" :loading="loading || realtimeLoading" @click="loadData">刷新</el-button>
+      <el-button type="primary" :loading="loading" @click="loadData">刷新</el-button>
     </section>
 
     <section class="summary-grid">
       <div class="summary-card">
-        <span class="summary-label">推送股票</span>
+        <span class="summary-label">推送股票数量</span>
         <strong>{{ summary.total || 0 }}</strong>
         <small>当前筛选范围</small>
       </div>
       <div class="summary-card">
-        <span class="summary-label">上涨股票</span>
+        <span class="summary-label">上涨股票数量</span>
         <strong>{{ summary.winners || 0 }}</strong>
-        <small>胜率 {{ formatPercent(summary.win_rate) }}</small>
+        <small>盈亏比 {{ formatRatio(summary.profit_loss_ratio) }}</small>
       </div>
       <div class="summary-card">
         <span class="summary-label">平均收益</span>
         <strong :class="returnClass(summary.average_return_pct)">
           {{ formatPercent(summary.average_return_pct) }}
         </strong>
-        <small>{{ realtimeUpdatedAt ? `实时 ${realtimeUpdatedAt}` : '盘中参考' }}</small>
+        <small>收盘价口径</small>
       </div>
       <div class="summary-card">
         <span class="summary-label">最高收益</span>
@@ -112,7 +112,7 @@
             <el-table-column label="推送价" width="84">
               <template #default="{ row }">{{ formatPrice(row.push_price) }}</template>
             </el-table-column>
-            <el-table-column label="实时价" width="84">
+            <el-table-column label="现价" width="84">
               <template #default="{ row }">{{ formatPrice(displayPrice(row)) }}</template>
             </el-table-column>
             <el-table-column width="98">
@@ -132,8 +132,8 @@
                 </span>
               </template>
             </el-table-column>
-            <el-table-column label="行情时间" width="132">
-              <template #default="{ row }">{{ row.realtime_time || row.latest_trade_date || '--' }}</template>
+            <el-table-column label="更新日期" width="132">
+              <template #default="{ row }">{{ formatDate(row.latest_trade_date) }}</template>
             </el-table-column>
           </el-table>
         </el-tab-pane>
@@ -143,7 +143,7 @@
             <div class="ranking-card">
               <h2>累计涨幅榜</h2>
               <ol>
-                <li v-for="item in realtimeRanking.top_gainers" :key="`gain-${item.push_id}`">
+                <li v-for="item in closeRanking.top_gainers" :key="`gain-${item.push_id}`">
                   <span>{{ item.stock_name }}</span>
                   <em :class="returnClass(displayReturn(item))">{{ formatPercent(displayReturn(item)) }}</em>
                 </li>
@@ -152,7 +152,7 @@
             <div class="ranking-card">
               <h2>累计跌幅榜</h2>
               <ol>
-                <li v-for="item in realtimeRanking.top_losers" :key="`loss-${item.push_id}`">
+                <li v-for="item in closeRanking.top_losers" :key="`loss-${item.push_id}`">
                   <span>{{ item.stock_name }}</span>
                   <em :class="returnClass(displayReturn(item))">{{ formatPercent(displayReturn(item)) }}</em>
                 </li>
@@ -166,7 +166,7 @@
 </template>
 
 <script>
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { stockApi } from '@/shared/api/api'
 
@@ -174,22 +174,14 @@ export default {
   name: 'PotentialStockPushHistoryView',
   setup() {
     const loading = ref(false)
-    const realtimeLoading = ref(false)
-    const realtimeUpdatedAt = ref('')
     const activeTab = ref('history')
     const records = ref([])
-    const ranking = ref({
-      top_gainers: [],
-      top_losers: [],
-      summary: {}
-    })
     const filters = reactive({
       date: '',
       keyword: ''
     })
     const sortField = ref('return')
     const sortOrder = ref('desc')
-    let realtimeTimer = null
 
     const toggleSortOrder = () => {
       sortOrder.value = sortOrder.value === 'desc' ? 'asc' : 'desc'
@@ -210,38 +202,40 @@ export default {
       return Number.isFinite(num) ? num : null
     }
 
-    const hasHistoricalPrice = (row) => {
-      const pushPrice = toFiniteNumber(row?.push_price)
-      const latestPrice = toFiniteNumber(row?.latest_price)
-      if (latestPrice === null) return false
-      if (row?.latest_trade_date && row?.push_date && row.latest_trade_date !== row.push_date) return true
-      return pushPrice !== null && latestPrice !== pushPrice
-    }
-
     const displayPrice = (row) => {
-      if (row?.realtime_price !== undefined && row?.realtime_price !== null) return row.realtime_price
-      return hasHistoricalPrice(row) ? row?.latest_price : null
+      return row?.latest_price ?? null
     }
 
     const displayReturn = (row) => {
-      const calculated = calculateReturn(row?.push_price, displayPrice(row))
-      if (calculated !== null) return calculated
-      if (row?.realtime_return_pct !== undefined && row?.realtime_return_pct !== null) return row.realtime_return_pct
-      return hasHistoricalPrice(row) ? row?.return_pct : null
+      const backendReturn = toFiniteNumber(row?.return_pct)
+      if (backendReturn !== null) return backendReturn
+      return calculateReturn(row?.push_price, displayPrice(row))
     }
 
     const buildSummary = (items) => {
       const total = items.length
       const itemsWithReturn = items.filter(item => toFiniteNumber(displayReturn(item)) !== null)
-      const winners = itemsWithReturn.filter(item => displayReturn(item) > 0).length
+      const gainers = itemsWithReturn.filter(item => displayReturn(item) > 0)
+      const losers = itemsWithReturn.filter(item => displayReturn(item) < 0)
+      const winners = gainers.length
       const average = itemsWithReturn.length
         ? itemsWithReturn.reduce((sum, item) => sum + displayReturn(item), 0) / itemsWithReturn.length
         : 0
+      const averageGain = gainers.length
+        ? gainers.reduce((sum, item) => sum + displayReturn(item), 0) / gainers.length
+        : null
+      const averageLoss = losers.length
+        ? Math.abs(losers.reduce((sum, item) => sum + displayReturn(item), 0) / losers.length)
+        : null
+      const profitLossRatio = averageGain !== null && averageLoss
+        ? Number((averageGain / averageLoss).toFixed(2))
+        : null
       const sorted = itemsWithReturn.slice().sort((a, b) => displayReturn(b) - displayReturn(a))
       return {
         total,
         winners,
         win_rate: itemsWithReturn.length ? Number(((winners / itemsWithReturn.length) * 100).toFixed(2)) : 0,
+        profit_loss_ratio: profitLossRatio,
         average_return_pct: Number(average.toFixed(2)),
         best: sorted[0] || null,
         worst: sorted.slice().reverse()[0] || null
@@ -291,10 +285,10 @@ export default {
       })
     })
 
-    const realtimeRanking = computed(() => {
-      const itemsWithReturn = sortedRecords.value.filter(item => toFiniteNumber(displayReturn(item)) !== null)
+    const closeRanking = computed(() => {
+      const itemsWithReturn = records.value.filter(item => toFiniteNumber(displayReturn(item)) !== null)
       return {
-        top_gainers: itemsWithReturn.slice(0, 10),
+        top_gainers: itemsWithReturn.slice().sort((a, b) => displayReturn(b) - displayReturn(a)).slice(0, 10),
         top_losers: itemsWithReturn.slice().sort((a, b) => displayReturn(a) - displayReturn(b)).slice(0, 10)
       }
     })
@@ -306,86 +300,20 @@ export default {
       return Number((((current - base) / base) * 100).toFixed(2))
     }
 
-    const chunk = (items, size) => {
-      const groups = []
-      for (let i = 0; i < items.length; i += size) {
-        groups.push(items.slice(i, i + size))
-      }
-      return groups
-    }
-
-    const mergeRealtimeQuotes = (quoteMap, nowText) => {
-      records.value = records.value.map(item => {
-        const quote = quoteMap[item.stock_code]
-        if (!quote || quote.price === null) return item
-        return {
-          ...item,
-          realtime_price: quote.price,
-          realtime_change_pct: quote.change_pct,
-          realtime_time: quote.time || nowText,
-          realtime_return_pct: calculateReturn(item.push_price, quote.price)
-        }
-      })
-    }
-
-    const refreshRealtimeQuotes = async () => {
-      const symbols = [...new Set(records.value.map(item => item.stock_code).filter(Boolean))]
-      if (!symbols.length) return
-      if (realtimeLoading.value) return
-
-      realtimeLoading.value = true
-      const nowText = new Date().toLocaleTimeString('zh-CN', { hour12: false })
-      try {
-        const groups = chunk(symbols, 4)
-        await Promise.allSettled(groups.map(group =>
-          stockApi.getStockRealtimeQuotes(group.join(',')).then(response => {
-            if (response?.code !== 200) return
-            const quoteMap = {}
-            const quotes = response?.data?.行情 || []
-            quotes.forEach(quote => {
-              const code = quote?.股票代码
-              if (!code || quote?.错误) return
-              quoteMap[code] = {
-                price: toFiniteNumber(quote?.最新价),
-                change_pct: toFiniteNumber(quote?.涨跌幅),
-                time: quote?.更新时间 || ''
-              }
-            })
-            mergeRealtimeQuotes(quoteMap, nowText)
-          })
-        ))
-
-        realtimeUpdatedAt.value = nowText
-      } catch (error) {
-        console.warn('[PotentialStockPushHistory] realtime quote refresh failed', error)
-      } finally {
-        realtimeLoading.value = false
-      }
-    }
-
     const loadData = async () => {
       loading.value = true
-      let shouldRefreshRealtime = false
       try {
         const params = {
           date: filters.date,
           keyword: filters.keyword
         }
-        const [historyResp, rankingResp] = await Promise.all([
-          stockApi.getPotentialPushHistory(params),
-          stockApi.getPotentialPushRanking({ date: filters.date })
-        ])
+        const historyResp = await stockApi.getPotentialPushHistory(params)
 
         records.value = historyResp?.data?.items || []
-        ranking.value = rankingResp?.data || { top_gainers: [], top_losers: [], summary: {} }
-        shouldRefreshRealtime = true
       } catch (error) {
         ElMessage.error(error?.message || '加载风口潜力股推送记录失败')
       } finally {
         loading.value = false
-      }
-      if (shouldRefreshRealtime) {
-        refreshRealtimeQuotes()
       }
     }
 
@@ -400,9 +328,30 @@ export default {
       return `${num > 0 ? '+' : ''}${num.toFixed(2)}%`
     }
 
+    const formatRatio = (value) => {
+      const num = toFiniteNumber(value)
+      if (!Number.isFinite(num)) return '--'
+      return num.toFixed(2)
+    }
+
     const formatScore = (value) => {
       const num = toFiniteNumber(value)
       return Number.isFinite(num) ? num.toFixed(1) : '--'
+    }
+
+    const formatDate = (value) => {
+      if (!value) return '--'
+      const text = String(value).trim()
+      if (/^\d{8}$/.test(text)) {
+        return `${text.slice(0, 4)}-${text.slice(4, 6)}-${text.slice(6, 8)}`
+      }
+      const normalized = text.replace(/\//g, '-')
+      const match = normalized.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)
+      if (match) {
+        const [, year, month, day] = match
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+      }
+      return text
     }
 
     const chainPositionLabel = (value) => {
@@ -423,14 +372,6 @@ export default {
 
     onMounted(() => {
       loadData()
-      realtimeTimer = setInterval(refreshRealtimeQuotes, 30000)
-    })
-
-    onUnmounted(() => {
-      if (realtimeTimer) {
-        clearInterval(realtimeTimer)
-        realtimeTimer = null
-      }
     })
 
     return {
@@ -439,12 +380,9 @@ export default {
       sortField,
       sortOrder,
       loading,
-      realtimeLoading,
-      realtimeUpdatedAt,
       records,
       sortedRecords,
-      ranking,
-      realtimeRanking,
+      closeRanking,
       summary,
       loadData,
       toggleSortOrder,
@@ -453,7 +391,9 @@ export default {
       displayReturn,
       formatPrice,
       formatPercent,
+      formatRatio,
       formatScore,
+      formatDate,
       chainPositionLabel,
       returnClass
     }
