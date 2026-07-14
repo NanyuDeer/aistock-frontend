@@ -1193,7 +1193,7 @@ onUnmounted(() => {
   margin-top: 60px;
   height: calc(100vh - 60px);
   overflow: hidden;
-  font-family: 'Noto Serif SC', -apple-system, BlinkMacSystemFont, serif;
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', 'SimSun', '宋体', 'Songti SC', serif !important;
   color: var(--ink);
   background: var(--bg-page);
   background-image:
@@ -1323,7 +1323,7 @@ onUnmounted(() => {
   width: 28px;
   height: 28px;
   border-radius: 6px;
-  font-family: 'Noto Serif SC', serif;
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', 'SimSun', '宋体', 'Songti SC', serif;
   font-weight: 800;
   font-size: 13px;
   color: white;
@@ -1541,7 +1541,7 @@ onUnmounted(() => {
 .label-sm { font-size: 12px; font-weight: 600; color: var(--ink-mute); margin-bottom: 4px; }
 .score-row { display: flex; align-items: baseline; gap: 8px; }
 .total-score {
-  font-family: 'Noto Serif SC', serif;
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', 'SimSun', '宋体', 'Songti SC', serif;
   font-weight: 800;
   font-size: 64px;
   line-height: 1;
@@ -1602,7 +1602,7 @@ onUnmounted(() => {
 .dim-name { font-size: 14px; font-weight: 700; color: var(--ink); }
 .dim-desc { font-size: 12px; color: var(--ink-mute); }
 .dim-score-wrap { display: flex; align-items: baseline; gap: 2px; flex-shrink: 0; }
-.dim-score { font-family: 'Noto Serif SC', serif; font-size: 26px; font-weight: 800; line-height: 1; }
+.dim-score { font-family: 'Noto Serif SC', 'Source Han Serif SC', 'SimSun', '宋体', 'Songti SC', serif; font-size: 26px; font-weight: 800; line-height: 1; }
 .dim-score-max { font-size: 12px; font-family: 'JetBrains Mono', monospace; color: var(--ink-mute); }
 
 /* ============ 评分进度条（带 shimmer） ============ */
