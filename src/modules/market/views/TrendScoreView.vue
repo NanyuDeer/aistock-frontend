@@ -1187,7 +1187,7 @@ onUnmounted(() => {
 <style scoped>
 /* ============ CSS 变量（与模板 :root 完全一致） ============ */
 .trend-layout {
-  --bg-page: #eef3fb;
+  --bg-page: #f5f7fa;
   --bg-card: #ffffff;
   --bg-soft: #f5f8fd;
   --primary: #0b5fff;
@@ -1209,13 +1209,9 @@ onUnmounted(() => {
   margin-top: 60px;
   height: calc(100vh - 60px);
   overflow: hidden;
-  font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif !important;
+  font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
   color: var(--ink);
   background: var(--bg-page);
-  background-image:
-    radial-gradient(circle at 12% 8%, rgba(11, 95, 255, 0.08) 0%, transparent 35%),
-    radial-gradient(circle at 88% 92%, rgba(0, 184, 255, 0.06) 0%, transparent 40%),
-    linear-gradient(180deg, #eef3fb 0%, #e6eef9 100%);
 }
 
 .mono-lg { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; }
@@ -1593,12 +1589,13 @@ onUnmounted(() => {
   align-items: center;
   gap: 14px;
   padding: 14px 16px;
-  background: var(--bg-card);
-  border: 1px solid var(--line-soft);
+  background: #f0f3f7;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 12px;
   transition: all 0.25s ease;
   position: relative;
   overflow: hidden;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.10), 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 .dim-card:hover {
   border-color: rgba(11, 95, 255, 0.25);
@@ -1826,7 +1823,8 @@ onUnmounted(() => {
 .factor-row-wrapper { margin-bottom: 8px; }
 .factor-row.expanded .factor-chevron { transform: rotate(180deg); }
 .factor-chevron { transition: transform 0.25s ease; flex-shrink: 0; margin-left: 8px; color: var(--ink-mute); }
-.factor-detail { padding: 8px 12px 12px 20px; }
+.factor-detail { overflow: hidden; min-height: 0; }
+.factor-detail-wrapper.expanded .factor-detail { padding: 8px 12px 12px 20px; }
 .factor-indicator { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px; border-bottom: 1px solid var(--line-soft); }
 .factor-indicator:last-child { border-bottom: none; }
 .fi-name { color: var(--ink-soft); min-width: 100px; }
