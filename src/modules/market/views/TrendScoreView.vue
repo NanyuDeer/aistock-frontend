@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="trend-layout">
     <!-- ============ 左侧栏 ============ -->
     <aside class="sidebar">
@@ -1209,13 +1209,17 @@ onUnmounted(() => {
   margin-top: 60px;
   height: calc(100vh - 60px);
   overflow: hidden;
-  font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif !important;
   color: var(--ink);
   background: var(--bg-page);
+  background-image:
+    radial-gradient(circle at 12% 8%, rgba(11, 95, 255, 0.08) 0%, transparent 35%),
+    radial-gradient(circle at 88% 92%, rgba(0, 184, 255, 0.06) 0%, transparent 40%),
+    linear-gradient(180deg, #f5f7fa 0%, #f0f2f5 100%);
 }
 
-.mono-lg { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; }
-.mono-xl { font-family: 'JetBrains Mono', monospace; font-size: 24px; font-weight: 700; }
+.mono-lg { font-family: 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif; font-size: 18px; font-weight: 700; }
+.mono-xl { font-family: 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif; font-size: 24px; font-weight: 700; }
 
 /* ============ 滚动条 ============ */
 .trend-layout ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -1273,7 +1277,7 @@ onUnmounted(() => {
 .list-title { font-size: 12px; font-weight: 600; color: var(--ink-soft); }
 .count-pill {
   font-size: 12px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif;
   padding: 2px 8px;
   border-radius: 4px;
   background: rgba(11, 95, 255, 0.08);
@@ -1323,9 +1327,9 @@ onUnmounted(() => {
 .stock-item { display: flex; align-items: center; justify-content: space-between; }
 .stock-meta { display: flex; flex-direction: column; min-width: 0; }
 .stock-name { font-weight: 600; font-size: 14px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.stock-code { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-mute); margin-top: 2px; }
+.stock-code { font-family: 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif; font-size: 12px; color: var(--ink-mute); margin-top: 2px; }
 .stock-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.stock-score { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; color: var(--primary); }
+.stock-score { font-family: 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif; font-size: 16px; font-weight: 700; color: var(--primary); }
 
 /* 评级徽章 */
 .grade-badge {
@@ -1446,7 +1450,7 @@ onUnmounted(() => {
 }
 .title-row { display: flex; align-items: baseline; gap: 12px; margin-top: 4px; flex-wrap: wrap; }
 .main-title { font-size: 24px; font-weight: 700; color: var(--ink); margin: 0; }
-.title-code { font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--ink-mute); }
+.title-code { font-family: 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif; font-size: 14px; color: var(--ink-mute); }
 .trend-tag {
   display: inline-flex;
   align-items: center;
@@ -1516,8 +1520,8 @@ onUnmounted(() => {
 .icon-fund { background: linear-gradient(135deg, #0a2e6f, #0b5fff); }
 
 .panel-score { display: flex; align-items: center; gap: 12px; }
-.panel-score-val { font-family: 'JetBrains Mono', monospace; font-size: 24px; font-weight: 700; color: var(--primary); }
-.panel-score-max { font-size: 12px; font-family: 'JetBrains Mono', monospace; color: var(--ink-mute); }
+.panel-score-val { font-family: 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif; font-size: 24px; font-weight: 700; color: var(--primary); }
+.panel-score-max { font-size: 12px; font-family: 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif; color: var(--ink-mute); }
 
 .panel-body {
   max-height: 0;
@@ -1562,7 +1566,7 @@ onUnmounted(() => {
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
-.score-max { font-size: 14px; font-family: 'JetBrains Mono', monospace; color: var(--ink-mute); }
+.score-max { font-size: 14px; font-family: 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif; color: var(--ink-mute); }
 .grade-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .rating-pill {
   display: inline-flex;
@@ -1589,13 +1593,13 @@ onUnmounted(() => {
   align-items: center;
   gap: 14px;
   padding: 14px 16px;
-  background: #f0f3f7;
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: var(--bg-card);
+  border: 1px solid var(--line-soft);
   border-radius: 12px;
   transition: all 0.25s ease;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.10), 0 1px 3px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.06);
 }
 .dim-card:hover {
   border-color: rgba(11, 95, 255, 0.25);
@@ -1616,7 +1620,7 @@ onUnmounted(() => {
 .dim-desc { font-size: 12px; color: var(--ink-mute); }
 .dim-score-wrap { display: flex; align-items: baseline; gap: 2px; flex-shrink: 0; }
 .dim-score { font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: 26px; font-weight: 800; line-height: 1; }
-.dim-score-max { font-size: 12px; font-family: 'JetBrains Mono', monospace; color: var(--ink-mute); }
+.dim-score-max { font-size: 12px; font-family: 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif; color: var(--ink-mute); }
 
 /* ============ 评分进度条（带 shimmer） ============ */
 .score-bar {
@@ -1764,7 +1768,7 @@ onUnmounted(() => {
 .catalyst-bars { display: flex; gap: 4px; }
 .catalyst-bar { width: 6px; height: 12px; border-radius: 2px; background: var(--line); }
 .catalyst-bar.filled { background: var(--up); }
-.catalyst-text { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--up); }
+.catalyst-text { font-family: 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif; font-weight: 700; color: var(--up); }
 
 .news-meta-row { display: flex; gap: 16px; margin-bottom: 12px; flex-wrap: wrap; }
 .news-meta-item { font-size: 13px; color: var(--ink-soft); }
@@ -1792,7 +1796,7 @@ onUnmounted(() => {
   flex-shrink: 0;
   width: 40px;
   text-align: center;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif;
   font-size: 12px;
   color: var(--ink-mute);
 }
@@ -1819,21 +1823,21 @@ onUnmounted(() => {
 .factor-content { flex: 1; min-width: 0; }
 .factor-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
 .factor-name { font-size: 14px; font-weight: 600; color: var(--ink); }
-.factor-score { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; }
+.factor-score { font-family: 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif; font-size: 14px; font-weight: 700; }
 .factor-row-wrapper { margin-bottom: 8px; }
 .factor-row.expanded .factor-chevron { transform: rotate(180deg); }
 .factor-chevron { transition: transform 0.25s ease; flex-shrink: 0; margin-left: 8px; color: var(--ink-mute); }
-.factor-detail { overflow: hidden; min-height: 0; }
-.factor-detail-wrapper.expanded .factor-detail { padding: 8px 12px 12px 20px; }
+.factor-detail { padding: 8px 12px 12px 20px; }
 .factor-indicator { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px; border-bottom: 1px solid var(--line-soft); }
 .factor-indicator:last-child { border-bottom: none; }
 .fi-name { color: var(--ink-soft); min-width: 100px; }
-.fi-value { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--ink); }
-.fi-score { margin-left: auto; font-family: 'JetBrains Mono', monospace; color: var(--primary); font-weight: 600; }
+.fi-value { font-family: 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif; font-weight: 600; color: var(--ink); }
+.fi-score { margin-left: auto; font-family: 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif; color: var(--primary); font-weight: 600; }
 .fi-empty { font-size: 12px; color: var(--ink-mute); padding: 8px 0; }
 .factor-detail-wrapper {
   display: grid;
   grid-template-rows: 0fr;
+  overflow: hidden;
   transition: grid-template-rows 0.35s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 .factor-detail-wrapper.expanded {
