@@ -426,8 +426,8 @@
                     </div>
                     <svg class="factor-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
                   </div>
-                  <transition name="fund-sub">
-                    <div v-if="fundSubOpen[i]" class="factor-detail">
+                  <div class="factor-detail-wrapper" :class="{ expanded: fundSubOpen[i] }">
+                    <div class="factor-detail">
                       <div class="factor-indicator" v-for="(ind, j) in (sub.indicators || [])" :key="j">
                         <span class="fi-name">{{ ind.name }}</span>
                         <span class="fi-value">{{ ind.value }}</span>
@@ -435,7 +435,7 @@
                       </div>
                       <div v-if="!sub.indicators || !sub.indicators.length" class="fi-empty">暂无因子明细</div>
                     </div>
-                  </transition>
+                  </div>
                 </div>
               </div>
 
@@ -601,10 +601,10 @@ const hasStockKline = computed(() => {
 });
 const hasConceptKline = computed(() => {
   const k = techDim.value?.detail?.conceptKline;
-  return !!(k && k.close && k.close.length);
+  return !!(k && k.dates && k.dates.length && ((k.ohlc && k.ohlc.length) || (k.close && k.close.length)));
 });
 const techKlineCount = computed(() => techDim.value?.detail?.kline?.dates?.length || 0);
-const conceptKlineCount = computed(() => techDim.value?.detail?.conceptKline?.close?.length || 0);
+const conceptKlineCount = computed(() => techDim.value?.detail?.conceptKline?.ohlc?.length || techDim.value?.detail?.conceptKline?.close?.length || 0);
 const conceptKlineName = computed(() => techDim.value?.detail?.conceptKline?.name || '概念指数');
 
 // 赛道数据
@@ -653,10 +653,9 @@ const catalystBars = computed(() => {
 // 基本面数据
 const fundSubDims = computed(() => fundDim.value?.detail?.subDimensions || []);
 const fundDataPoints = computed(() => {
-  // 从 4 个子维度各取一个代表性指标
-  const preferredKeys = ['rev_yoy_latest', 'peg', 'gross_margin', 'industry_position'];
+  const preferredNames = ['最近单季营收同比增速', 'PEG', '毛利率(%)', '行业地位不可替代性'];
   return fundSubDims.value.map((sub, i) => {
-    const ind = (sub.indicators || []).find(x => x.key === preferredKeys[i]) || sub.indicators?.[0];
+    const ind = (sub.indicators || []).find(x => x.name === preferredNames[i]) || sub.indicators?.[0];
     return {
       name: ind?.name || sub.name,
       value: ind?.value || '--',
@@ -783,10 +782,13 @@ function renderStockKline() {
 function renderConceptKline() {
   const el = conceptKlineRef.value;
   const ck = techDim.value?.detail?.conceptKline;
-  if (!el || !ck || !ck.close?.length) return;
+  if (!el || !ck) return;
+  const ohlcData = ck.ohlc || ck.close?.map((c, i) => [c, c, c * 0.99, c * 1.01]) || [];
+  if (!ohlcData.length) return;
   if (!conceptChart) conceptChart = echarts.init(el);
   const dates = (ck.dates || []).map(formatKlineDate);
-  const ma60 = calcMA(ck.close, 60);
+  const closes = ohlcData.map(d => d[1]);
+  const ma60 = calcMA(closes, 60);
   const interval = dates.length > 6 ? Math.floor(dates.length / 6) - 1 : 0;
   conceptChart.setOption({
     grid: { left: '8%', right: '4%', top: '8%', bottom: '20%' },
@@ -806,16 +808,10 @@ function renderConceptKline() {
     ],
     series: [
       {
-        type: 'line', data: ck.close, smooth: true, symbol: 'none',
-        lineStyle: { color: '#00b8ff', width: 2 },
-        areaStyle: {
-          color: {
-            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-            colorStops: [
-              { offset: 0, color: 'rgba(0, 184, 255, 0.3)' },
-              { offset: 1, color: 'rgba(0, 184, 255, 0.02)' },
-            ],
-          },
+        type: 'candlestick', data: ohlcData,
+        itemStyle: {
+          color: '#e54d5e', color0: '#18a058',
+          borderColor: '#e54d5e', borderColor0: '#18a058',
         },
       },
       {
@@ -903,18 +899,22 @@ function genMockKlineData(days, startPrice, volatility) {
 
 function genMockConceptKline(days, startIdx, volatility) {
   const dates = [];
-  const close = [];
+  const ohlc = [];
   let price = startIdx;
   const today = new Date();
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
     dates.push(`${d.getMonth() + 1}/${d.getDate()}`);
-    const change = (Math.random() - 0.5) * volatility;
-    price = +(price * (1 + change)).toFixed(2);
-    close.push(price);
+    const change = (Math.random() - 0.48) * volatility;
+    const open = price;
+    const close = +(price * (1 + change)).toFixed(2);
+    const low = +(Math.min(open, close) * (1 - Math.random() * 0.02)).toFixed(2);
+    const high = +(Math.max(open, close) * (1 + Math.random() * 0.02)).toFixed(2);
+    ohlc.push([open, close, low, high]);
+    price = close;
   }
-  return { name: '煤炭概念', dates, close };
+  return { name: '煤炭概念', dates, ohlc };
 }
 
 const MOCK_STOCKS = [
@@ -1021,10 +1021,26 @@ function genMockScoreData(symbol) {
         ],
         detail: {
           subDimensions: [
-            { name: '业绩爆发力', weight: 35, score: 88, indicators: [{ name: '净利润增速', value: 1.35 }] },
-            { name: '估值弹性', weight: 25, score: 72, indicators: [{ name: 'PEG', value: 0.8 }] },
-            { name: '盈利质量', weight: 25, score: 68, indicators: [{ name: '毛利率', value: 0.42 }] },
-            { name: '竞争壁垒', weight: 15, score: 75, indicators: [{ name: 'ROE', value: 0.18 }] },
+            { name: '业绩爆发力', weight: 35, score: 88, indicators: [
+              { name: '未来2年预期净利润复合增速', value: '85%', score: 100 },
+              { name: '最近单季营收同比增速', value: '62%', score: 80 },
+              { name: '最近一季利润同比加速', value: '+18pct', score: 100 },
+            ] },
+            { name: '估值弹性', weight: 25, score: 72, indicators: [
+              { name: 'PEG', value: '0.8', score: 80 },
+              { name: '当前总市值(亿)', value: '280', score: 60 },
+              { name: '估值双击空间(倍)', value: '4.2', score: 80 },
+            ] },
+            { name: '盈利质量', weight: 25, score: 68, indicators: [
+              { name: '毛利率(%)', value: '42%', score: 100 },
+              { name: '净利率同比提升(pct)', value: '+3.2', score: 80 },
+              { name: '经营现金流/净利润', value: '0.85', score: 40 },
+            ] },
+            { name: '竞争壁垒', weight: 15, score: 75, indicators: [
+              { name: '细分赛道市占率趋势', value: '上升', score: 80 },
+              { name: '合同负债环比增速', value: '+15%', score: 80 },
+              { name: '行业地位不可替代性', value: '较高', score: 60 },
+            ] },
           ],
         },
       },
@@ -1193,7 +1209,7 @@ onUnmounted(() => {
   margin-top: 60px;
   height: calc(100vh - 60px);
   overflow: hidden;
-  font-family: 'Noto Serif SC', 'Source Han Serif SC', 'SimSun', '宋体', 'Songti SC', serif !important;
+  font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif !important;
   color: var(--ink);
   background: var(--bg-page);
   background-image:
@@ -1323,7 +1339,7 @@ onUnmounted(() => {
   width: 28px;
   height: 28px;
   border-radius: 6px;
-  font-family: 'Noto Serif SC', 'Source Han Serif SC', 'SimSun', '宋体', 'Songti SC', serif;
+  font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-weight: 800;
   font-size: 13px;
   color: white;
@@ -1541,7 +1557,7 @@ onUnmounted(() => {
 .label-sm { font-size: 12px; font-weight: 600; color: var(--ink-mute); margin-bottom: 4px; }
 .score-row { display: flex; align-items: baseline; gap: 8px; }
 .total-score {
-  font-family: 'Noto Serif SC', 'Source Han Serif SC', 'SimSun', '宋体', 'Songti SC', serif;
+  font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-weight: 800;
   font-size: 64px;
   line-height: 1;
@@ -1602,7 +1618,7 @@ onUnmounted(() => {
 .dim-name { font-size: 14px; font-weight: 700; color: var(--ink); }
 .dim-desc { font-size: 12px; color: var(--ink-mute); }
 .dim-score-wrap { display: flex; align-items: baseline; gap: 2px; flex-shrink: 0; }
-.dim-score { font-family: 'Noto Serif SC', 'Source Han Serif SC', 'SimSun', '宋体', 'Songti SC', serif; font-size: 26px; font-weight: 800; line-height: 1; }
+.dim-score { font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: 26px; font-weight: 800; line-height: 1; }
 .dim-score-max { font-size: 12px; font-family: 'JetBrains Mono', monospace; color: var(--ink-mute); }
 
 /* ============ 评分进度条（带 shimmer） ============ */
@@ -1817,9 +1833,18 @@ onUnmounted(() => {
 .fi-value { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--ink); }
 .fi-score { margin-left: auto; font-family: 'JetBrains Mono', monospace; color: var(--primary); font-weight: 600; }
 .fi-empty { font-size: 12px; color: var(--ink-mute); padding: 8px 0; }
-.fund-sub-enter-active, .fund-sub-leave-active { transition: all 0.25s ease; overflow: hidden; }
-.fund-sub-enter-from, .fund-sub-leave-to { opacity: 0; max-height: 0; }
-.fund-sub-enter-to, .fund-sub-leave-from { opacity: 1; max-height: 500px; }
+.factor-detail-wrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.35s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+.factor-detail-wrapper.expanded {
+  grid-template-rows: 1fr;
+}
+.factor-detail-wrapper > .factor-detail {
+  overflow: hidden;
+  min-height: 0;
+}
 
 /* ============ Toast ============ */
 .toast {
