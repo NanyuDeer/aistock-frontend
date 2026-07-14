@@ -1835,17 +1835,17 @@ onUnmounted(() => {
 .fi-score { margin-left: auto; font-family: 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif; color: var(--primary); font-weight: 600; }
 .fi-empty { font-size: 12px; color: var(--ink-mute); padding: 8px 0; }
 .factor-detail-wrapper {
-  display: grid;
-  grid-template-rows: 0fr;
+  max-height: 0;
   overflow: hidden;
-  transition: grid-template-rows 0.35s cubic-bezier(0.25, 0.1, 0.25, 1);
+  opacity: 0;
+  transition: max-height 0.35s cubic-bezier(0.25, 0.1, 0.25, 1), opacity 0.25s ease;
 }
 .factor-detail-wrapper.expanded {
-  grid-template-rows: 1fr;
+  max-height: 400px;
+  opacity: 1;
 }
-.factor-detail-wrapper > .factor-detail {
+.factor-detail {
   overflow: hidden;
-  min-height: 0;
 }
 
 /* ============ Toast ============ */
