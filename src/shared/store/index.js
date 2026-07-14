@@ -103,20 +103,51 @@ function formatDateTime(dateText) {
   return `${year}-${month}-${day} ${hour}:${minute}`;
 }
 
+function normalizeFavoriteStocks(userData) {
+  const favorites = Array.isArray(userData?.['自选股'])
+    ? userData['自选股']
+    : (Array.isArray(userData?.favorites) ? userData.favorites : []);
+
+  return favorites
+    .map(stock => ({
+      code: String(stock?.['股票代码'] || stock?.symbol || '').trim(),
+      name: stock?.['股票简称'] || stock?.name || '',
+      market: stock?.['市场代码'] ?? stock?.market ?? null,
+      added_at: stock?.['添加时间'] ?? stock?.added_at ?? null
+    }))
+    .filter(stock => stock.code);
+}
+
+function normalizeAuthUser(userData, favoriteStocks) {
+  return {
+    id: userData.openid,
+    name: userData.nickname,
+    avatar: userData.avatar_url,
+    createdAt: userData.created_at,
+    stocksCount: favoriteStocks.length
+  };
+}
+
+let favoriteSyncPromise = null;
+
 export default createStore({
   state: {
     user: JSON.parse(localStorage.getItem('user')) || null, // 从 localStorage 恢复用户信息
     isAuthenticated: !!JSON.parse(localStorage.getItem('user')), // 刷新后从 localStorage 恢复，checkCookieAuth 后台校验
     stockList: [],
     marketOverview: {},
-    favoriteStocks: JSON.parse(localStorage.getItem('favoriteStocks')) || [] // 自选股列表
+    favoriteStocks: JSON.parse(localStorage.getItem('favoriteStocks')) || [], // 自选股列表
+    favoritesSyncing: false,
+    favoritesSyncError: ''
   },
   getters: {
     isLoggedIn: state => state.isAuthenticated,
     currentUser: state => state.user,
     stockList: state => state.stockList,
     marketOverview: state => state.marketOverview,
-    favoriteStocks: state => state.favoriteStocks
+    favoriteStocks: state => state.favoriteStocks,
+    favoritesSyncing: state => state.favoritesSyncing,
+    favoritesSyncError: state => state.favoritesSyncError
   },
   mutations: {
     setUser(state, user) {
@@ -139,10 +170,16 @@ export default createStore({
       state.favoriteStocks = stocks;
       localStorage.setItem('favoriteStocks', JSON.stringify(stocks)); // 更新缓存
     },
+    setFavoritesSyncState(state, { syncing, error = '' }) {
+      state.favoritesSyncing = syncing;
+      state.favoritesSyncError = error;
+    },
     logout(state) {
       state.user = null
       state.isAuthenticated = false
       state.favoriteStocks = []
+      state.favoritesSyncing = false
+      state.favoritesSyncError = ''
       // 清除所有localStorage数据
       localStorage.removeItem('user'); // 清除用户信息
       localStorage.removeItem('favoriteStocks'); // 清除自选股
@@ -185,42 +222,46 @@ export default createStore({
       }
     },
 
-    // 通过 Cookie 检测微信网页授权登录状态（OAuth 回调后使用）
-    async checkCookieAuth({ commit, dispatch }) {
-      try {
-        const response = await authApi.getAuthMe();
-        // 适配新版 API 返回格式 (code 200)
-        if (response.code === 200 && response.data) {
-          const userData = response.data;
-          const user = {
-            id: userData.openid,
-            name: userData.nickname,
-            avatar: userData.avatar_url,
-            createdAt: userData.created_at,
-            stocksCount: userData['自选股'] ? userData['自选股'].length : 0
-          };
-          
-          commit('setUser', user);
-          
-          // 同步自选股数据
-          if (userData['自选股'] && Array.isArray(userData['自选股'])) {
-            const stocks = userData['自选股'].map(s => ({
-              code: s['股票代码'],
-              name: s['股票简称'],
-              market: s['市场代码'],
-              added_at: s['添加时间']
-            }));
-            commit('setFavoriteStocks', stocks);
+    async syncFavoriteStocks({ commit }, { verifySession = false } = {}) {
+      if (favoriteSyncPromise) return favoriteSyncPromise;
+
+      favoriteSyncPromise = (async () => {
+        commit('setFavoritesSyncState', { syncing: true });
+        try {
+          const response = await authApi.getAuthMe();
+          if (response.code !== 200 || !response.data) {
+            commit('setFavoritesSyncState', { syncing: false, error: response.message || '自选股同步失败' });
+            return false;
           }
 
-          console.log('[Store] Cookie 认证成功，用户:', user.name);
+          const favoriteStocks = normalizeFavoriteStocks(response.data);
+          commit('setFavoriteStocks', favoriteStocks);
+          commit('setUser', normalizeAuthUser(response.data, favoriteStocks));
+          commit('setFavoritesSyncState', { syncing: false });
           return true;
+        } catch (error) {
+          if (error?.response?.status === 401) {
+            commit('logout');
+          } else {
+            commit('setFavoritesSyncState', {
+              syncing: false,
+              error: error?.message || '自选股同步失败'
+            });
+            console.warn('[Store] 自选股同步失败，保留上次缓存:', error);
+          }
+          if (verifySession) console.log('[Store] Cookie 认证未检测到登录状态');
+          return false;
+        } finally {
+          favoriteSyncPromise = null;
         }
-        return false;
-      } catch (error) {
-        console.log('[Store] Cookie 认证未检测到登录状态');
-        return false;
-      }
+      })();
+
+      return favoriteSyncPromise;
+    },
+
+    // 通过 Cookie 检测微信网页授权登录状态（OAuth 回调后使用）
+    async checkCookieAuth({ dispatch }) {
+      return dispatch('syncFavoriteStocks', { verifySession: true });
     },
 
     async addFavoriteStocks({ commit, state }, stocks) {
@@ -233,22 +274,9 @@ export default createStore({
         
         if (response.code === 200 && response.data) {
           // 新 API 返回完整用户信息 + 自选股列表，直接更新
-          const userData = response.data;
-          if (userData['自选股'] && Array.isArray(userData['自选股'])) {
-            const favoriteStocks = userData['自选股'].map(s => ({
-              code: s['股票代码'],
-              name: s['股票简称'],
-              market: s['市场代码']
-            }));
-            commit('setFavoriteStocks', favoriteStocks);
-            
-            // 同时更新用户的自选股计数
-            const user = {
-              ...state.user,
-              stocksCount: favoriteStocks.length
-            };
-            commit('setUser', user);
-          }
+          const favoriteStocks = normalizeFavoriteStocks(response.data);
+          commit('setFavoriteStocks', favoriteStocks);
+          commit('setUser', { ...state.user, stocksCount: favoriteStocks.length });
           return true;
         } else {
           console.error('添加自选股失败，服务器返回错误:', response);
@@ -256,6 +284,7 @@ export default createStore({
         }
       } catch (error) {
         console.error('添加自选股失败:', error);
+        if (error?.response?.status === 401) commit('logout');
         return false;
       }
     },
@@ -269,22 +298,9 @@ export default createStore({
         
         if (response.code === 200 && response.data) {
           // 新 API 返回完整用户信息 + 自选股列表，直接更新
-          const userData = response.data;
-          if (userData['自选股'] && Array.isArray(userData['自选股'])) {
-            const favoriteStocks = userData['自选股'].map(s => ({
-              code: s['股票代码'],
-              name: s['股票简称'],
-              market: s['市场代码']
-            }));
-            commit('setFavoriteStocks', favoriteStocks);
-            
-            // 同时更新用户的自选股计数
-            const user = {
-              ...state.user,
-              stocksCount: favoriteStocks.length
-            };
-            commit('setUser', user);
-          }
+          const favoriteStocks = normalizeFavoriteStocks(response.data);
+          commit('setFavoriteStocks', favoriteStocks);
+          commit('setUser', { ...state.user, stocksCount: favoriteStocks.length });
           return true;
         } else {
           console.error('删除自选股失败，服务器返回错误:', response);
@@ -292,6 +308,7 @@ export default createStore({
         }
       } catch (error) {
         console.error('删除自选股失败:', error);
+        if (error?.response?.status === 401) commit('logout');
         return false;
       }
     },
