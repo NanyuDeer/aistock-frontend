@@ -10,6 +10,7 @@ const WechatMessageView = () => import('@/modules/news/views/WechatMessageView.v
 const UpdateLogsView = () => import('@/modules/analytics/views/UpdateLogsView.vue')
 const PerformanceForecastView = () => import('@/modules/analytics/views/PerformanceForecastView.vue')
 const TenxScoreView = () => import('@/modules/market/views/TenxScoreView.vue')
+const TrendScoreView = () => import('@/modules/market/views/TrendScoreView.vue')
 const HotBurstView = () => import('@/modules/news/views/HotBurstView.vue')
 const StockMonitorView = () => import('@/modules/market/views/StockMonitorView.vue')
 const PotentialStockPushHistoryView = () => import('@/modules/analytics/views/PotentialStockPushHistoryView.vue')
@@ -80,6 +81,14 @@ const routes = [
     component: TenxScoreView,
     meta: {
       title: '股票资讯AI智能分析 - 十倍股评分'
+    }
+  },
+  {
+    path: '/trend',
+    name: 'trendScore',
+    component: TrendScoreView,
+    meta: {
+      title: '股票资讯AI智能分析 - 趋势股评分'
     }
   },
   {
