@@ -298,16 +298,17 @@
                   </div>
                 </div>
                 <div class="data-point">
-                  <div class="dp-label">行业渗透率位置</div>
+                  <div class="dp-label">板块强度</div>
                   <div class="dp-value-row">
-                    <span class="mono-xl" style="color: var(--primary)">{{ trackData.penetration ? trackData.penetration.value : '--' }}</span>
+                    <span class="mono-xl" style="color: var(--up)">{{ trackData.sectorStrength || '--' }}</span>
+                    <span class="dp-unit">月涨幅</span>
                   </div>
                 </div>
               </div>
 
               <div class="charts-grid-2">
                 <div class="soft-box">
-                  <div class="soft-box-title">赛道景气指标评分</div>
+                  <div class="soft-box-title">板块60日上榜趋势</div>
                   <div ref="trackChartRef" class="chart-200"></div>
                 </div>
                 <div class="soft-box">
@@ -320,21 +321,18 @@
                         <span class="policy-desc">{{ trackData.sectorName }}</span>
                       </div>
                     </div>
-                    <div class="policy-item" v-if="trackData.policyTrend">
-                      <span class="policy-dot policy-dot-gold"></span>
+                    <div
+                      class="policy-item"
+                      v-for="(item, pi) in trackPolicyItems"
+                      :key="pi"
+                    >
+                      <span class="policy-dot" :class="item.color === 'gold' ? 'policy-dot-gold' : 'policy-dot-blue'"></span>
                       <div>
-                        <span class="policy-name">政策 / 产业趋势</span>
-                        <span class="policy-desc">{{ trackData.policyTrend }}</span>
+                        <span class="policy-name">{{ item.name }}</span>
+                        <span class="policy-desc">{{ item.desc }}</span>
                       </div>
                     </div>
-                    <div class="policy-item" v-if="trackData.penetration && trackData.penetration.score != null">
-                      <span class="policy-dot policy-dot-blue"></span>
-                      <div>
-                        <span class="policy-name">{{ trackData.penetration.name }}</span>
-                        <span class="policy-desc">评分 {{ trackData.penetration.score }} / 100</span>
-                      </div>
-                    </div>
-                    <div class="policy-empty" v-if="!trackData.policyTrend && !trackData.penetration">暂无政策趋势数据</div>
+                    <div class="policy-empty" v-if="!trackPolicyItems.length">暂无政策趋势数据</div>
                   </div>
                 </div>
               </div>
@@ -414,17 +412,30 @@
             <div class="panel-inner">
               <!-- 4 个因子行 -->
               <div class="factor-grid">
-                <div class="factor-row" v-for="(sub, i) in fundSubDims" :key="i">
-                  <div class="factor-stripe" :style="{ background: FUND_STRIPE_COLORS[i] }"></div>
-                  <div class="factor-content">
-                    <div class="factor-head">
-                      <span class="factor-name">{{ sub.name }}</span>
-                      <span class="factor-score" style="color: var(--primary)">{{ sub.score }}</span>
+                <div class="factor-row-wrapper" v-for="(sub, i) in fundSubDims" :key="i">
+                  <div class="factor-row" @click="toggleFundSub(i)" :class="{ expanded: fundSubOpen[i] }">
+                    <div class="factor-stripe" :style="{ background: FUND_STRIPE_COLORS[i] }"></div>
+                    <div class="factor-content">
+                      <div class="factor-head">
+                        <span class="factor-name">{{ sub.name }}</span>
+                        <span class="factor-score" style="color: var(--primary)">{{ sub.score }}</span>
+                      </div>
+                      <div class="score-bar">
+                        <div class="score-bar-fill" :style="{ width: (sub.score || 0) + '%' }"></div>
+                      </div>
                     </div>
-                    <div class="score-bar">
-                      <div class="score-bar-fill" :style="{ width: (sub.score || 0) + '%' }"></div>
-                    </div>
+                    <svg class="factor-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
                   </div>
+                  <transition name="fund-sub">
+                    <div v-if="fundSubOpen[i]" class="factor-detail">
+                      <div class="factor-indicator" v-for="(ind, j) in (sub.indicators || [])" :key="j">
+                        <span class="fi-name">{{ ind.name }}</span>
+                        <span class="fi-value">{{ ind.value }}</span>
+                        <span class="fi-score" v-if="ind.score != null">{{ ind.score }}分</span>
+                      </div>
+                      <div v-if="!sub.indicators || !sub.indicators.length" class="fi-empty">暂无因子明细</div>
+                    </div>
+                  </transition>
                 </div>
               </div>
 
@@ -486,6 +497,12 @@ const batchLoading = ref(false);
 const vetoInfo = ref(null);
 // 技术面默认展开，其余折叠
 const panelOpen = reactive({ tech: true, track: false, news: false, fund: false });
+
+// 基本面子维度展开状态
+const fundSubOpen = reactive({});
+function toggleFundSub(i) {
+  fundSubOpen[i] = !fundSubOpen[i];
+}
 
 const toastVisible = ref(false);
 const toastText = ref('');
@@ -601,7 +618,20 @@ const trackData = computed(() => {
     marketRecognition: d.marketRecognition != null ? d.marketRecognition : 0,
     policyTrend: d.policyTrend || '',
     penetration: penetration || null,
+    sectorStrength: d.sectorStrength || '',
+    weeklyListingTrend: Array.isArray(d.weeklyListingTrend) ? d.weeklyListingTrend : [],
+    policyItems: Array.isArray(d.policyItems) ? d.policyItems : [],
   };
+});
+
+// 政策趋势条目：优先使用 policyItems 数组，回退到 policyTrend 单条文本
+const trackPolicyItems = computed(() => {
+  const items = trackData.value.policyItems;
+  if (Array.isArray(items) && items.length) return items;
+  if (trackData.value.policyTrend) {
+    return [{ name: '政策 / 产业趋势', desc: trackData.value.policyTrend, color: 'gold' }];
+  }
+  return [];
 });
 
 // 消息面数据
@@ -806,23 +836,25 @@ function renderTrackChart() {
   const el = trackChartRef.value;
   if (!el) return;
   if (!trackChart) trackChart = echarts.init(el);
-  const inds = trackDim.value?.indicators || [];
-  const names = inds.map(i => (i.name || '').length > 5 ? i.name.slice(0, 4) + '…' : i.name);
-  const scores = inds.map(i => i.score || 0);
+  // 板块60日上榜趋势：6 周柱状图
+  const weeks = ['5W前', '4W前', '3W前', '2W前', '上周', '本周'];
+  const weeklyData = (trackData.value.weeklyListingTrend && trackData.value.weeklyListingTrend.length === 6)
+    ? trackData.value.weeklyListingTrend
+    : [3, 5, 4, 7, 9, 12];
   trackChart.setOption({
-    grid: { left: '12%', right: '5%', top: '12%', bottom: '15%' },
+    grid: { left: '8%', right: '5%', top: '15%', bottom: '15%' },
     xAxis: {
-      type: 'category', data: names,
-      axisLabel: { color: '#8a96b0', fontSize: 10 },
+      type: 'category', data: weeks,
+      axisLabel: { color: '#8a96b0', fontSize: 11 },
       axisLine: { lineStyle: { color: '#e1e9f5' } },
     },
     yAxis: {
-      type: 'value', max: 100,
+      type: 'value',
       axisLabel: { color: '#8a96b0', fontSize: 10 },
       splitLine: { lineStyle: { color: '#eef3fb' } },
     },
     series: [{
-      type: 'bar', data: scores, barWidth: '45%',
+      type: 'bar', data: weeklyData, barWidth: '45%',
       itemStyle: {
         borderRadius: [4, 4, 0, 0],
         color: {
@@ -842,7 +874,7 @@ function renderTrackChart() {
       textStyle: { color: '#0a1733', fontSize: 12 },
       formatter: (params) => {
         const p = params[0];
-        return `${inds[p.dataIndex]?.name || p.name}<br/>评分: ${p.value}`;
+        return `${p.name}<br/>上榜次数: ${p.value} 次`;
       },
     },
   }, true);
@@ -954,6 +986,13 @@ function genMockScoreData(symbol) {
           sectorName: stock.industry + '概念',
           marketRecognition: 80,
           policyTrend: '新能源补贴政策持续加码，碳中和目标推动行业长期景气',
+          sectorStrength: '+18.5%',
+          weeklyListingTrend: [3, 5, 4, 7, 9, 12],
+          policyItems: [
+            { name: '焦煤供给持续偏紧', desc: '主产地安监趋严，产能释放受限', color: 'up' },
+            { name: '钢铁需求边际改善', desc: '基建项目加速落地，下游补库预期', color: 'up' },
+            { name: '双碳政策结构性调整', desc: '短期利好焦化，中长期关注转型', color: 'gold' },
+          ],
         },
       },
       {
@@ -1047,8 +1086,10 @@ async function selectStock(symbol) {
       console.warn('[TrendScore] 使用模拟数据:', symbol);
       scoreData.value = genMockScoreData(symbol);
       await nextTick();
-      renderStockKline();
-      renderConceptKline();
+      setTimeout(() => {
+        renderStockKline();
+        renderConceptKline();
+      }, 150);
     } else {
       const res = await trendApi.getDetail(symbol);
       if (res.code === 200 && res.data) {
@@ -1061,9 +1102,11 @@ async function selectStock(symbol) {
         } else {
           scoreData.value = res.data;
           await nextTick();
-          // 技术面默认展开，渲染 K 线
-          renderStockKline();
-          renderConceptKline();
+          // 技术面默认展开，渲染 K 线（延迟等待面板 CSS 过渡完成，避免 ECharts 获取到 0 高度 DOM）
+          setTimeout(() => {
+            renderStockKline();
+            renderConceptKline();
+          }, 150);
         }
       } else {
         showToast('获取评分详情失败');
@@ -1147,9 +1190,10 @@ onUnmounted(() => {
   --shadow-hover: 0 12px 32px -8px rgba(11, 95, 255, 0.22), 0 4px 12px -2px rgba(11, 95, 255, 0.10);
 
   display: flex;
+  margin-top: 60px;
   height: calc(100vh - 60px);
   overflow: hidden;
-  font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Noto Serif SC', -apple-system, BlinkMacSystemFont, serif;
   color: var(--ink);
   background: var(--bg-page);
   background-image:
@@ -1279,7 +1323,7 @@ onUnmounted(() => {
   width: 28px;
   height: 28px;
   border-radius: 6px;
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Noto Serif SC', serif;
   font-weight: 800;
   font-size: 13px;
   color: white;
@@ -1497,7 +1541,7 @@ onUnmounted(() => {
 .label-sm { font-size: 12px; font-weight: 600; color: var(--ink-mute); margin-bottom: 4px; }
 .score-row { display: flex; align-items: baseline; gap: 8px; }
 .total-score {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Noto Serif SC', serif;
   font-weight: 800;
   font-size: 64px;
   line-height: 1;
@@ -1558,7 +1602,7 @@ onUnmounted(() => {
 .dim-name { font-size: 14px; font-weight: 700; color: var(--ink); }
 .dim-desc { font-size: 12px; color: var(--ink-mute); }
 .dim-score-wrap { display: flex; align-items: baseline; gap: 2px; flex-shrink: 0; }
-.dim-score { font-family: 'Orbitron', sans-serif; font-size: 26px; font-weight: 800; line-height: 1; }
+.dim-score { font-family: 'Noto Serif SC', serif; font-size: 26px; font-weight: 800; line-height: 1; }
 .dim-score-max { font-size: 12px; font-family: 'JetBrains Mono', monospace; color: var(--ink-mute); }
 
 /* ============ 评分进度条（带 shimmer） ============ */
@@ -1754,6 +1798,8 @@ onUnmounted(() => {
   gap: 12px;
   padding: 10px 0;
   border-bottom: 1px dashed var(--line-soft);
+  cursor: pointer;
+  user-select: none;
 }
 .factor-row:last-child { border-bottom: none; }
 .factor-stripe { width: 4px; height: 32px; border-radius: 2px; flex-shrink: 0; }
@@ -1761,6 +1807,19 @@ onUnmounted(() => {
 .factor-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
 .factor-name { font-size: 14px; font-weight: 600; color: var(--ink); }
 .factor-score { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; }
+.factor-row-wrapper { margin-bottom: 8px; }
+.factor-row.expanded .factor-chevron { transform: rotate(180deg); }
+.factor-chevron { transition: transform 0.25s ease; flex-shrink: 0; margin-left: 8px; color: var(--ink-mute); }
+.factor-detail { padding: 8px 12px 12px 20px; }
+.factor-indicator { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px; border-bottom: 1px solid var(--line-soft); }
+.factor-indicator:last-child { border-bottom: none; }
+.fi-name { color: var(--ink-soft); min-width: 100px; }
+.fi-value { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--ink); }
+.fi-score { margin-left: auto; font-family: 'JetBrains Mono', monospace; color: var(--primary); font-weight: 600; }
+.fi-empty { font-size: 12px; color: var(--ink-mute); padding: 8px 0; }
+.fund-sub-enter-active, .fund-sub-leave-active { transition: all 0.25s ease; overflow: hidden; }
+.fund-sub-enter-from, .fund-sub-leave-to { opacity: 0; max-height: 0; }
+.fund-sub-enter-to, .fund-sub-leave-from { opacity: 1; max-height: 500px; }
 
 /* ============ Toast ============ */
 .toast {
