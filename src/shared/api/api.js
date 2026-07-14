@@ -836,6 +836,40 @@ export const tenxApi = {
   }),
 };
 
+// 趋势股评分 API
+export const trendApi = {
+  // 获取股票最新趋势股评分
+  getScore: (symbol) => api.get(`/api/cn/stocks/${symbol}/trend-score`, {
+    timeout: 90000,
+    'axios-retry': { retries: 0 },
+    validateStatus: (status) => status < 500,
+  }),
+
+  // 获取评分详情（含K线数据、新闻列表）
+  getDetail: (symbol) => api.get(`/api/cn/stocks/${symbol}/trend-score/detail`, {
+    timeout: 90000,
+    'axios-retry': { retries: 0 },
+  }),
+
+  // 获取Top N评分列表
+  getTopStocks: (limit = 30) => api.get(`/api/cn/stocks/trend-score/top`, {
+    params: { limit },
+    timeout: 15000,
+  }),
+
+  // 刷新评分
+  refreshScore: (symbol) => api.post(`/api/cn/stocks/${symbol}/trend-score/refresh`, null, {
+    timeout: 120000,
+    'axios-retry': { retries: 0 },
+  }),
+
+  // 批量刷新评分
+  batchRefresh: (symbols) => api.post(`/api/cn/stocks/trend-score/batch`, { symbols }, {
+    timeout: 600000,
+    'axios-retry': { retries: 0 },
+  }),
+};
+
 // 风口龙头 API
 export const windLeaderApi = {
   /** 获取风口龙头分析结果 */
