@@ -848,19 +848,184 @@ function renderTrackChart() {
   }, true);
 }
 
+// ============ 模拟数据（API不可用时回退，用于设计预览） ============
+function genMockKlineData(days, startPrice, volatility) {
+  const dates = [];
+  const ohlc = [];
+  let price = startPrice;
+  const today = new Date();
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    dates.push(`${d.getMonth() + 1}/${d.getDate()}`);
+    const change = (Math.random() - 0.48) * volatility;
+    const open = price;
+    const close = +(price * (1 + change)).toFixed(2);
+    const low = +(Math.min(open, close) * (1 - Math.random() * 0.02)).toFixed(2);
+    const high = +(Math.max(open, close) * (1 + Math.random() * 0.02)).toFixed(2);
+    ohlc.push([open, close, low, high]);
+    price = close;
+  }
+  return { dates, ohlc };
+}
+
+function genMockConceptKline(days, startIdx, volatility) {
+  const dates = [];
+  const close = [];
+  let price = startIdx;
+  const today = new Date();
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    dates.push(`${d.getMonth() + 1}/${d.getDate()}`);
+    const change = (Math.random() - 0.5) * volatility;
+    price = +(price * (1 + change)).toFixed(2);
+    close.push(price);
+  }
+  return { name: '煤炭概念', dates, close };
+}
+
+const MOCK_STOCKS = [
+  { symbol: '600740.SH', name: '山西焦化', score: 82, label: 'S', expectedMultiple: '5-10倍', industry: '煤炭', dimScores: [82, 75, 60, 70] },
+  { symbol: '300750.SZ', name: '宁德时代', score: 78, label: 'A', expectedMultiple: '3-5倍', industry: '电力设备', dimScores: [76, 88, 70, 80] },
+  { symbol: '002594.SZ', name: '比亚迪', score: 72, label: 'B', expectedMultiple: '2-3倍', industry: '汽车', dimScores: [70, 82, 65, 75] },
+  { symbol: '601012.SH', name: '隆基绿能', score: 68, label: 'B', expectedMultiple: '2-3倍', industry: '光伏', dimScores: [65, 72, 58, 78] },
+  { symbol: '600519.SH', name: '贵州茅台', score: 75, label: 'A', expectedMultiple: '3-5倍', industry: '白酒', dimScores: [72, 68, 70, 92] },
+  { symbol: '002475.SZ', name: '立讯精密', score: 70, label: 'B', expectedMultiple: '2-3倍', industry: '消费电子', dimScores: [68, 76, 62, 74] },
+  { symbol: '603259.SH', name: '药明康德', score: 65, label: 'C', expectedMultiple: '1-2倍', industry: '医药', dimScores: [60, 65, 55, 80] },
+  { symbol: '300059.SZ', name: '东方财富', score: 73, label: 'A', expectedMultiple: '3-5倍', industry: '证券', dimScores: [75, 70, 68, 78] },
+];
+
+const MOCK_NEWS = [
+  { title: '财政部下达2026年新能源补贴预算', summary: '中央财政提前下达2026年新能源补贴预算，总规模超800亿元。', source: '财政部', publishTime: '2026-07-12', sentiment: 'positive' },
+  { title: '多家券商上调行业评级至"超配"', summary: '中信、国泰君安等头部券商发布研报，上调煤炭行业评级。', source: '券商研报', publishTime: '2026-07-11', sentiment: 'positive' },
+  { title: '公司发布上半年业绩预告', summary: '预计H1归母净利润同比增长120%-150%，大超市场预期。', source: '公司公告', publishTime: '2026-07-10', sentiment: 'positive' },
+  { title: '大宗商品价格波动加剧', summary: '国际大宗商品市场震荡，焦煤期货主力合约涨3.2%。', source: '期货日报', publishTime: '2026-07-09', sentiment: 'neutral' },
+];
+
+function genMockScoreData(symbol) {
+  const stock = MOCK_STOCKS.find(s => s.symbol === symbol) || MOCK_STOCKS[0];
+  const kline = genMockKlineData(60, 15 + Math.random() * 20, 0.04);
+  const conceptKline = genMockConceptKline(60, 1000 + Math.random() * 500, 0.03);
+  return {
+    symbol: stock.symbol,
+    score: stock.score,
+    scoreDate: new Date().toISOString().slice(0, 10),
+    label: stock.label,
+    expectedMultiple: stock.expectedMultiple,
+    description: '技术面强势突破，行业景气度持续上行，消息面有积极催化，基本面扎实。',
+    aiConclusion: '综合4维度评估，该股处于趋势上行阶段，技术面突破60日均线，行业赛道受政策利好，建议关注。',
+    dimScores: stock.dimScores,
+    updatedAt: new Date().toISOString(),
+    dimensions: [
+      {
+        name: '技术面',
+        weight: 35,
+        score: stock.dimScores[0],
+        indicators: [
+          { name: '低点涨幅', key: 'lowPointGain', value: 0.95, score: 88 },
+          { name: '60日线位置', key: 'ma60Position', value: 'above', score: 82 },
+          { name: '近期新高', key: 'isNewHigh120', value: true, score: 90 },
+          { name: '最大回撤', key: 'maxDrawdown', value: 0.08, score: 75 },
+        ],
+        detail: {
+          kline,
+          conceptKline,
+          indicators: {
+            lowPointGain: 0.95,
+            ma60Position: 'above',
+            ma60Trend: 'up',
+            isNewHigh250: true,
+            isNewHigh120: true,
+            maxDrawdown: 0.08,
+          },
+        },
+      },
+      {
+        name: '行业赛道景气',
+        weight: 25,
+        score: stock.dimScores[1],
+        indicators: [
+          { name: '60日上榜频次', key: 'sectorListCount60d', value: 12, score: 75 },
+          { name: '市场认可度', key: 'marketRecognition', value: 80, score: 80 },
+        ],
+        detail: {
+          sectorListCount60d: 12,
+          sectorName: stock.industry + '概念',
+          marketRecognition: 80,
+          policyTrend: '新能源补贴政策持续加码，碳中和目标推动行业长期景气',
+        },
+      },
+      {
+        name: '消息面催化',
+        weight: 20,
+        score: stock.dimScores[2],
+        indicators: [
+          { name: '机构调研次数', key: 'researchCount', value: 12, score: 65 },
+          { name: '硬催化', key: 'hardCatalyst', value: '业绩预增', score: 60 },
+        ],
+        detail: {
+          news: MOCK_NEWS,
+          researchCount: 12,
+          hardCatalyst: '业绩预增120%-150%',
+        },
+      },
+      {
+        name: '基本面',
+        weight: 20,
+        score: stock.dimScores[3],
+        indicators: [
+          { name: '净利润增速', key: 'netProfitGrowth', value: 1.35, score: 88 },
+          { name: 'PEG', key: 'peg', value: 0.8, score: 72 },
+          { name: '毛利率', key: 'grossMargin', value: 0.42, score: 68 },
+          { name: 'ROE', key: 'roe', value: 0.18, score: 75 },
+        ],
+        detail: {
+          subDimensions: [
+            { name: '业绩爆发力', weight: 35, score: 88, indicators: [{ name: '净利润增速', value: 1.35 }] },
+            { name: '估值弹性', weight: 25, score: 72, indicators: [{ name: 'PEG', value: 0.8 }] },
+            { name: '盈利质量', weight: 25, score: 68, indicators: [{ name: '毛利率', value: 0.42 }] },
+            { name: '竞争壁垒', weight: 15, score: 75, indicators: [{ name: 'ROE', value: 0.18 }] },
+          ],
+        },
+      },
+    ],
+  };
+}
+
 // ============ 数据加载 ============
+let usingMock = false;
+
 async function loadTopStocks() {
   listLoading.value = true;
   try {
     const res = await trendApi.getTopStocks(30);
-    if (res.code === 200 && Array.isArray(res.data)) {
+    if (res.code === 200 && Array.isArray(res.data) && res.data.length > 0) {
       stockList.value = res.data;
+      usingMock = false;
       if (stockList.value.length && !currentSymbol.value) {
         await selectStock(stockList.value[0].symbol);
       }
+    } else {
+      throw new Error('No data');
     }
   } catch (e) {
-    console.error('loadTopStocks failed:', e);
+    console.warn('[TrendScore] API不可用，使用模拟数据展示');
+    usingMock = true;
+    stockList.value = MOCK_STOCKS.map(s => ({
+      symbol: s.symbol,
+      name: s.name,
+      score: s.score,
+      label: s.label,
+      expectedMultiple: s.expectedMultiple,
+      industry: s.industry,
+      scoreDate: new Date().toISOString().slice(0, 10),
+      dimScores: s.dimScores,
+      description: '技术面强势突破',
+    }));
+    if (stockList.value.length && !currentSymbol.value) {
+      await selectStock(stockList.value[0].symbol);
+    }
   } finally {
     listLoading.value = false;
   }
@@ -878,23 +1043,31 @@ async function selectStock(symbol) {
   // 销毁旧图表实例，避免内存泄漏
   disposeCharts();
   try {
-    const res = await trendApi.getDetail(symbol);
-    if (res.code === 200 && res.data) {
-      if (res.data.vetoed) {
-        // 一票否决
-        vetoInfo.value = {
-          symbol,
-          reasons: Array.isArray(res.data.reasons) ? res.data.reasons : [],
-        };
-      } else {
-        scoreData.value = res.data;
-        await nextTick();
-        // 技术面默认展开，渲染 K 线
-        renderStockKline();
-        renderConceptKline();
-      }
+    if (usingMock) {
+      console.warn('[TrendScore] 使用模拟数据:', symbol);
+      scoreData.value = genMockScoreData(symbol);
+      await nextTick();
+      renderStockKline();
+      renderConceptKline();
     } else {
-      showToast('获取评分详情失败');
+      const res = await trendApi.getDetail(symbol);
+      if (res.code === 200 && res.data) {
+        if (res.data.vetoed) {
+          // 一票否决
+          vetoInfo.value = {
+            symbol,
+            reasons: Array.isArray(res.data.reasons) ? res.data.reasons : [],
+          };
+        } else {
+          scoreData.value = res.data;
+          await nextTick();
+          // 技术面默认展开，渲染 K 线
+          renderStockKline();
+          renderConceptKline();
+        }
+      } else {
+        showToast('获取评分详情失败');
+      }
     }
   } catch (e) {
     console.error('selectStock failed:', e);
