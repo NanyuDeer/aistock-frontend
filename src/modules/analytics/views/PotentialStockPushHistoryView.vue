@@ -12,19 +12,21 @@
       <div class="summary-card">
         <span class="summary-label">推送股票数量</span>
         <strong>{{ summary.total || 0 }}</strong>
-        <small>当前筛选范围</small>
+        <small>{{ historyDateRange }}</small>
       </div>
       <div class="summary-card">
         <span class="summary-label">上涨股票数量</span>
         <strong>{{ summary.winners || 0 }}</strong>
-        <small>盈亏比 {{ formatRatio(summary.profit_loss_ratio) }}</small>
+        <small class="summary-metrics">
+          盈亏比 {{ formatRatio(summary.profit_loss_ratio) }} <span>|</span> 胜率 {{ formatWinRate(summary.win_rate) }}
+        </small>
       </div>
       <div class="summary-card">
         <span class="summary-label">平均收益</span>
         <strong :class="returnClass(summary.average_return_pct)">
           {{ formatPercent(summary.average_return_pct) }}
         </strong>
-        <small>收盘价口径</small>
+        <small>更新 {{ latestUpdateDate }}</small>
       </div>
       <div class="summary-card">
         <span class="summary-label">最高收益</span>
@@ -44,16 +46,16 @@
             type="date"
             placeholder="推送日期"
             clearable
-            @change="loadData"
+            @change="applyFilters"
           />
           <el-input
             v-model="filters.keyword"
             placeholder="股票 / 题材"
             clearable
-            @keyup.enter="loadData"
-            @clear="loadData"
+            @keyup.enter="applyFilters"
+            @clear="applyFilters"
           />
-          <el-button @click="loadData">查询</el-button>
+          <el-button @click="applyFilters">查询</el-button>
         </div>
       </div>
 
@@ -175,8 +177,12 @@ export default {
   setup() {
     const loading = ref(false)
     const activeTab = ref('history')
-    const records = ref([])
+    const allRecords = ref([])
     const filters = reactive({
+      date: '',
+      keyword: ''
+    })
+    const appliedFilters = reactive({
       date: '',
       keyword: ''
     })
@@ -221,14 +227,10 @@ export default {
       const average = itemsWithReturn.length
         ? itemsWithReturn.reduce((sum, item) => sum + displayReturn(item), 0) / itemsWithReturn.length
         : 0
-      const averageGain = gainers.length
-        ? gainers.reduce((sum, item) => sum + displayReturn(item), 0) / gainers.length
-        : null
-      const averageLoss = losers.length
-        ? Math.abs(losers.reduce((sum, item) => sum + displayReturn(item), 0) / losers.length)
-        : null
-      const profitLossRatio = averageGain !== null && averageLoss
-        ? Number((averageGain / averageLoss).toFixed(2))
+      const totalGain = gainers.reduce((sum, item) => sum + displayReturn(item), 0)
+      const totalLoss = Math.abs(losers.reduce((sum, item) => sum + displayReturn(item), 0))
+      const profitLossRatio = totalLoss > 0
+        ? Number((totalGain / totalLoss).toFixed(2))
         : null
       const sorted = itemsWithReturn.slice().sort((a, b) => displayReturn(b) - displayReturn(a))
       return {
@@ -242,7 +244,36 @@ export default {
       }
     }
 
+    const records = computed(() => {
+      const date = appliedFilters.date
+      const keyword = appliedFilters.keyword.trim()
+      return allRecords.value.filter(item => {
+        if (date && formatDate(item.push_date) !== date) return false
+        if (!keyword) return true
+        return String(item.stock_code || '').includes(keyword)
+          || String(item.stock_name || '').includes(keyword)
+          || String(item.theme || '').includes(keyword)
+      })
+    })
+
     const summary = computed(() => buildSummary(records.value))
+
+    const historyDateRange = computed(() => {
+      if (appliedFilters.date) return appliedFilters.date
+      const dates = records.value
+        .map(item => formatDate(item.push_date))
+        .filter(date => date !== '--')
+        .sort()
+      return dates.length ? `${dates[0]}至${dates[dates.length - 1]}` : '--'
+    })
+
+    const latestUpdateDate = computed(() => {
+      const dates = records.value
+        .map(item => formatDate(item.latest_trade_date || item.push_date))
+        .filter(date => date !== '--')
+        .sort()
+      return dates.length ? dates[dates.length - 1] : '--'
+    })
 
     const sortedRecords = computed(() => {
       return records.value.slice().sort((a, b) => {
@@ -303,18 +334,19 @@ export default {
     const loadData = async () => {
       loading.value = true
       try {
-        const params = {
-          date: filters.date,
-          keyword: filters.keyword
-        }
-        const historyResp = await stockApi.getPotentialPushHistory(params)
+        const historyResp = await stockApi.getPotentialPushHistory()
 
-        records.value = historyResp?.data?.items || []
+        allRecords.value = historyResp?.data?.items || []
       } catch (error) {
         ElMessage.error(error?.message || '加载风口潜力股推送记录失败')
       } finally {
         loading.value = false
       }
+    }
+
+    const applyFilters = () => {
+      appliedFilters.date = filters.date || ''
+      appliedFilters.keyword = filters.keyword || ''
     }
 
     const formatPrice = (value) => {
@@ -330,8 +362,13 @@ export default {
 
     const formatRatio = (value) => {
       const num = toFiniteNumber(value)
-      if (!Number.isFinite(num)) return '--'
+      if (!Number.isFinite(num)) return '暂无可计算样本'
       return num.toFixed(2)
+    }
+
+    const formatWinRate = (value) => {
+      const num = toFiniteNumber(value)
+      return Number.isFinite(num) ? `${num.toFixed(2)}%` : '--'
     }
 
     const formatScore = (value) => {
@@ -380,11 +417,15 @@ export default {
       sortField,
       sortOrder,
       loading,
+      allRecords,
       records,
       sortedRecords,
       closeRanking,
       summary,
+      historyDateRange,
+      latestUpdateDate,
       loadData,
+      applyFilters,
       toggleSortOrder,
       sortByField,
       displayPrice,
@@ -392,6 +433,7 @@ export default {
       formatPrice,
       formatPercent,
       formatRatio,
+      formatWinRate,
       formatScore,
       formatDate,
       chainPositionLabel,
@@ -475,6 +517,14 @@ export default {
   display: block;
   margin-top: 8px;
   color: #9ca3af;
+}
+
+.summary-metrics {
+  white-space: nowrap;
+}
+
+.summary-metrics span {
+  margin: 0 4px;
 }
 
 .content-panel {
