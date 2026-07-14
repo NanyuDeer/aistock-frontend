@@ -29,7 +29,7 @@ AiStock PC Web 前端，基于 Vue 2（Composition API 兼容模式）+ JavaScri
 |------|------|---------|------|-----------------|
 | 首页 | `modules/home` | 市场概览、新闻轮播、风口爆发、龙头、AI 图谱 | `/` | [home/AGENTS.md](./src/modules/home/AGENTS.md) |
 | 自选股 | `modules/favorites` | 自选股列表、个股详情（K 线、AI 评估、资金流向） | `/favorites`, `/stock/:code` | [favorites/AGENTS.md](./src/modules/favorites/AGENTS.md) |
-| 行情 | `modules/market` | 板块龙头、十倍股评分、个股异动 | `/tags/:tagCode`, `/tenx`, `/stock-monitor` | [market/AGENTS.md](./src/modules/market/AGENTS.md) |
+| 行情 | `modules/market` | 板块龙头、十倍股评分、趋势股评分、个股异动 | `/tags/:tagCode`, `/tenx`, `/trend`, `/stock-monitor` | [market/AGENTS.md](./src/modules/market/AGENTS.md) |
 | 资讯 | `modules/news` | 微信推送详情、机构调研热门股 | `/wechat/:msgid`, `/hot-burst` | [news/AGENTS.md](./src/modules/news/AGENTS.md) |
 | 用户 | `modules/user` | 登录、个人信息、搜索 | `/login`, `/profile`, `/search` | [user/AGENTS.md](./src/modules/user/AGENTS.md) |
 | 分析 | `modules/analytics` | 业绩预测、龙头历史、更新日志 | `/forecast`, `/potential-push-history`, `/update-logs` | [analytics/AGENTS.md](./src/modules/analytics/AGENTS.md) |
@@ -65,7 +65,7 @@ src/
 │   │   ├── views/       # FavoritesView, StockDetailView
 │   │   └── AGENTS.md
 │   ├── market/          # 行情
-│   │   └── views/       # StockMonitorView, TagView, TenxScoreView
+│   │   └── views/       # StockMonitorView, TagView, TenxScoreView, TrendScoreView
 │   ├── news/            # 资讯
 │   │   └── views/       # HotBurstView, WechatMessageView
 │   ├── user/            # 用户
@@ -145,6 +145,7 @@ src/
 | `configApi` | 配置 |
 | `trendHotspotApi` | 风口爆发 |
 | `tenxApi` | 十倍股评分 |
+| `trendApi` | 趋势股评分（getTopStocks / getDetail / batchRefresh） |
 | `windLeaderApi` | 风口龙头 |
 | `aiGraphApi` | AI 产业链图谱 |
 | `industryKGApi` | 行业知识图谱 |
@@ -158,6 +159,7 @@ src/
 | windLeaderApi | `/api/cn/wind-leaders` | aistock-app-api |
 | trendHotspotApi | `/api/cn/trend-hotspots/*` | aistock-app-api |
 | tenxApi | `/api/cn/stocks/tenx-score/*` | aistock-app-api |
+| trendApi | `/api/cn/stocks/trend-score/*` | aistock-app-api |
 | aiGraphApi | `/api/aigraph/*` | aistock-app-api |
 | industryKGApi | `/api/kg/*` | aistock-app-api |
 | authApi | `/api/auth/wechat/*` | aistock-app-api |

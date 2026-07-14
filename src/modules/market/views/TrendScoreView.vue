@@ -1,214 +1,868 @@
 <template>
-  <div class="trend-score-view">
-    <!-- 左侧边栏 -->
+  <div class="trend-layout">
+    <!-- ============ 左侧栏 ============ -->
     <aside class="sidebar">
-      <div class="search-box">
-        <input v-model="searchInput" placeholder="输入股票代码或名称" @keyup.enter="handleSearch" />
-        <button @click="handleSearch">搜索</button>
-      </div>
-      <button class="batch-btn" @click="handleBatchScore" :disabled="batchLoading">
-        {{ batchLoading ? '评分中...' : '一键评分 Top30' }}
-      </button>
-      <div class="stock-list">
-        <div
-          v-for="item in stockList"
-          :key="item.symbol"
-          class="stock-item"
-          :class="{ active: item.symbol === currentSymbol }"
-          @click="selectStock(item.symbol)"
-        >
-          <div class="stock-info">
-            <span class="stock-symbol">{{ item.symbol }}</span>
-            <span class="stock-name">{{ item.name || '--' }}</span>
-          </div>
-          <div class="stock-score">
-            <span class="score-label" :style="{ color: getScoreColor(item.score) }">{{ item.label || '--' }}</span>
-            <span class="score-value" :style="{ color: getScoreColor(item.score) }">{{ item.score || '--' }}</span>
-          </div>
+      <div class="sidebar-top">
+        <div class="search-wrap">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+          <input v-model="searchInput" type="text" class="search-input" placeholder="搜索股票代码 / 名称" />
         </div>
-        <div v-if="!stockList.length" class="empty-hint">暂无评分数据</div>
+        <div class="list-header">
+          <span class="list-title">关注列表</span>
+          <span class="count-pill">{{ filteredStockList.length }} 只</span>
+        </div>
+      </div>
+
+      <div class="stock-list">
+        <div v-if="listLoading" class="list-hint">加载中...</div>
+        <template v-else>
+          <div
+            v-for="item in filteredStockList"
+            :key="item.symbol"
+            class="stock-item"
+            :class="{ active: item.symbol === currentSymbol }"
+            @click="selectStock(item.symbol)"
+          >
+            <div class="stock-meta">
+              <div class="stock-name">{{ item.name || '--' }}</div>
+              <div class="stock-code">{{ item.symbol }}</div>
+            </div>
+            <div class="stock-right">
+              <span class="stock-score">{{ item.score != null ? item.score : '--' }}</span>
+              <div class="grade-badge" :class="'grade-' + getGrade(item.score)">{{ getGrade(item.score) }}</div>
+            </div>
+          </div>
+          <div v-if="!filteredStockList.length" class="list-hint">暂无数据</div>
+        </template>
+      </div>
+
+      <div class="sidebar-bottom">
+        <button class="btn-primary" :disabled="batchLoading" @click="handleBatchRefresh">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1.06 6.7 2.82L21 8"></path>
+            <path d="M21 3v5h-5"></path>
+          </svg>
+          <span>{{ batchLoading ? '重评中...' : '一键重评' }}</span>
+        </button>
+        <p class="btn-hint">基于最新数据重新评分</p>
       </div>
     </aside>
 
-    <!-- 右侧主区域 -->
-    <main class="main-area">
-      <template v-if="scoreData">
-        <!-- 评分总览 -->
-        <div class="overview-card">
-          <div class="score-ring">
-            <svg viewBox="0 0 150 150" width="130" height="130" style="transform:rotate(-90deg)">
-              <circle cx="75" cy="75" r="65" fill="none" stroke="#e4e7ed" stroke-width="6" />
-              <circle cx="75" cy="75" r="65" fill="none" :stroke="getScoreColor(scoreData.score)"
-                stroke-width="6" stroke-linecap="round"
-                :stroke-dasharray="408.4"
-                :stroke-dashoffset="408.4 * (1 - scoreData.score / 100)"
-                class="score-ring-fill" />
-            </svg>
-            <div class="score-ring-center">
-              <span class="score-ring-value" :style="{ color: getScoreColor(scoreData.score) }">
-                {{ scoreData.score.toFixed(1) }}
-              </span>
-              <span class="score-ring-label">{{ scoreData.label }}</span>
-            </div>
-          </div>
-          <div class="overview-info">
-            <h2>{{ currentSymbol }} 趋势股评分</h2>
-            <p class="expected-multiple">预期倍数：{{ scoreData.expectedMultiple }}</p>
-            <p class="description">{{ scoreData.description }}</p>
-          </div>
-          <TrendRadarChart :dimensions="radarData" :size="200" />
-        </div>
+    <!-- ============ 主内容区 ============ -->
+    <main class="main-content">
+      <!-- 加载态 -->
+      <div v-if="loading" class="state-block">
+        <div class="spinner"></div>
+        <p>正在计算评分，请稍候...</p>
+      </div>
 
-        <!-- 维度条形图 -->
-        <div class="dim-bars">
-          <div class="dim-bar-row" v-for="(dim, i) in scoreData.dimensions" :key="i">
-            <span class="dim-bar-name">{{ dim.name }}（{{ dim.weight }}%）</span>
-            <div class="dim-bar-track">
-              <div class="dim-bar-progress" :style="{ width: dim.score + '%', background: getScoreColor(dim.score) }"></div>
-            </div>
-            <span class="dim-bar-score" :style="{ color: getScoreColor(dim.score) }">{{ dim.score }}</span>
+      <!-- 一票否决提示 -->
+      <div v-else-if="vetoInfo" class="state-block">
+        <div class="veto-alert">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          <div>
+            <div class="veto-title">{{ vetoInfo.symbol }} 未通过一票否决</div>
+            <div class="veto-reason" v-if="vetoInfo.reasons.length">{{ vetoInfo.reasons.join('；') }}</div>
           </div>
         </div>
-
-        <!-- 4维度卡片 -->
-        <TrendDimCard
-          v-for="(dim, i) in scoreData.dimensions"
-          :key="'dim-' + i"
-          :name="dim.name"
-          :weight="dim.weight"
-          :score="dim.score"
-          :indicators="dim.indicators"
-          :is-open="expandedDims.has(i)"
-          @toggle="toggleDim(i)"
-        >
-          <!-- 技术面展开 -->
-          <template v-if="dim.name === '技术面' && dim.detail">
-            <TrendKlineCompare
-              :stock-kline="dim.detail.kline"
-              :concept-kline="dim.detail.conceptKline || { name: '', dates: [], close: [] }"
-            />
-            <div class="tech-indicators">
-              <div class="tech-ind-card">
-                <span class="tech-label">低点以来涨幅</span>
-                <span class="tech-value" :style="{ color: dim.detail.indicators.lowPointGain >= 100 ? '#67c23a' : '#909399' }">
-                  +{{ dim.detail.indicators.lowPointGain.toFixed(1) }}%
-                </span>
-              </div>
-              <div class="tech-ind-card">
-                <span class="tech-label">60日线位置</span>
-                <span class="tech-value">{{ dim.detail.indicators.ma60Position === 'above' ? '上方' : '下方' }} / {{ dim.detail.indicators.ma60Trend === 'up' ? '向上' : dim.detail.indicators.ma60Trend === 'flat' ? '走平' : '向下' }}</span>
-              </div>
-              <div class="tech-ind-card">
-                <span class="tech-label">创新高状态</span>
-                <span class="tech-value" :style="{ color: dim.detail.indicators.isNewHigh250 ? '#67c23a' : '#909399' }">
-                  {{ dim.detail.indicators.isNewHigh250 ? '250日新高 ✓' : dim.detail.indicators.isNewHigh120 ? '120日新高 ✓' : '未创新高' }}
-                </span>
-              </div>
-              <div class="tech-ind-card">
-                <span class="tech-label">最大回撤</span>
-                <span class="tech-value">{{ dim.detail.indicators.maxDrawdown.toFixed(1) }}%</span>
-              </div>
-            </div>
-          </template>
-
-          <!-- 赛道景气展开 -->
-          <template v-if="dim.name === '行业赛道景气' && dim.detail">
-            <div class="sector-stat">
-              <span class="sector-name">板块「{{ dim.detail.sectorName }}」</span>
-              <span class="sector-count">近60日上榜 <strong>{{ dim.detail.sectorListCount60d }}</strong> 次</span>
-            </div>
-            <div class="sector-desc">该指标反映个股所处赛道在近60日内的市场热度。</div>
-          </template>
-
-          <!-- 消息面展开 -->
-          <template v-if="dim.name === '消息面催化' && dim.detail">
-            <div class="news-info">
-              <div class="news-stat">机构调研家数：<strong>{{ dim.detail.researchCount }}</strong></div>
-              <div class="news-stat" v-if="dim.detail.hardCatalyst">硬催化：{{ dim.detail.hardCatalyst }}</div>
-            </div>
-            <div class="news-list" v-if="dim.detail.news && dim.detail.news.length">
-              <div class="news-item" v-for="(news, ni) in dim.detail.news" :key="ni">
-                <h4 class="news-title">{{ news.title }}</h4>
-                <span class="news-time">{{ news.publishTime }}</span>
-              </div>
-            </div>
-            <div v-else class="news-empty">暂无近期资讯</div>
-          </template>
-
-          <!-- 基本面展开：4个子维度 -->
-          <template v-if="dim.name === '基本面' && dim.detail">
-            <div class="sub-dims-grid">
-              <div class="sub-dim-card" v-for="sub in dim.detail.subDimensions" :key="sub.name">
-                <div class="sub-dim-head">
-                  <span class="sub-dim-name">{{ sub.name }}</span>
-                  <span class="sub-dim-weight">权重 {{ sub.weight }}%</span>
-                  <span class="sub-dim-score" :style="{ color: getScoreColor(sub.score) }">{{ sub.score }}</span>
-                </div>
-                <div class="sub-dim-bar">
-                  <div class="sub-dim-fill" :style="{ width: sub.score + '%', background: getScoreColor(sub.score) }"></div>
-                </div>
-                <div class="sub-ind-row" v-for="ind in sub.indicators" :key="ind.key">
-                  <span class="sub-ind-name">{{ ind.name }}</span>
-                  <span class="sub-ind-value">{{ ind.value }}</span>
-                  <div class="sub-ind-bar">
-                    <div class="sub-ind-fill" :style="{ width: ind.score + '%', background: getScoreColor(ind.score) }"></div>
-                  </div>
-                  <span class="sub-ind-score" :style="{ color: getScoreColor(ind.score) }">{{ ind.score }}</span>
-                </div>
-              </div>
-            </div>
-          </template>
-        </TrendDimCard>
-      </template>
+      </div>
 
       <!-- 空状态 -->
-      <div v-else class="empty-state">
-        <p v-if="loading">正在计算评分，请稍候...</p>
-        <p v-else>请在左侧选择股票或搜索股票代码</p>
+      <div v-else-if="!scoreData" class="state-block">
+        <p>请在左侧选择股票查看趋势评分</p>
       </div>
+
+      <template v-else>
+        <!-- 面包屑 + 标题 -->
+        <div class="page-header fade-in">
+          <div class="page-header-left">
+            <div class="breadcrumb">
+              <span>趋势股评分</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              <span>{{ currentStockName }}</span>
+            </div>
+            <div class="title-row">
+              <h2 class="main-title">{{ currentStockName }}</h2>
+              <span class="title-code">{{ currentSymbol }}</span>
+              <span class="trend-tag" v-if="scoreData.expectedMultiple">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                预期{{ scoreData.expectedMultiple }}趋势
+              </span>
+            </div>
+          </div>
+          <div class="header-actions">
+            <button class="ghost-btn" @click="showToast('报告导出功能开发中')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              导出报告
+            </button>
+            <button class="ghost-btn" @click="showToast('已加入监控列表')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+              加入监控
+            </button>
+          </div>
+        </div>
+
+        <!-- 评分总览（2x2 维度卡片，无雷达图） -->
+        <section class="panel score-overview fade-in" style="animation-delay: 0.05s">
+          <div class="overview-grid grid-bg">
+            <!-- 左：总评分 -->
+            <div class="overview-left">
+              <div class="label-sm">综合评分</div>
+              <div class="score-row">
+                <span class="total-score">{{ totalScoreText }}</span>
+                <span class="score-max">/100</span>
+              </div>
+              <div class="grade-row">
+                <div class="grade-badge" :class="'grade-' + totalGrade">{{ totalGrade }}</div>
+                <span class="rating-pill">{{ ratingText }}</span>
+              </div>
+              <div class="status-list">
+                <div class="status-item">
+                  <span class="dot dot-up"></span>
+                  <span>多维度量化趋势评分</span>
+                </div>
+                <div class="status-item">
+                  <span class="dot dot-gold"></span>
+                  <span>{{ scoreData.scoreDate || '最新数据' }} 更新</span>
+                </div>
+              </div>
+            </div>
+            <!-- 右：维度评分明细 2x2 -->
+            <div class="overview-right">
+              <div class="label-sm">维度评分明细</div>
+              <div class="dim-cards-grid">
+                <div class="dim-card" v-for="(dim, i) in dimensionsOrdered" :key="i">
+                  <div class="dim-icon" :style="{ background: DIM_CONFIG[i].bg }">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <path :d="DIM_CONFIG[i].icon"></path>
+                    </svg>
+                  </div>
+                  <div class="dim-bar-wrap">
+                    <div class="dim-head">
+                      <div class="dim-head-text">
+                        <div class="dim-name">{{ DIM_CONFIG[i].displayName }}</div>
+                        <div class="dim-desc">{{ DIM_CONFIG[i].desc }}</div>
+                      </div>
+                      <div class="dim-score-wrap">
+                        <span class="dim-score" :style="{ color: DIM_CONFIG[i].color }">{{ dim.score != null ? dim.score : '--' }}</span>
+                        <span class="dim-score-max">/100</span>
+                      </div>
+                    </div>
+                    <div class="score-bar">
+                      <div class="score-bar-fill" :style="{ width: (dim.score || 0) + '%', background: 'linear-gradient(90deg, ' + DIM_CONFIG[i].color + ', ' + DIM_CONFIG[i].color + 'cc)' }"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ 技术面趋势 ============ -->
+        <section class="panel fade-in" :class="{ expanded: panelOpen.tech }" style="animation-delay: 0.1s">
+          <div class="panel-header" @click="togglePanel('tech')">
+            <div class="panel-title">
+              <div class="icon-box icon-tech">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 7"></polyline></svg>
+              </div>
+              <span>技术面趋势</span>
+              <span class="panel-sub">K线形态是否走出趋势</span>
+            </div>
+            <div class="panel-score">
+              <span class="panel-score-val">{{ techDim && techDim.score != null ? techDim.score : '--' }}</span>
+              <span class="panel-score-max">/100</span>
+              <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="panel-inner">
+              <!-- 4 个数据点 -->
+              <div class="data-grid-4">
+                <div class="data-point">
+                  <div class="dp-label">低点涨幅</div>
+                  <div class="trend-indicator up">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline></svg>
+                    <span class="mono-lg">{{ techIndicators.lowPointGain != null ? '+' + techIndicators.lowPointGain.toFixed(1) + '%' : '--' }}</span>
+                  </div>
+                </div>
+                <div class="data-point">
+                  <div class="dp-label">60日线位置</div>
+                  <div class="dp-value-row">
+                    <span class="mono-lg" :style="{ color: techIndicators.ma60Position === 'above' ? 'var(--up)' : 'var(--down)' }">
+                      {{ techIndicators.ma60Position === 'above' ? '上方' : techIndicators.ma60Position === 'below' ? '下方' : '--' }}
+                    </span>
+                    <span class="tag" :class="ma60TrendTag.cls" v-if="techIndicators.ma60Trend">{{ ma60TrendTag.text }}</span>
+                  </div>
+                </div>
+                <div class="data-point">
+                  <div class="dp-label">近期新高</div>
+                  <div class="dp-value-row">
+                    <svg v-if="techIndicators.isNewHigh250 || techIndicators.isNewHigh120" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--up)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <span class="mono-lg" :style="{ color: (techIndicators.isNewHigh250 || techIndicators.isNewHigh120) ? 'var(--up)' : 'var(--ink-mute)' }">
+                      {{ techIndicators.isNewHigh250 ? '250日新高' : techIndicators.isNewHigh120 ? '120日新高' : '未突破' }}
+                    </span>
+                  </div>
+                </div>
+                <div class="data-point">
+                  <div class="dp-label">最大回撤</div>
+                  <div class="dp-value-row">
+                    <span class="mono-lg">{{ techIndicators.maxDrawdown != null ? techIndicators.maxDrawdown.toFixed(1) + '%' : '--' }}</span>
+                    <span class="tag tag-neutral">{{ techIndicators.maxDrawdown != null && techIndicators.maxDrawdown < 15 ? '健康' : '较大' }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 双 K 线图 -->
+              <div class="charts-grid-2">
+                <div class="chart-box">
+                  <div class="chart-head">
+                    <div class="chart-head-left">
+                      <span class="chart-dot chart-dot-blue"></span>
+                      <span class="chart-title-text">个股K线 · {{ currentStockName }}</span>
+                    </div>
+                    <span class="tag tag-up">近{{ techKlineCount }}日</span>
+                  </div>
+                  <div ref="stockKlineRef" class="chart-280"></div>
+                  <div v-if="!hasStockKline" class="chart-empty">暂无K线数据</div>
+                </div>
+                <div class="chart-box">
+                  <div class="chart-head">
+                    <div class="chart-head-left">
+                      <span class="chart-dot chart-dot-cyan"></span>
+                      <span class="chart-title-text">概念指数 · {{ conceptKlineName }}</span>
+                    </div>
+                    <span class="tag tag-up">近{{ conceptKlineCount }}日</span>
+                  </div>
+                  <div ref="conceptKlineRef" class="chart-280"></div>
+                  <div v-if="!hasConceptKline" class="chart-empty">暂无概念K线数据</div>
+                </div>
+              </div>
+
+              <!-- 趋势判读 -->
+              <div class="trend-analysis">
+                <div class="ta-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                </div>
+                <div>
+                  <div class="ta-title">趋势判读</div>
+                  <div class="ta-text">{{ trendAnalysis }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ 行业赛道景气 ============ -->
+        <section class="panel fade-in" :class="{ expanded: panelOpen.track }" style="animation-delay: 0.15s">
+          <div class="panel-header" @click="togglePanel('track')">
+            <div class="panel-title">
+              <div class="icon-box icon-track">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+              </div>
+              <span>行业赛道景气</span>
+              <span class="panel-sub">所在赛道是否处于景气周期</span>
+            </div>
+            <div class="panel-score">
+              <span class="panel-score-val">{{ trackDim && trackDim.score != null ? trackDim.score : '--' }}</span>
+              <span class="panel-score-max">/100</span>
+              <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="panel-inner">
+              <!-- 3 个数据点 -->
+              <div class="data-grid-3">
+                <div class="data-point">
+                  <div class="dp-label">同花顺60日上榜</div>
+                  <div class="dp-value-row">
+                    <span class="mono-xl" style="color: var(--primary)">{{ trackData.sectorListCount60d }}</span>
+                    <span class="dp-unit">次</span>
+                    <span class="tag tag-up" style="margin-left: auto">活跃</span>
+                  </div>
+                </div>
+                <div class="data-point">
+                  <div class="dp-label">市场认可度</div>
+                  <div class="dp-value-row">
+                    <span class="mono-xl" style="color: var(--primary)">{{ trackData.marketRecognition }}</span>
+                    <span class="dp-unit">/100</span>
+                  </div>
+                  <div class="score-bar" style="margin-top: 8px">
+                    <div class="score-bar-fill" :style="{ width: trackData.marketRecognition + '%' }"></div>
+                  </div>
+                </div>
+                <div class="data-point">
+                  <div class="dp-label">行业渗透率位置</div>
+                  <div class="dp-value-row">
+                    <span class="mono-xl" style="color: var(--primary)">{{ trackData.penetration ? trackData.penetration.value : '--' }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="charts-grid-2">
+                <div class="soft-box">
+                  <div class="soft-box-title">赛道景气指标评分</div>
+                  <div ref="trackChartRef" class="chart-200"></div>
+                </div>
+                <div class="soft-box">
+                  <div class="soft-box-title">板块信息与政策趋势</div>
+                  <div class="policy-block">
+                    <div class="policy-item">
+                      <span class="policy-dot policy-dot-blue"></span>
+                      <div>
+                        <span class="policy-name">所属板块</span>
+                        <span class="policy-desc">{{ trackData.sectorName }}</span>
+                      </div>
+                    </div>
+                    <div class="policy-item" v-if="trackData.policyTrend">
+                      <span class="policy-dot policy-dot-gold"></span>
+                      <div>
+                        <span class="policy-name">政策 / 产业趋势</span>
+                        <span class="policy-desc">{{ trackData.policyTrend }}</span>
+                      </div>
+                    </div>
+                    <div class="policy-item" v-if="trackData.penetration && trackData.penetration.score != null">
+                      <span class="policy-dot policy-dot-blue"></span>
+                      <div>
+                        <span class="policy-name">{{ trackData.penetration.name }}</span>
+                        <span class="policy-desc">评分 {{ trackData.penetration.score }} / 100</span>
+                      </div>
+                    </div>
+                    <div class="policy-empty" v-if="!trackData.policyTrend && !trackData.penetration">暂无政策趋势数据</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ 消息面催化 ============ -->
+        <section class="panel fade-in" :class="{ expanded: panelOpen.news }" style="animation-delay: 0.2s">
+          <div class="panel-header" @click="togglePanel('news')">
+            <div class="panel-title">
+              <div class="icon-box icon-news">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"></path><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"></path></svg>
+              </div>
+              <span>消息面催化</span>
+              <span class="panel-sub">是否有持续性消息催化</span>
+            </div>
+            <div class="panel-score">
+              <span class="panel-score-val">{{ newsDim && newsDim.score != null ? newsDim.score : '--' }}</span>
+              <span class="panel-score-max">/100</span>
+              <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="panel-inner">
+              <div class="news-head">
+                <div class="news-head-title">近期重大资讯</div>
+                <div class="catalyst-row">
+                  <span class="catalyst-label">催化强度</span>
+                  <div class="catalyst-bars">
+                    <div v-for="n in 5" :key="n" class="catalyst-bar" :class="{ filled: n <= catalystBars.count }"></div>
+                  </div>
+                  <span class="catalyst-text">{{ catalystBars.label }}</span>
+                </div>
+              </div>
+
+              <div class="news-meta-row" v-if="newsStats.researchCount || newsStats.hardCatalyst">
+                <span v-if="newsStats.researchCount" class="news-meta-item">机构调研：<strong>{{ newsStats.researchCount }}</strong> 家</span>
+                <span v-if="newsStats.hardCatalyst" class="news-meta-item">硬催化：{{ newsStats.hardCatalyst }}</span>
+              </div>
+
+              <div class="news-list" v-if="newsList.length">
+                <div class="news-item" v-for="(news, ni) in newsList" :key="ni">
+                  <div class="news-date">{{ formatNewsDate(news.publishTime) }}</div>
+                  <div class="news-body">
+                    <div class="news-tag-row">
+                      <span class="tag" :class="sentimentTag(news.sentiment).cls">{{ sentimentTag(news.sentiment).text }}</span>
+                      <span class="news-source" v-if="news.source">{{ news.source }}</span>
+                    </div>
+                    <div class="news-title">{{ news.title }}</div>
+                    <div class="news-summary" v-if="news.summary">{{ news.summary }}</div>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="news-empty">暂无近期资讯</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ 基本面综合 ============ -->
+        <section class="panel fade-in" :class="{ expanded: panelOpen.fund }" style="animation-delay: 0.25s">
+          <div class="panel-header" @click="togglePanel('fund')">
+            <div class="panel-title">
+              <div class="icon-box icon-fund">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+              </div>
+              <span>基本面综合</span>
+              <span class="panel-sub">业绩 · 估值 · 盈利 · 壁垒</span>
+            </div>
+            <div class="panel-score">
+              <span class="panel-score-val">{{ fundDim && fundDim.score != null ? fundDim.score : '--' }}</span>
+              <span class="panel-score-max">/100</span>
+              <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="panel-inner">
+              <!-- 4 个因子行 -->
+              <div class="factor-grid">
+                <div class="factor-row" v-for="(sub, i) in fundSubDims" :key="i">
+                  <div class="factor-stripe" :style="{ background: FUND_STRIPE_COLORS[i] }"></div>
+                  <div class="factor-content">
+                    <div class="factor-head">
+                      <span class="factor-name">{{ sub.name }}</span>
+                      <span class="factor-score" style="color: var(--primary)">{{ sub.score }}</span>
+                    </div>
+                    <div class="score-bar">
+                      <div class="score-bar-fill" :style="{ width: (sub.score || 0) + '%' }"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 4 个数据点 -->
+              <div class="data-grid-4" style="margin-top: 20px">
+                <div class="data-point" v-for="(dp, i) in fundDataPoints" :key="i">
+                  <div class="dp-label">{{ dp.name }}</div>
+                  <div class="mono-xl" style="margin-top: 4px; color: var(--primary)">{{ dp.value }}</div>
+                  <div class="dp-sub" v-if="dp.score != null">评分 {{ dp.score }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </template>
     </main>
+
+    <!-- Toast -->
+    <div class="toast" :class="{ show: toastVisible }">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      <span>{{ toastText }}</span>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { trendApi } from '@/shared/api/api';
-import TrendRadarChart from '@/shared/components/TrendRadarChart.vue';
-import TrendKlineCompare from '@/shared/components/TrendKlineCompare.vue';
-import TrendDimCard from '@/shared/components/TrendDimCard.vue';
+import * as echarts from 'echarts/core';
+import { CandlestickChart, LineChart, BarChart } from 'echarts/charts';
+import { GridComponent, TooltipComponent, DataZoomComponent, AxisPointerComponent } from 'echarts/components';
+import { CanvasRenderer } from 'echarts/renderers';
 
+echarts.use([
+  CandlestickChart, LineChart, BarChart,
+  GridComponent, TooltipComponent, DataZoomComponent, AxisPointerComponent,
+  CanvasRenderer,
+]);
+
+// 维度展示配置（与模板 updateDimCards 一致）
+const DIM_CONFIG = [
+  { displayName: '技术面趋势', desc: 'K线形态趋势', color: '#0b5fff', bg: 'linear-gradient(135deg, #0b5fff, #00b8ff)', icon: 'M3 17l6-6 4 4 8-8' },
+  { displayName: '行业赛道景气', desc: '赛道景气周期', color: '#00b8ff', bg: 'linear-gradient(135deg, #00b8ff, #0b5fff)', icon: 'M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z' },
+  { displayName: '消息面催化', desc: '资讯持续性', color: '#d4a843', bg: 'linear-gradient(135deg, #d4a843, #b8862e)', icon: 'M3 11l18-5v12L3 14z' },
+  { displayName: '基本面综合', desc: '业绩·估值·盈利·壁垒', color: '#0a2e6f', bg: 'linear-gradient(135deg, #0a2e6f, #0b5fff)', icon: 'M2 7h20v14H2z M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16' },
+];
+
+// 基本面因子条左侧色块颜色
+const FUND_STRIPE_COLORS = ['#0b5fff', '#00b8ff', '#4d8bff', '#d4a843'];
+
+// ============ 状态 ============
 const searchInput = ref('');
 const currentSymbol = ref('');
 const stockList = ref([]);
 const scoreData = ref(null);
 const loading = ref(false);
+const listLoading = ref(false);
 const batchLoading = ref(false);
-const expandedDims = reactive(new Set());
+const vetoInfo = ref(null);
+// 技术面默认展开，其余折叠
+const panelOpen = reactive({ tech: true, track: false, news: false, fund: false });
 
-const radarData = computed(() => {
-  if (!scoreData.value?.dimensions) return [];
-  return scoreData.value.dimensions.map(d => ({ name: d.name, score: d.score }));
+const toastVisible = ref(false);
+const toastText = ref('');
+let toastTimer = null;
+
+// 图表 DOM 引用与实例
+const stockKlineRef = ref(null);
+const conceptKlineRef = ref(null);
+const trackChartRef = ref(null);
+let stockChart = null;
+let conceptChart = null;
+let trackChart = null;
+
+// ============ 计算属性 ============
+const filteredStockList = computed(() => {
+  const kw = searchInput.value.trim().toLowerCase();
+  if (!kw) return stockList.value;
+  return stockList.value.filter(s =>
+    (s.name || '').toLowerCase().includes(kw) ||
+    (s.symbol || '').toLowerCase().includes(kw)
+  );
 });
 
-function getScoreColor(score) {
-  if (score >= 70) return '#67c23a';
-  if (score >= 50) return '#e6a23c';
-  return '#f56c6c';
+const currentStockName = computed(() => {
+  const s = stockList.value.find(x => x.symbol === currentSymbol.value);
+  return s?.name || scoreData.value?.symbol || currentSymbol.value || '--';
+});
+
+// 按固定顺序排列的维度（技术面/赛道/消息面/基本面）
+const dimensionsOrdered = computed(() => {
+  const order = ['技术面', '行业赛道景气', '消息面催化', '基本面'];
+  const dims = scoreData.value?.dimensions || [];
+  return order.map(name => dims.find(d => d.name === name)).filter(Boolean);
+});
+
+function findDim(name) {
+  return scoreData.value?.dimensions?.find(d => d.name === name);
+}
+const techDim = computed(() => findDim('技术面'));
+const trackDim = computed(() => findDim('行业赛道景气'));
+const newsDim = computed(() => findDim('消息面催化'));
+const fundDim = computed(() => findDim('基本面'));
+
+// 评级：S>=85 A>=75 B>=65 C>=55 D<55
+function getGrade(score) {
+  const s = Number(score);
+  if (isNaN(s)) return 'C';
+  if (s >= 85) return 'S';
+  if (s >= 75) return 'A';
+  if (s >= 65) return 'B';
+  if (s >= 55) return 'C';
+  return 'D';
 }
 
-function toggleDim(i) {
-  if (expandedDims.has(i)) expandedDims.delete(i);
-  else expandedDims.add(i);
+const totalScoreText = computed(() => {
+  const s = scoreData.value?.score;
+  return s != null ? (Number.isInteger(s) ? s : s.toFixed(1)) : '--';
+});
+const totalGrade = computed(() => getGrade(scoreData.value?.score));
+const ratingText = computed(() => {
+  const map = {
+    S: 'S级 · 强趋势',
+    A: 'A级 · 趋势形成',
+    B: 'B级 · 趋势酝酿',
+    C: 'C级 · 弱趋势',
+    D: 'D级 · 观望',
+  };
+  return map[totalGrade.value] || '--';
+});
+
+// 技术面指标
+const techIndicators = computed(() => {
+  const ind = techDim.value?.detail?.indicators || {};
+  return {
+    lowPointGain: ind.lowPointGain != null ? Number(ind.lowPointGain) : null,
+    ma60Position: ind.ma60Position || '',
+    ma60Trend: ind.ma60Trend || '',
+    isNewHigh250: !!ind.isNewHigh250,
+    isNewHigh120: !!ind.isNewHigh120,
+    maxDrawdown: ind.maxDrawdown != null ? Number(ind.maxDrawdown) : null,
+  };
+});
+
+const ma60TrendTag = computed(() => {
+  const t = techIndicators.value.ma60Trend;
+  if (t === 'up') return { cls: 'tag-up', text: '向上' };
+  if (t === 'down') return { cls: 'tag-down', text: '向下' };
+  if (t === 'flat') return { cls: 'tag-neutral', text: '走平' };
+  return { cls: 'tag-neutral', text: '--' };
+});
+
+// K 线数据
+const hasStockKline = computed(() => {
+  const k = techDim.value?.detail?.kline;
+  return !!(k && k.dates && k.dates.length && k.ohlc && k.ohlc.length);
+});
+const hasConceptKline = computed(() => {
+  const k = techDim.value?.detail?.conceptKline;
+  return !!(k && k.close && k.close.length);
+});
+const techKlineCount = computed(() => techDim.value?.detail?.kline?.dates?.length || 0);
+const conceptKlineCount = computed(() => techDim.value?.detail?.conceptKline?.close?.length || 0);
+const conceptKlineName = computed(() => techDim.value?.detail?.conceptKline?.name || '概念指数');
+
+// 赛道数据
+const trackData = computed(() => {
+  const d = trackDim.value?.detail || {};
+  const inds = trackDim.value?.indicators || [];
+  const penetration = inds.find(i => i.key === 'industry_penetration') || inds[1];
+  return {
+    sectorListCount60d: d.sectorListCount60d != null ? d.sectorListCount60d : 0,
+    sectorName: d.sectorName || '--',
+    marketRecognition: d.marketRecognition != null ? d.marketRecognition : 0,
+    policyTrend: d.policyTrend || '',
+    penetration: penetration || null,
+  };
+});
+
+// 消息面数据
+const newsList = computed(() => newsDim.value?.detail?.news || []);
+const newsStats = computed(() => ({
+  researchCount: newsDim.value?.detail?.researchCount || 0,
+  hardCatalyst: newsDim.value?.detail?.hardCatalyst || '',
+  score: newsDim.value?.score != null ? newsDim.value.score : 0,
+}));
+const catalystBars = computed(() => {
+  const s = newsStats.value.score;
+  if (s >= 80) return { count: 5, label: '极强' };
+  if (s >= 65) return { count: 4, label: '强' };
+  if (s >= 50) return { count: 3, label: '中等偏强' };
+  if (s >= 35) return { count: 2, label: '中等' };
+  return { count: 1, label: '偏弱' };
+});
+
+// 基本面数据
+const fundSubDims = computed(() => fundDim.value?.detail?.subDimensions || []);
+const fundDataPoints = computed(() => {
+  // 从 4 个子维度各取一个代表性指标
+  const preferredKeys = ['rev_yoy_latest', 'peg', 'gross_margin', 'industry_position'];
+  return fundSubDims.value.map((sub, i) => {
+    const ind = (sub.indicators || []).find(x => x.key === preferredKeys[i]) || sub.indicators?.[0];
+    return {
+      name: ind?.name || sub.name,
+      value: ind?.value || '--',
+      score: ind?.score != null ? ind.score : null,
+    };
+  });
+});
+
+// 趋势判读文案：优先 AI 结论，其次描述，最后兜底
+const trendAnalysis = computed(() => {
+  if (scoreData.value?.aiConclusion) return scoreData.value.aiConclusion;
+  if (scoreData.value?.description) return scoreData.value.description;
+  const ti = techIndicators.value;
+  const gain = ti.lowPointGain != null ? '+' + ti.lowPointGain.toFixed(1) + '%' : '--';
+  const pos = ti.ma60Position === 'above' ? '站稳60日均线' : '位于60日均线下方';
+  return `股价自低点已反弹 ${gain}，当前${pos}，关注后续量能配合与趋势延续性。`;
+});
+
+// ============ 工具函数 ============
+// YYYYMMDD -> M/D
+function formatKlineDate(d) {
+  if (!d || d.length < 8) return d || '';
+  return parseInt(d.slice(4, 6), 10) + '/' + parseInt(d.slice(6, 8), 10);
 }
 
+// 发布时间 -> M/D
+function formatNewsDate(t) {
+  if (!t) return '--';
+  const s = String(t);
+  const m = s.match(/(\d{4})[-/]?(\d{2})[-/]?(\d{2})/);
+  if (m) return parseInt(m[2], 10) + '/' + parseInt(m[3], 10);
+  return s;
+}
+
+// 简单移动平均
+function calcMA(data, period) {
+  const result = [];
+  for (let i = 0; i < data.length; i++) {
+    if (i < period - 1) { result.push(null); continue; }
+    let sum = 0;
+    for (let j = i - period + 1; j <= i; j++) sum += data[j];
+    result.push(+(sum / period).toFixed(2));
+  }
+  return result;
+}
+
+function sentimentTag(s) {
+  if (s === 'positive') return { cls: 'tag-up', text: '利好' };
+  if (s === 'negative') return { cls: 'tag-down', text: '利空' };
+  return { cls: 'tag-neutral', text: '中性' };
+}
+
+function showToast(text) {
+  toastText.value = text;
+  toastVisible.value = true;
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toastVisible.value = false; }, 2200);
+}
+
+// ============ 面板展开/折叠 ============
+function togglePanel(id) {
+  panelOpen[id] = !panelOpen[id];
+  if (panelOpen[id]) {
+    // 展开后延迟渲染/重置图表尺寸（等待 max-height 过渡）
+    setTimeout(() => {
+      if (id === 'tech') {
+        if (stockChart) stockChart.resize(); else renderStockKline();
+        if (conceptChart) conceptChart.resize(); else renderConceptKline();
+      }
+      if (id === 'track') {
+        if (trackChart) trackChart.resize(); else renderTrackChart();
+      }
+    }, 360);
+  }
+}
+
+// ============ 图表渲染 ============
+function renderStockKline() {
+  const el = stockKlineRef.value;
+  const kline = techDim.value?.detail?.kline;
+  if (!el || !kline || !kline.dates?.length || !kline.ohlc?.length) return;
+  if (!stockChart) stockChart = echarts.init(el);
+  const dates = kline.dates.map(formatKlineDate);
+  // ohlc 为 [open, close, low, high]，符合 ECharts candlestick 要求
+  const closes = kline.ohlc.map(r => r[1]);
+  const ma60 = calcMA(closes, 60);
+  const interval = dates.length > 6 ? Math.floor(dates.length / 6) - 1 : 0;
+  stockChart.setOption({
+    grid: { left: '8%', right: '4%', top: '8%', bottom: '20%' },
+    xAxis: {
+      type: 'category', data: dates,
+      axisLabel: { color: '#8a96b0', fontSize: 10, interval },
+      axisLine: { lineStyle: { color: '#e1e9f5' } },
+    },
+    yAxis: {
+      scale: true,
+      axisLabel: { color: '#8a96b0', fontSize: 10 },
+      splitLine: { lineStyle: { color: '#eef3fb' } },
+    },
+    dataZoom: [
+      { type: 'inside', start: 0, end: 100 },
+      { show: true, type: 'slider', bottom: '2%', height: 14, start: 0, end: 100, borderColor: 'transparent', fillerColor: 'rgba(11, 95, 255, 0.1)', handleStyle: { color: '#0b5fff' } },
+    ],
+    series: [
+      {
+        type: 'candlestick', data: kline.ohlc,
+        // A 股红涨绿跌
+        itemStyle: { color: '#e54d5e', color0: '#18a058', borderColor: '#e54d5e', borderColor0: '#18a058' },
+      },
+      {
+        name: 'MA60', type: 'line', data: ma60, smooth: true, symbol: 'none',
+        lineStyle: { color: '#0b5fff', width: 1.5, type: 'dashed' },
+      },
+    ],
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(255,255,255,0.95)',
+      borderColor: '#e1e9f5',
+      textStyle: { color: '#0a1733', fontSize: 12 },
+    },
+  }, true);
+}
+
+function renderConceptKline() {
+  const el = conceptKlineRef.value;
+  const ck = techDim.value?.detail?.conceptKline;
+  if (!el || !ck || !ck.close?.length) return;
+  if (!conceptChart) conceptChart = echarts.init(el);
+  const dates = (ck.dates || []).map(formatKlineDate);
+  const ma60 = calcMA(ck.close, 60);
+  const interval = dates.length > 6 ? Math.floor(dates.length / 6) - 1 : 0;
+  conceptChart.setOption({
+    grid: { left: '8%', right: '4%', top: '8%', bottom: '20%' },
+    xAxis: {
+      type: 'category', data: dates,
+      axisLabel: { color: '#8a96b0', fontSize: 10, interval },
+      axisLine: { lineStyle: { color: '#e1e9f5' } },
+    },
+    yAxis: {
+      scale: true,
+      axisLabel: { color: '#8a96b0', fontSize: 10 },
+      splitLine: { lineStyle: { color: '#eef3fb' } },
+    },
+    dataZoom: [
+      { type: 'inside', start: 0, end: 100 },
+      { show: true, type: 'slider', bottom: '2%', height: 14, start: 0, end: 100, borderColor: 'transparent', fillerColor: 'rgba(0, 184, 255, 0.1)', handleStyle: { color: '#00b8ff' } },
+    ],
+    series: [
+      {
+        type: 'line', data: ck.close, smooth: true, symbol: 'none',
+        lineStyle: { color: '#00b8ff', width: 2 },
+        areaStyle: {
+          color: {
+            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(0, 184, 255, 0.3)' },
+              { offset: 1, color: 'rgba(0, 184, 255, 0.02)' },
+            ],
+          },
+        },
+      },
+      {
+        name: 'MA60', type: 'line', data: ma60, smooth: true, symbol: 'none',
+        lineStyle: { color: '#0b5fff', width: 1.2, type: 'dashed', opacity: 0.6 },
+      },
+    ],
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(255,255,255,0.95)',
+      borderColor: '#e1e9f5',
+      textStyle: { color: '#0a1733', fontSize: 12 },
+    },
+  }, true);
+}
+
+function renderTrackChart() {
+  const el = trackChartRef.value;
+  if (!el) return;
+  if (!trackChart) trackChart = echarts.init(el);
+  const inds = trackDim.value?.indicators || [];
+  const names = inds.map(i => (i.name || '').length > 5 ? i.name.slice(0, 4) + '…' : i.name);
+  const scores = inds.map(i => i.score || 0);
+  trackChart.setOption({
+    grid: { left: '12%', right: '5%', top: '12%', bottom: '15%' },
+    xAxis: {
+      type: 'category', data: names,
+      axisLabel: { color: '#8a96b0', fontSize: 10 },
+      axisLine: { lineStyle: { color: '#e1e9f5' } },
+    },
+    yAxis: {
+      type: 'value', max: 100,
+      axisLabel: { color: '#8a96b0', fontSize: 10 },
+      splitLine: { lineStyle: { color: '#eef3fb' } },
+    },
+    series: [{
+      type: 'bar', data: scores, barWidth: '45%',
+      itemStyle: {
+        borderRadius: [4, 4, 0, 0],
+        color: {
+          type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+          colorStops: [
+            { offset: 0, color: '#0b5fff' },
+            { offset: 1, color: '#00b8ff' },
+          ],
+        },
+      },
+      label: { show: true, position: 'top', color: '#0b5fff', fontWeight: 700, fontSize: 11 },
+    }],
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(255,255,255,0.95)',
+      borderColor: '#e1e9f5',
+      textStyle: { color: '#0a1733', fontSize: 12 },
+      formatter: (params) => {
+        const p = params[0];
+        return `${inds[p.dataIndex]?.name || p.name}<br/>评分: ${p.value}`;
+      },
+    },
+  }, true);
+}
+
+// ============ 数据加载 ============
 async function loadTopStocks() {
+  listLoading.value = true;
   try {
     const res = await trendApi.getTopStocks(30);
     if (res.code === 200 && Array.isArray(res.data)) {
       stockList.value = res.data;
+      if (stockList.value.length && !currentSymbol.value) {
+        await selectStock(stockList.value[0].symbol);
+      }
     }
   } catch (e) {
     console.error('loadTopStocks failed:', e);
+  } finally {
+    listLoading.value = false;
   }
 }
 
@@ -216,210 +870,764 @@ async function selectStock(symbol) {
   currentSymbol.value = symbol;
   loading.value = true;
   scoreData.value = null;
-  expandedDims.clear();
+  vetoInfo.value = null;
+  panelOpen.tech = true;
+  panelOpen.track = false;
+  panelOpen.news = false;
+  panelOpen.fund = false;
+  // 销毁旧图表实例，避免内存泄漏
+  disposeCharts();
   try {
     const res = await trendApi.getDetail(symbol);
     if (res.code === 200 && res.data) {
       if (res.data.vetoed) {
-        scoreData.value = null;
-        alert(`股票 ${symbol} 未通过一票否决：${res.data.reasons?.join('，')}`);
+        // 一票否决
+        vetoInfo.value = {
+          symbol,
+          reasons: Array.isArray(res.data.reasons) ? res.data.reasons : [],
+        };
       } else {
         scoreData.value = res.data;
+        await nextTick();
+        // 技术面默认展开，渲染 K 线
+        renderStockKline();
+        renderConceptKline();
       }
+    } else {
+      showToast('获取评分详情失败');
     }
   } catch (e) {
     console.error('selectStock failed:', e);
+    showToast('获取评分详情失败');
   } finally {
     loading.value = false;
   }
 }
 
-async function handleSearch() {
-  if (!searchInput.value.trim()) return;
-  const input = searchInput.value.trim();
-  // 如果输入的是股票代码，直接查询
-  if (/^\d{6}$/.test(input)) {
-    await selectStock(input);
-  } else {
-    // 名称搜索：从 stockList 中过滤
-    const matched = stockList.value.find(s =>
-      s.name && s.name.includes(input)
-    );
-    if (matched) {
-      await selectStock(matched.symbol);
-    }
-  }
-}
-
-async function handleBatchScore() {
+async function handleBatchRefresh() {
+  if (batchLoading.value) return;
+  const symbols = stockList.value.map(s => s.symbol);
+  if (!symbols.length) { showToast('暂无股票可重评'); return; }
   batchLoading.value = true;
+  showToast('正在重新评分...');
   try {
-    const symbols = stockList.value.map(s => s.symbol);
-    if (!symbols.length) {
-      alert('暂无股票可评分');
-      return;
-    }
     const res = await trendApi.batchRefresh(symbols);
     if (res.code === 200) {
-      alert(`批量评分完成：成功${res.data.success}，失败${res.data.failed}`);
+      const success = res.data?.success ?? 0;
+      const failed = res.data?.failed ?? 0;
+      showToast(`重评完成：成功 ${success}，失败 ${failed}`);
       await loadTopStocks();
+    } else {
+      showToast('重评失败');
     }
   } catch (e) {
-    console.error('batchScore failed:', e);
+    console.error('batchRefresh failed:', e);
+    showToast('重评失败');
   } finally {
     batchLoading.value = false;
   }
 }
 
+function disposeCharts() {
+  if (stockChart) { stockChart.dispose(); stockChart = null; }
+  if (conceptChart) { conceptChart.dispose(); conceptChart = null; }
+  if (trackChart) { trackChart.dispose(); trackChart = null; }
+}
+
+function handleResize() {
+  stockChart?.resize();
+  conceptChart?.resize();
+  trackChart?.resize();
+}
+
 onMounted(() => {
   loadTopStocks();
+  window.addEventListener('resize', handleResize);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize);
+  if (toastTimer) clearTimeout(toastTimer);
+  disposeCharts();
 });
 </script>
 
 <style scoped>
-.trend-score-view {
+/* ============ CSS 变量（与模板 :root 完全一致） ============ */
+.trend-layout {
+  --bg-page: #eef3fb;
+  --bg-card: #ffffff;
+  --bg-soft: #f5f8fd;
+  --primary: #0b5fff;
+  --primary-deep: #0a2e6f;
+  --primary-light: #4d8bff;
+  --accent: #00b8ff;
+  --gold: #d4a843;
+  --ink: #0a1733;
+  --ink-soft: #4b5a7a;
+  --ink-mute: #8a96b0;
+  --line: #e1e9f5;
+  --line-soft: #eef3fb;
+  --up: #e54d5e;
+  --down: #18a058;
+  --shadow-card: 0 4px 20px -8px rgba(11, 95, 255, 0.12), 0 2px 6px -2px rgba(11, 95, 255, 0.06);
+  --shadow-hover: 0 12px 32px -8px rgba(11, 95, 255, 0.22), 0 4px 12px -2px rgba(11, 95, 255, 0.10);
+
   display: flex;
-  max-width: 1400px;
-  margin: 60px auto 0;
   height: calc(100vh - 60px);
   overflow: hidden;
+  font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--ink);
+  background: var(--bg-page);
+  background-image:
+    radial-gradient(circle at 12% 8%, rgba(11, 95, 255, 0.08) 0%, transparent 35%),
+    radial-gradient(circle at 88% 92%, rgba(0, 184, 255, 0.06) 0%, transparent 40%),
+    linear-gradient(180deg, #eef3fb 0%, #e6eef9 100%);
 }
+
+.mono-lg { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; }
+.mono-xl { font-family: 'JetBrains Mono', monospace; font-size: 24px; font-weight: 700; }
+
+/* ============ 滚动条 ============ */
+.trend-layout ::-webkit-scrollbar { width: 6px; height: 6px; }
+.trend-layout ::-webkit-scrollbar-track { background: transparent; }
+.trend-layout ::-webkit-scrollbar-thumb { background: #c5d3e8; border-radius: 3px; }
+.trend-layout ::-webkit-scrollbar-thumb:hover { background: #9fb5d6; }
+
+/* ============ 左侧栏 ============ */
 .sidebar {
-  width: 280px;
-  min-width: 280px;
-  border-right: 1px solid #e4e7ed;
+  width: 288px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+}
+.sidebar-top {
   padding: 16px;
-  height: 100%;
+  border-bottom: 1px solid var(--line);
+}
+.search-wrap { position: relative; }
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-mute);
+  pointer-events: none;
+}
+.search-input {
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 14px 10px 38px;
+  width: 100%;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--ink);
+  box-sizing: border-box;
+}
+.search-input::placeholder { color: var(--ink-mute); }
+.search-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(11, 95, 255, 0.1);
+}
+.list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+.list-title { font-size: 12px; font-weight: 600; color: var(--ink-soft); }
+.count-pill {
+  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(11, 95, 255, 0.08);
+  color: var(--primary);
+}
+
+.stock-list {
+  flex: 1;
   overflow-y: auto;
-  background: #fff;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
-.search-box { display: flex; gap: 6px; margin-bottom: 12px; }
-.search-box input {
-  flex: 1; padding: 8px 12px; border: 1px solid #dcdfe6;
-  border-radius: 4px; font-size: 0.9rem;
-}
-.search-box button {
-  padding: 8px 14px; background: #409eff; color: #fff;
-  border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;
-}
-.batch-btn {
-  width: 100%; padding: 10px; margin-bottom: 12px;
-  background: #67c23a; color: #fff; border: none;
-  border-radius: 4px; cursor: pointer; font-size: 0.85rem;
-}
-.batch-btn:disabled { background: #a0cfff; cursor: not-allowed; }
-.stock-list { display: flex; flex-direction: column; gap: 4px; }
+.list-hint { text-align: center; color: var(--ink-mute); padding: 24px 0; font-size: 13px; }
+
 .stock-item {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 12px; border-radius: 6px; cursor: pointer;
-  transition: background 0.2s;
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
 }
-.stock-item:hover { background: #f5f7fa; }
-.stock-item.active { background: #ecf5ff; }
-.stock-info { display: flex; flex-direction: column; }
-.stock-symbol { font-size: 0.9rem; font-weight: 600; color: #303133; }
-.stock-name { font-size: 0.8rem; color: #909399; }
-.stock-score { display: flex; align-items: center; gap: 6px; }
-.score-label { font-size: 0.75rem; font-weight: 700; }
-.score-value { font-size: 1rem; font-weight: 700; }
-.empty-hint { text-align: center; color: #909399; padding: 20px; font-size: 0.85rem; }
+.stock-item::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--primary), var(--accent));
+  transform: scaleY(0);
+  transition: transform 0.3s ease;
+}
+.stock-item:hover {
+  border-color: rgba(11, 95, 255, 0.3);
+  transform: translateX(2px);
+  box-shadow: 0 4px 12px -4px rgba(11, 95, 255, 0.15);
+}
+.stock-item.active {
+  border-color: rgba(11, 95, 255, 0.4);
+  background: linear-gradient(135deg, #f5f9ff, #eef3ff);
+  box-shadow: 0 6px 20px -6px rgba(11, 95, 255, 0.25);
+}
+.stock-item.active::before { transform: scaleY(1); }
+.stock-item { display: flex; align-items: center; justify-content: space-between; }
+.stock-meta { display: flex; flex-direction: column; min-width: 0; }
+.stock-name { font-weight: 600; font-size: 14px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stock-code { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-mute); margin-top: 2px; }
+.stock-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.stock-score { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; color: var(--primary); }
 
-.main-area { flex: 1; height: 100%; padding: 20px; overflow-y: auto; background: #f5f7fa; }
-.overview-card {
-  display: flex; align-items: center; gap: 24px;
-  background: #fff; border: 1px solid #e4e7ed;
-  border-radius: 12px; padding: 20px; margin-bottom: 16px;
+/* 评级徽章 */
+.grade-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 800;
+  font-size: 13px;
+  color: white;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
 }
-.score-ring { position: relative; flex-shrink: 0; }
-.score-ring-fill { transition: stroke-dashoffset 1.5s cubic-bezier(0.4,0,0.2,1); }
-.score-ring-center {
-  position: absolute; top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
-}
-.score-ring-value { display: block; font-size: 1.8rem; font-weight: 700; }
-.score-ring-label { display: block; font-size: 1rem; color: #909399; }
-.overview-info { flex: 1; }
-.overview-info h2 { margin: 0 0 8px; font-size: 1.2rem; color: #303133; }
-.expected-multiple { font-size: 0.95rem; color: #409eff; margin: 0 0 6px; }
-.description { font-size: 0.9rem; color: #606266; margin: 0; line-height: 1.5; }
+.grade-S { background: linear-gradient(135deg, #d4a843, #b8862e); box-shadow: 0 2px 8px -1px rgba(212, 168, 67, 0.5); }
+.grade-A { background: linear-gradient(135deg, #0b5fff, #00b8ff); box-shadow: 0 2px 8px -1px rgba(11, 95, 255, 0.4); }
+.grade-B { background: linear-gradient(135deg, #5b8def, #7aa3f5); }
+.grade-C { background: linear-gradient(135deg, #8a96b0, #6b7891); }
+.grade-D { background: linear-gradient(135deg, #6b7891, #4b5a7a); }
 
-.dim-bars {
-  background: #fff; border: 1px solid #e4e7ed;
-  border-radius: 8px; padding: 16px; margin-bottom: 16px;
+.sidebar-bottom {
+  padding: 16px;
+  border-top: 1px solid var(--line);
 }
-.dim-bar-row {
-  display: flex; align-items: center; gap: 12px;
-  padding: 6px 0;
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-deep) 100%);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 14px -2px rgba(11, 95, 255, 0.4);
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: inherit;
+  font-size: 14px;
 }
-.dim-bar-name { font-size: 0.85rem; color: #606266; min-width: 130px; }
-.dim-bar-track { flex: 1; height: 8px; background: #f0f2f5; border-radius: 4px; overflow: hidden; }
-.dim-bar-progress { height: 100%; border-radius: 4px; transition: width 0.8s ease; }
-.dim-bar-score { font-size: 1rem; font-weight: 700; min-width: 30px; text-align: right; }
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.6s ease;
+}
+.btn-primary:hover::before { left: 100%; }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px -2px rgba(11, 95, 255, 0.5); }
+.btn-primary:active { transform: translateY(0); }
+.btn-primary:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+.btn-hint { font-size: 12px; text-align: center; margin-top: 8px; color: var(--ink-mute); }
 
-.empty-state {
+/* ============ 主内容区 ============ */
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.state-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  gap: 16px;
+  color: var(--ink-mute);
+  font-size: 14px;
+}
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--line);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.veto-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 20px 24px;
+  background: rgba(229, 77, 94, 0.06);
+  border: 1px solid rgba(229, 77, 94, 0.25);
+  border-radius: 12px;
+  color: var(--up);
+  max-width: 480px;
+}
+.veto-title { font-weight: 700; font-size: 15px; }
+.veto-reason { font-size: 13px; color: var(--ink-soft); margin-top: 4px; }
+
+/* 页头 */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ink-mute);
+}
+.title-row { display: flex; align-items: baseline; gap: 12px; margin-top: 4px; flex-wrap: wrap; }
+.main-title { font-size: 24px; font-weight: 700; color: var(--ink); margin: 0; }
+.title-code { font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--ink-mute); }
+.trend-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: linear-gradient(135deg, rgba(212, 168, 67, 0.12), rgba(212, 168, 67, 0.05));
+  border: 1px solid rgba(212, 168, 67, 0.25);
+  color: #a67c1f;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.header-actions { display: flex; align-items: center; gap: 8px; }
+.ghost-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+.ghost-btn:hover { border-color: rgba(11, 95, 255, 0.3); color: var(--primary); }
+
+/* ============ 通用面板 ============ */
+.panel {
+  background: var(--bg-card);
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 0.3s ease;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.panel:hover { box-shadow: var(--shadow-hover); }
+
+.panel-header {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--line-soft);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s ease;
+}
+.panel-header:hover { background: var(--bg-soft); }
+.panel-title { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; color: var(--ink); }
+.panel-sub { font-size: 12px; font-weight: 400; color: var(--ink-mute); }
+.icon-box {
+  width: 32px; height: 32px;
+  border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
-  height: 400px; color: #909399; font-size: 1rem;
+  color: white;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.icon-tech { background: linear-gradient(135deg, #0b5fff, #00b8ff); }
+.icon-track { background: linear-gradient(135deg, #00b8ff, #0b5fff); }
+.icon-news { background: linear-gradient(135deg, #d4a843, #b8862e); }
+.icon-fund { background: linear-gradient(135deg, #0a2e6f, #0b5fff); }
+
+.panel-score { display: flex; align-items: center; gap: 12px; }
+.panel-score-val { font-family: 'JetBrains Mono', monospace; font-size: 24px; font-weight: 700; color: var(--primary); }
+.panel-score-max { font-size: 12px; font-family: 'JetBrains Mono', monospace; color: var(--ink-mute); }
+
+.panel-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.panel.expanded .panel-body { max-height: 1600px; }
+.panel.expanded .chevron { transform: rotate(180deg); }
+.chevron { transition: transform 0.3s ease; color: var(--ink-mute); }
+.panel-inner { padding: 24px; }
+
+/* ============ 评分总览 ============ */
+.score-overview .panel-body { max-height: 1600px; overflow: visible; }
+.overview-grid {
+  display: grid;
+  grid-template-columns: 4fr 8fr;
+  gap: 24px;
+  padding: 24px;
+}
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(11, 95, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(11, 95, 255, 0.04) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+.overview-left {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-right: 1px solid var(--line-soft);
+  padding-right: 24px;
+}
+.label-sm { font-size: 12px; font-weight: 600; color: var(--ink-mute); margin-bottom: 4px; }
+.score-row { display: flex; align-items: baseline; gap: 8px; }
+.total-score {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 800;
+  font-size: 64px;
+  line-height: 1;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.score-max { font-size: 14px; font-family: 'JetBrains Mono', monospace; color: var(--ink-mute); }
+.grade-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.rating-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  background: linear-gradient(135deg, rgba(212, 168, 67, 0.15), rgba(212, 168, 67, 0.05));
+  color: #a67c1f;
+  border: 1px solid rgba(212, 168, 67, 0.3);
+}
+.status-list { margin-top: 16px; font-size: 12px; line-height: 1.6; color: var(--ink-soft); }
+.status-item { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.dot-up { background: var(--up); }
+.dot-gold { background: var(--gold); }
+
+.overview-right { min-width: 0; }
+.dim-cards-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.dim-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+.dim-card:hover {
+  border-color: rgba(11, 95, 255, 0.25);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px -6px rgba(11, 95, 255, 0.18);
+}
+.dim-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  color: white;
+}
+.dim-bar-wrap { flex: 1; min-width: 0; }
+.dim-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; gap: 8px; }
+.dim-head-text { min-width: 0; }
+.dim-name { font-size: 14px; font-weight: 700; color: var(--ink); }
+.dim-desc { font-size: 12px; color: var(--ink-mute); }
+.dim-score-wrap { display: flex; align-items: baseline; gap: 2px; flex-shrink: 0; }
+.dim-score { font-family: 'Orbitron', sans-serif; font-size: 26px; font-weight: 800; line-height: 1; }
+.dim-score-max { font-size: 12px; font-family: 'JetBrains Mono', monospace; color: var(--ink-mute); }
+
+/* ============ 评分进度条（带 shimmer） ============ */
+.score-bar {
+  height: 6px;
+  background: var(--line-soft);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+.score-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  position: relative;
+  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.score-bar-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  animation: shimmer 2s infinite;
+}
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
-/* 技术面展开 */
-.tech-indicators {
-  display: grid; grid-template-columns: repeat(4, 1fr);
-  gap: 12px; margin-top: 16px;
+/* ============ 标签 ============ */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
 }
-.tech-ind-card {
-  display: flex; flex-direction: column; gap: 4px;
-  padding: 12px; background: #f5f7fa; border-radius: 8px;
-}
-.tech-label { font-size: 0.8rem; color: #909399; }
-.tech-value { font-size: 1.1rem; font-weight: 600; color: #303133; }
-@media (max-width: 768px) { .tech-indicators { grid-template-columns: repeat(2, 1fr); } }
+.tag-up { background: rgba(229, 77, 94, 0.1); color: var(--up); }
+.tag-down { background: rgba(24, 160, 88, 0.1); color: var(--down); }
+.tag-neutral { background: rgba(11, 95, 255, 0.08); color: var(--primary); }
 
-/* 赛道景气展开 */
-.sector-stat { font-size: 1rem; margin-bottom: 8px; }
-.sector-name { color: #303133; font-weight: 600; margin-right: 12px; }
-.sector-count { color: #606266; }
-.sector-count strong { color: #409eff; font-size: 1.2rem; }
-.sector-desc { font-size: 0.85rem; color: #909399; }
+/* ============ 数据点 ============ */
+.data-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+.data-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+.data-point {
+  background: var(--bg-soft);
+  border-radius: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-soft);
+  transition: all 0.2s ease;
+}
+.data-point:hover { border-color: rgba(11, 95, 255, 0.2); background: #f0f6ff; }
+.dp-label { font-size: 12px; color: var(--ink-mute); }
+.dp-value-row { margin-top: 4px; display: flex; align-items: center; gap: 6px; }
+.dp-unit { font-size: 12px; color: var(--ink-soft); }
+.dp-sub { font-size: 12px; color: var(--ink-mute); margin-top: 4px; }
+.trend-indicator { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; margin-top: 4px; }
+.trend-indicator.up { color: var(--up); }
 
-/* 消息面展开 */
-.news-info { margin-bottom: 12px; }
-.news-stat { font-size: 0.9rem; color: #606266; margin-bottom: 4px; }
-.news-stat strong { color: #303133; }
-.news-list { margin-top: 8px; }
-.news-item { padding: 10px 0; border-bottom: 1px solid #f5f7fa; }
-.news-item:last-child { border-bottom: none; }
-.news-title { font-size: 0.9rem; color: #303133; margin: 0 0 4px; }
-.news-time { font-size: 0.8rem; color: #909399; }
-.news-empty { color: #909399; font-size: 0.85rem; padding: 16px 0; }
+/* ============ 图表容器 ============ */
+.charts-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.chart-box {
+  background: linear-gradient(180deg, #fbfdff, #f5f9ff);
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  padding: 12px;
+  position: relative;
+}
+.chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+.chart-head-left { display: flex; align-items: center; gap: 8px; }
+.chart-dot { width: 8px; height: 8px; border-radius: 50%; }
+.chart-dot-blue { background: var(--primary); }
+.chart-dot-cyan { background: var(--accent); }
+.chart-title-text { font-size: 14px; font-weight: 600; color: var(--ink); }
+.chart-280 { width: 100%; height: 280px; }
+.chart-200 { width: 100%; height: 200px; }
+.chart-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-mute);
+  font-size: 13px;
+}
 
-/* 基本面子维度展开 */
-.sub-dims-grid {
-  display: grid; grid-template-columns: repeat(2, 1fr);
-  gap: 16px; margin-top: 12px;
+/* 趋势判读 */
+.trend-analysis {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f5f9ff, #eaf2ff);
+  border: 1px solid rgba(11, 95, 255, 0.12);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
 }
-.sub-dim-card {
-  border: 1px solid #ebeef5; border-radius: 8px; padding: 12px;
+.ta-icon {
+  flex-shrink: 0;
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--primary);
+  color: white;
 }
-.sub-dim-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-.sub-dim-name { font-size: 0.95rem; font-weight: 600; color: #303133; }
-.sub-dim-weight { font-size: 0.75rem; color: #909399; }
-.sub-dim-score { font-size: 1.1rem; font-weight: 700; margin-left: auto; }
-.sub-dim-bar { height: 6px; background: #f0f2f5; border-radius: 3px; overflow: hidden; margin-bottom: 10px; }
-.sub-dim-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
-.sub-ind-row {
-  display: flex; align-items: center; gap: 8px;
-  padding: 4px 0;
+.ta-title { font-weight: 600; font-size: 14px; color: var(--primary-deep); }
+.ta-text { font-size: 12px; margin-top: 4px; line-height: 1.6; color: var(--ink-soft); }
+
+/* 软盒（赛道右栏 / 政策） */
+.soft-box {
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--bg-soft);
+  border: 1px solid var(--line-soft);
 }
-.sub-ind-name { font-size: 0.8rem; color: #606266; min-width: 110px; }
-.sub-ind-value { font-size: 0.8rem; color: #303133; min-width: 60px; }
-.sub-ind-bar { flex: 1; height: 4px; background: #f0f2f5; border-radius: 2px; overflow: hidden; }
-.sub-ind-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
-.sub-ind-score { font-size: 0.8rem; font-weight: 600; min-width: 22px; text-align: right; }
-@media (max-width: 768px) { .sub-dims-grid { grid-template-columns: 1fr; } }
+.soft-box-title { font-size: 12px; font-weight: 600; color: var(--ink-soft); margin-bottom: 12px; }
+.policy-block { display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
+.policy-item { display: flex; align-items: flex-start; gap: 8px; }
+.policy-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 7px; flex-shrink: 0; }
+.policy-dot-blue { background: var(--up); }
+.policy-dot-gold { background: var(--gold); }
+.policy-item > div { display: flex; flex-direction: column; }
+.policy-name { font-weight: 600; color: var(--ink); }
+.policy-desc { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+.policy-empty { color: var(--ink-mute); font-size: 13px; }
+
+/* ============ 消息面 ============ */
+.news-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.news-head-title { font-size: 14px; font-weight: 600; color: var(--ink); }
+.catalyst-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-mute); }
+.catalyst-bars { display: flex; gap: 4px; }
+.catalyst-bar { width: 6px; height: 12px; border-radius: 2px; background: var(--line); }
+.catalyst-bar.filled { background: var(--up); }
+.catalyst-text { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--up); }
+
+.news-meta-row { display: flex; gap: 16px; margin-bottom: 12px; flex-wrap: wrap; }
+.news-meta-item { font-size: 13px; color: var(--ink-soft); }
+.news-meta-item strong { color: var(--ink); font-weight: 700; }
+
+.news-list { display: flex; flex-direction: column; }
+.news-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-left: 3px solid transparent;
+  background: var(--bg-soft);
+  border-radius: 0 10px 10px 0;
+  transition: all 0.2s ease;
+  margin-bottom: 10px;
+}
+.news-item:hover {
+  border-left-color: var(--primary);
+  background: #eaf2ff;
+  transform: translateX(2px);
+}
+.news-item:last-child { margin-bottom: 0; }
+.news-date {
+  flex-shrink: 0;
+  width: 40px;
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--ink-mute);
+}
+.news-body { flex: 1; min-width: 0; }
+.news-tag-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.news-source { font-size: 12px; color: var(--ink-mute); }
+.news-title { font-size: 14px; font-weight: 600; color: var(--ink); }
+.news-summary { font-size: 12px; margin-top: 4px; color: var(--ink-soft); line-height: 1.5; }
+.news-empty { color: var(--ink-mute); font-size: 14px; padding: 24px 0; text-align: center; }
+
+/* ============ 基本面 ============ */
+.factor-grid { display: grid; grid-template-columns: repeat(2, 1fr); column-gap: 32px; row-gap: 0; }
+.factor-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--line-soft);
+}
+.factor-row:last-child { border-bottom: none; }
+.factor-stripe { width: 4px; height: 32px; border-radius: 2px; flex-shrink: 0; }
+.factor-content { flex: 1; min-width: 0; }
+.factor-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.factor-name { font-size: 14px; font-weight: 600; color: var(--ink); }
+.factor-score { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; }
+
+/* ============ Toast ============ */
+.toast {
+  position: fixed;
+  top: 80px;
+  right: 24px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+  color: white;
+  padding: 12px 20px;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px -4px rgba(11, 95, 255, 0.4);
+  z-index: 1000;
+  transform: translateX(400px);
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.toast.show { transform: translateX(0); }
+
+/* ============ 动画 ============ */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fadeInUp 0.5s ease backwards; }
+
+/* ============ 响应式 ============ */
+@media (max-width: 1100px) {
+  .overview-grid { grid-template-columns: 1fr; }
+  .overview-left { border-right: none; border-bottom: 1px solid var(--line-soft); padding-right: 0; padding-bottom: 20px; }
+  .data-grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .charts-grid-2 { grid-template-columns: 1fr; }
+  .factor-grid { grid-template-columns: 1fr; }
+}
 @media (max-width: 768px) {
-  .trend-score-view { flex-direction: column; height: auto; min-height: calc(100vh - 60px); }
-  .sidebar { width: 100%; min-width: 100%; height: auto; max-height: 300px; border-right: none; border-bottom: 1px solid #e4e7ed; }
-  .main-area { height: auto; }
+  .sidebar { width: 220px; }
+  .data-grid-3 { grid-template-columns: 1fr; }
+  .dim-cards-grid { grid-template-columns: 1fr; }
+  .total-score { font-size: 48px; }
 }
 </style>
