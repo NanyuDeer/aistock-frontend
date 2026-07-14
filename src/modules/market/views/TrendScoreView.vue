@@ -280,17 +280,18 @@ onMounted(() => {
 .trend-score-view {
   display: flex;
   max-width: 1400px;
-  margin: 0 auto;
-  min-height: calc(100vh - 60px);
+  margin: 60px auto 0;
+  height: calc(100vh - 60px);
+  overflow: hidden;
 }
 .sidebar {
   width: 280px;
+  min-width: 280px;
   border-right: 1px solid #e4e7ed;
   padding: 16px;
-  position: sticky;
-  top: 60px;
-  height: calc(100vh - 60px);
+  height: 100%;
   overflow-y: auto;
+  background: #fff;
 }
 .search-box { display: flex; gap: 6px; margin-bottom: 12px; }
 .search-box input {
@@ -323,7 +324,7 @@ onMounted(() => {
 .score-value { font-size: 1rem; font-weight: 700; }
 .empty-hint { text-align: center; color: #909399; padding: 20px; font-size: 0.85rem; }
 
-.main-area { flex: 1; padding: 20px; overflow-y: auto; }
+.main-area { flex: 1; height: 100%; padding: 20px; overflow-y: auto; background: #f5f7fa; }
 .overview-card {
   display: flex; align-items: center; gap: 24px;
   background: #fff; border: 1px solid #e4e7ed;
@@ -416,4 +417,9 @@ onMounted(() => {
 .sub-ind-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
 .sub-ind-score { font-size: 0.8rem; font-weight: 600; min-width: 22px; text-align: right; }
 @media (max-width: 768px) { .sub-dims-grid { grid-template-columns: 1fr; } }
+@media (max-width: 768px) {
+  .trend-score-view { flex-direction: column; height: auto; min-height: calc(100vh - 60px); }
+  .sidebar { width: 100%; min-width: 100%; height: auto; max-height: 300px; border-right: none; border-bottom: 1px solid #e4e7ed; }
+  .main-area { height: auto; }
+}
 </style>
