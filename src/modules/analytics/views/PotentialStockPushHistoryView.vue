@@ -259,7 +259,8 @@ export default {
     const summary = computed(() => buildSummary(records.value))
 
     const historyDateRange = computed(() => {
-      const dates = allRecords.value
+      if (appliedFilters.date) return appliedFilters.date
+      const dates = records.value
         .map(item => formatDate(item.push_date))
         .filter(date => date !== '--')
         .sort()
