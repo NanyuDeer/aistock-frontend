@@ -2,6 +2,19 @@
 
 > 所有修改记录按时间倒序排列。每条记录标注分支、时间区间、开发者。
 
+## [main] 2026-07-15 — 趋势评分页完全重写 + 自选股双向同步合并
+**开发者**: Aria
+
+### 合并
+- 合并 PR #35《网页端自选股与 App 双向同步》：GET /api/users/me 完整列表覆盖、窗口聚焦/路由切换自动同步、请求复用防重复
+
+### 重构
+- `src/modules/market/views/TrendScoreView.vue`：基于设计模板完全重写（419 行 → 1633 行），左侧栏 + 评分总览 + 4 个可展开面板，ECharts 5 tree-shaking，全 scoped CSS
+- `index.html`：新增 Google Fonts（Noto Sans SC / JetBrains Mono / Orbitron）
+- `src/modules/market/AGENTS.md`：补充 TrendScoreView 文件结构与 trendApi 接口说明
+
+---
+
 ## [main] 2026-07-14 — 趋势评分页 4 项 UI 修复
 **开发者**: NanyuDeer
 
