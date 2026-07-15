@@ -44,6 +44,10 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useStore } from 'vuex';
 
+// 模块级缓存：组件销毁后仍存活
+const MKT_CACHE_TTL = 60 * 1000;
+let mktCache = { data: null, time: 0 };
+
 export default {
   name: 'MarketOverview',
   setup() {
@@ -87,6 +91,8 @@ export default {
             ...marketData.value,
             ...data
           };
+          mktCache.data = marketData.value;
+          mktCache.time = Date.now();
         } else if (!hadData) {
           marketData.value = {};
         } else {
@@ -163,7 +169,13 @@ export default {
     };
 
     onMounted(() => {
-      fetchMarketData({ showLoading: true });
+      // 有缓存且未过期，直接恢复，不重新请求
+      if (mktCache.data && Date.now() - mktCache.time < MKT_CACHE_TTL) {
+        marketData.value = mktCache.data;
+        loading.value = false;
+      } else {
+        fetchMarketData({ showLoading: true });
+      }
 
       // 每 60 秒静默刷新一次
       timer = setInterval(() => {

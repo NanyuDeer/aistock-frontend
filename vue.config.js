@@ -114,14 +114,9 @@ module.exports = {
     },
     proxy: {
       '/api': {
-        target: process.env.VUE_APP_API_TARGET || 'http://localhost:3000',
+        target: process.env.VUE_APP_API_TARGET || 'https://gupiao-api.yaozhineng.com',
         changeOrigin: true,
-        onProxyReq(proxyReq, req, res) {
-          console.log('代理请求:', req.method, req.url);
-        },
-        onProxyRes(proxyRes, req, res) {
-          console.log('代理响应:', proxyRes.statusCode, req.url);
-        }
+        secure: false,
       },
       '/prediction-api': {
         target: 'https://yingfeng64-kronos-api.hf.space',

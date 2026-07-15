@@ -692,10 +692,33 @@ export default createStore({
         const response = await stockApi.getNewsFullText(newsId);
         if (response.code === 200 && response.data) {
           const item = response.data;
+          // 后端 API 有时返回空的标题/摘要，从正文 HTML 中提取回退
+          let title = item.标题 || '';
+          let summary = item.摘要 || '';
+          const content = item.正文 || item.摘要 || '';
+          if (!title && content) {
+            // 优先从 h1/h2/h3 提取标题，再从 strong/p 提取
+            const titleMatch = content.match(/<h[1-3][^>]*>(.*?)<\/h[1-3]>/)
+              || content.match(/<strong>(.*?)<\/strong>/)
+              || content.match(/<p>(.*?)<\/p>/);
+            if (titleMatch) {
+              title = titleMatch[1].replace(/<[^>]+>/g, '').trim();
+              // 排除"财联社X月X日讯"等编辑信息或过短标题
+              if (/^财联社\d+月\d+日讯/.test(title) || title.length < 5) {
+                const plainText = content.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+                title = plainText.substring(0, 30);
+              }
+            }
+          }
+          if (!summary && content) {
+            // 从正文中提取前 120 字纯文本作为摘要
+            const plainText = content.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+            summary = plainText.substring(0, 120);
+          }
           return {
-            title: item.标题 || '',
-            summary: item.摘要 || '',
-            content: item.正文 || item.摘要 || '',
+            title: title || '新闻详情',
+            summary: summary,
+            content: content,
             publish_time: item.时间 || '',
             url: item.链接 || '',
             tag: { positive: [], negative: [] }

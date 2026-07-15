@@ -71,6 +71,7 @@
               :modal-append-to-body="true"
               :close-on-click-modal="true"
               :destroy-on-close="true"
+              align-center
               style="border-radius: 18px; box-shadow: 0 8px 32px rgba(0,0,0,0.18);"
             >
               <div v-if="loadingNewsDetail" class="loading-container">
@@ -102,8 +103,15 @@
                   <h4>正文内容</h4>
                   <div class="news-content" v-html="newsDetail.content"></div>
                 </div>
-                
-                <!-- 底部信息 -->
+              </div>
+              
+              <div v-else class="error-message">
+                <p>加载新闻详情失败，请稍后重试</p>
+                <el-button @click="retryLoadNewsDetail" type="primary" size="small">重试</el-button>
+              </div>
+
+              <!-- 底部信息：使用 el-dialog footer 插槽，与 header/body 同级，固定在卡片底部 -->
+              <template #footer v-if="newsDetail && !loadingNewsDetail">
                 <div class="news-detail-footer">
                   <span class="news-detail-time">发布时间：{{ newsDetail.publish_time }}</span>
                   <el-divider direction="vertical" />
@@ -111,12 +119,7 @@
                     查看原文 <span class="external-link-icon">↗</span>
                   </a>
                 </div>
-              </div>
-              
-              <div v-else class="error-message">
-                <p>加载新闻详情失败，请稍后重试</p>
-                <el-button @click="retryLoadNewsDetail" type="primary" size="small">重试</el-button>
-              </div>
+              </template>
             </el-dialog>
           </div>
 
@@ -312,6 +315,20 @@ import AiGraph from '@/modules/home/components/AiGraph.vue';
 import { trendHotspotApi, windLeaderApi } from '@/shared/api/api';
 import 'element-plus/es/components/message/style/css';
 
+// ============ 模块级缓存 ============
+// 组件销毁后仍存活，避免每次路由回到首页都重新请求
+const HOME_CACHE_TTL = 60 * 1000; // 1 分钟缓存（与头条新闻刷新周期一致）
+let homeCache = {
+  domesticNews: null,
+  foreignNews: null,
+  headlineNews: null,
+  trendLeaderQuoteMap: null,
+  forecastRanking: null,
+  hotSectors: null,
+  hotSectorUpdateTime: null,
+  timestamp: 0
+};
+
 export default {
   name: 'HomeView',
   components: {
@@ -378,6 +395,12 @@ export default {
     const hotSectorQuoteMap = ref({}); // 风口龙头股票实时行情
 
     const fetchHotSectors = async (forceRefresh = false) => {
+      // 有缓存且非强制刷新时，直接恢复
+      if (!forceRefresh && homeCache.hotSectors && Date.now() - homeCache.timestamp < HOME_CACHE_TTL) {
+        hotSectors.value = homeCache.hotSectors;
+        hotSectorUpdateTime.value = homeCache.hotSectorUpdateTime || '';
+        return;
+      }
       loadingHotSectors.value = true;
       hotSectorError.value = '';
       try {
@@ -393,6 +416,9 @@ export default {
         if (res?.code === 200 && res?.data) {
           hotSectors.value = res.data.hot_sectors || [];
           hotSectorUpdateTime.value = res.data.update_time || '';
+          homeCache.hotSectors = hotSectors.value;
+          homeCache.hotSectorUpdateTime = hotSectorUpdateTime.value;
+          homeCache.timestamp = Date.now();
         } else if (res?.code === 404) {
           hotSectorError.value = '暂无风口龙头数据，请稍后再试';
           hotSectors.value = [];
@@ -586,6 +612,8 @@ export default {
         const news = await store.dispatch('fetchCnNews');
         if (Array.isArray(news) && news.length > 0) {
           domesticNews.value = news;
+          homeCache.domesticNews = news;
+          homeCache.timestamp = Date.now();
         } else if (domesticNews.value.length === 0) {
           domesticNews.value = Array.isArray(news) ? news : [];
         } else {
@@ -602,6 +630,8 @@ export default {
         const news = await store.dispatch('fetchForeignNews');
         if (Array.isArray(news) && news.length > 0) {
           foreignNews.value = news;
+          homeCache.foreignNews = news;
+          homeCache.timestamp = Date.now();
         } else if (foreignNews.value.length === 0) {
           foreignNews.value = Array.isArray(news) ? news : [];
         } else {
@@ -618,6 +648,8 @@ export default {
         const news = await store.dispatch('fetchHeadlineNews');
         if (news.length > 0) {
           headlineNews.value = news;
+          homeCache.headlineNews = news;
+          homeCache.timestamp = Date.now();
         }
       } catch (error) {
         console.error('获取头条新闻失败:', error);
@@ -655,18 +687,39 @@ export default {
     const loadingNewsDetail = ref(false);
     const currentNewsId = ref(null);
 
-    const showNewsDetail = async (newsId) => {
+    const showNewsDetail = async (news) => {
       try {
         newsDetailVisible.value = true;
         loadingNewsDetail.value = true;
-        newsDetail.value = null;
+        const newsId = typeof news === 'object' ? news.id : news;
+        // 先用列表中已有的标题/摘要作为初始显示，避免弹窗空白
+        // NewsSlider 中标题用 news.title，预览摘要用 news.content
+        const listTitle = typeof news === 'object' ? (news.title || '') : '';
+        const rawContent = typeof news === 'object' ? (news.content || news.summary || news.brief || '') : '';
+        // 过滤掉"暂无内容"等无效摘要
+        const listSummary = (rawContent && rawContent !== '暂无内容') ? rawContent : '';
+        newsDetail.value = listTitle ? {
+          title: listTitle,
+          summary: listSummary,
+          content: '',
+          publish_time: typeof news === 'object' ? (news.publish_time || news.time || '') : '',
+          url: typeof news === 'object' ? (news.url || news.link || '') : '',
+          tag: typeof news === 'object' && news.tag ? news.tag : { positive: [], negative: [] }
+        } : null;
         currentNewsId.value = newsId;
-
-        console.log(`[DEBUG] 开始获取新闻详情: ${newsId}`);
         const detail = await store.dispatch('fetchNewsDetail', newsId);
         if (detail) {
-          newsDetail.value = detail;
-          console.log(`[DEBUG] 成功获取新闻详情:`, detail);
+          // 始终优先使用列表中的标题/摘要（来自新闻列表API，准确可靠）
+          // API 详情只补充正文内容和发布时间，不使用 API 回退提取的标题/摘要
+          newsDetail.value = {
+            title: listTitle || detail.title || '新闻详情',
+            summary: listSummary || '',
+            content: detail.content || '',
+            publish_time: detail.publish_time || (typeof news === 'object' ? (news.publish_time || news.time || '') : ''),
+            url: detail.url || (typeof news === 'object' ? (news.url || news.link || '') : ''),
+            tag: typeof news === 'object' && news.tag ? news.tag : (detail.tag || { positive: [], negative: [] })
+          };
+          console.log(`[DEBUG] 成功获取新闻详情:`, newsDetail.value);
         } else {
           ElMessage.error('获取新闻详情失败');
         }
@@ -856,6 +909,8 @@ export default {
           ...trendLeaderQuoteMap.value,
           ...nextQuoteMap
         };
+        homeCache.trendLeaderQuoteMap = trendLeaderQuoteMap.value;
+        homeCache.timestamp = Date.now();
       }
 
       loadingTrendLeaderQuotes.value = !(hasNewQuotes || hadData);
@@ -910,6 +965,8 @@ export default {
 
         if (normalized.length > 0) {
           forecastRanking.value = normalized;
+          homeCache.forecastRanking = normalized;
+          homeCache.timestamp = Date.now();
         } else if (!hadData) {
           forecastRanking.value = [];
         } else {
@@ -1137,10 +1194,27 @@ export default {
       // 重置滚动位置到顶部
       window.scrollTo(0, 0);
       
-      // 新闻数据拉取
-      fetchDomesticNews();
-      fetchForeignNews();
-      fetchHeadlineNews();
+      const cacheValid = homeCache.timestamp && (Date.now() - homeCache.timestamp < HOME_CACHE_TTL);
+
+      if (cacheValid) {
+        // 从缓存恢复数据，不重新请求
+        if (homeCache.domesticNews) domesticNews.value = homeCache.domesticNews;
+        if (homeCache.foreignNews) foreignNews.value = homeCache.foreignNews;
+        if (homeCache.headlineNews) headlineNews.value = homeCache.headlineNews;
+        if (homeCache.trendLeaderQuoteMap) trendLeaderQuoteMap.value = homeCache.trendLeaderQuoteMap;
+        loadingTrendLeaderQuotes.value = false;
+        if (homeCache.forecastRanking) {
+          forecastRanking.value = homeCache.forecastRanking;
+          loadingForecastRanking.value = false;
+        }
+      } else {
+        // 新闻数据拉取
+        fetchDomesticNews();
+        fetchForeignNews();
+        fetchHeadlineNews();
+        fetchTrendLeaderQuotes({ showLoading: true });
+        fetchForecastRanking({ showLoading: true });
+      }
 
       // 自动刷新定时器
       // 头条新闻每 1 分钟刷新一次
@@ -1158,8 +1232,6 @@ export default {
         fetchForeignNews();
       }, 10 * 60 * 1000);
 
-      fetchTrendLeaderQuotes({ showLoading: true });
-      fetchForecastRanking({ showLoading: true });
       updateForecastLayout();
 
       window.addEventListener('resize', updateForecastLayout);
@@ -2017,6 +2089,13 @@ export default {
       :deep(.el-dialog__body) {
         padding: 0;
         background: #f7f9fb;
+        max-height: 70vh;
+        overflow-y: auto;
+      }
+      :deep(.el-dialog__footer) {
+        padding: 0;
+        border-top: 1px solid var(--border-color);
+        background: #f7f9fb;
         border-radius: 0 0 18px 18px;
       }
       .news-detail-content {
@@ -2029,7 +2108,7 @@ export default {
         .news-detail-title {
           font-size: 1.6rem;
           font-weight: 700;
-          color: var(--primary-color);
+          color: #409eff;
           margin-bottom: 18px;
           line-height: 1.35;
           letter-spacing: 0.5px;
@@ -2064,39 +2143,37 @@ export default {
         }
         .news-detail-summary {
           background: #e6f7ff;
-          border-left: 4px solid var(--primary-color);
+          border-left: 4px solid #409eff;
           padding: 15px 18px;
           margin-bottom: 20px;
           border-radius: 6px;
           h4 {
             margin: 0 0 8px 0;
-            color: var(--primary-color);
+            color: #409eff;
             font-size: 1.05rem;
           }
           p {
             margin: 0;
-            color: var(--text-secondary);
+            color: #606266;
             line-height: 1.6;
           }
         }
         .news-detail-content-body {
-          margin-bottom: 22px;
+          margin-bottom: 0;
           h4 {
             margin: 0 0 10px 0;
-            color: var(--text-primary);
+            color: #303133;
             font-size: 1rem;
           }
           .news-content {
-            color: var(--text-secondary);
+            color: #606266;
             line-height: 1.8;
             font-size: 1rem;
-            max-height: 38vh;
-            overflow-y: auto;
             padding: 8px 4px 8px 0;
             background: #f8f9fa;
             border-radius: 6px;
             scrollbar-width: thin;
-            scrollbar-color: var(--primary-color) #f8f9fa;
+            scrollbar-color: #409eff #f8f9fa;
 
             :deep(img) {
               max-width: 100%;
@@ -2108,34 +2185,33 @@ export default {
             width: 6px;
           }
           .news-content::-webkit-scrollbar-thumb {
-            background: var(--primary-color);
+            background: #409eff;
             border-radius: 6px;
           }
         }
-        .news-detail-footer {
+      }
+      .news-detail-footer {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px 24px;
+        gap: 12px;
+        .news-detail-time {
+          color: var(--text-tertiary);
+          font-size: 0.95rem;
+        }
+        .news-detail-link {
+          color: #409eff;
+          text-decoration: none;
           display: flex;
           align-items: center;
-          justify-content: center;
-          padding-top: 12px;
-          border-top: 1px solid var(--border-color);
-          gap: 12px;
-          .news-detail-time {
-            color: var(--text-tertiary);
-            font-size: 0.95rem;
+          gap: 4px;
+          .external-link-icon {
+            font-size: 0.9rem;
+            font-weight: bold;
           }
-          .news-detail-link {
-            color: var(--primary-color);
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            .external-link-icon {
-              font-size: 0.9rem;
-              font-weight: bold;
-            }
-            &:hover {
-              text-decoration: underline;
-            }
+          &:hover {
+            text-decoration: underline;
           }
         }
       }
@@ -2173,5 +2249,30 @@ export default {
       }
     }
   }
+}
+</style>
+
+<!-- 非 scoped 样式：el-dialog teleport 到 body 外，scoped CSS 不生效 -->
+<style lang="scss">
+.news-detail-dialog {
+  .el-dialog__body {
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+}
+/* 弹窗位置：用 flexbox 让 overlay 居中，顶部底部间距对称 */
+.el-overlay:has(.news-detail-dialog) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.el-overlay .el-overlay-dialog:has(.news-detail-dialog) {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.el-overlay .el-dialog.news-detail-dialog {
+  margin: 0 !important;
 }
 </style>

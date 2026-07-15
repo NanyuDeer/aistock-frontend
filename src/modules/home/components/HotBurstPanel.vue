@@ -74,6 +74,10 @@
 import { windLeaderApi } from '@/shared/api/api'
 import { useRouter } from 'vue-router'
 
+// 模块级缓存
+let hotBurstCache = { data: null, time: 0 }
+const HOT_CACHE_TTL = 60 * 1000
+
 export default {
   name: 'HotBurstPanel',
   props: {
@@ -108,10 +112,19 @@ export default {
       return pct >= 0 ? 'up' : 'down'
     },
     async fetchRecent() {
+      // 有缓存且未过期，直接恢复
+      if (hotBurstCache.data && Date.now() - hotBurstCache.time < HOT_CACHE_TTL) {
+        this.signals = hotBurstCache.data
+        return
+      }
       this.loading = true
       try {
         const res = await windLeaderApi.getLatestRecords(this.displayLimit)
         this.signals = res.data?.outbreaks || []
+        if (this.signals.length) {
+          hotBurstCache.data = this.signals
+          hotBurstCache.time = Date.now()
+        }
       } catch {
         this.signals = []
       } finally {

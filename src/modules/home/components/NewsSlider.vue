@@ -12,7 +12,7 @@
                'active': activeIndex === index, 
                'headline-slide': headlineStyle 
              }">
-          <a @click.prevent="$emit('showDetail', news.id)" 
+          <a @click.prevent="$emit('showDetail', news)"
              class="news-title"
              :class="{ 'headline-news-title': headlineStyle }">{{ news.title }}</a>
           
@@ -81,7 +81,12 @@ export default {
     
     // 监听输入的新闻数据变化
     watch(() => props.news, (newValue) => {
+      const wasEmpty = newsList.value.length === 0;
       newsList.value = newValue;
+      // 数据从空变为有值时，启动轮播（覆盖缓存恢复场景）
+      if (wasEmpty && newValue.length > 0 && !slideInterval) {
+        startAutoplay();
+      }
     }, { immediate: true });
     
     let slideInterval = null;

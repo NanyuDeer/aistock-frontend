@@ -1,7 +1,14 @@
 ﻿<template>
   <div class="trend-layout">
     <!-- ============ 左侧栏 ============ -->
-    <aside class="sidebar">
+    <button class="mobile-menu-btn" @click="sidebarOpen = !sidebarOpen">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="3" y1="6" x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </button>
+    <aside class="sidebar" :class="{ open: sidebarOpen }">
       <div class="sidebar-top">
         <div class="search-wrap">
           <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -11,7 +18,7 @@
           <input v-model="searchInput" type="text" class="search-input" placeholder="搜索股票代码 / 名称" />
         </div>
         <div class="list-header">
-          <span class="list-title">关注列表</span>
+          <span class="list-title">趋势股列表</span>
           <span class="count-pill">{{ filteredStockList.length }} 只</span>
         </div>
       </div>
@@ -28,7 +35,10 @@
           >
             <div class="stock-meta">
               <div class="stock-name">{{ item.name || '--' }}</div>
-              <div class="stock-code">{{ item.symbol }}</div>
+              <div class="stock-code-row">
+                <span class="stock-code">{{ item.symbol }}</span>
+                <span class="stock-sector-tag" v-if="item.industry">{{ item.industry }}</span>
+              </div>
             </div>
             <div class="stock-right">
               <span class="stock-score">{{ item.score != null ? item.score : '--' }}</span>
@@ -50,6 +60,7 @@
         <p class="btn-hint">基于最新数据重新评分</p>
       </div>
     </aside>
+    <div class="sidebar-overlay" v-if="sidebarOpen" @click="sidebarOpen = false"></div>
 
     <!-- ============ 主内容区 ============ -->
     <main class="main-content">
@@ -102,7 +113,7 @@
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
               导出报告
             </button>
-            <button class="ghost-btn" @click="showToast('已加入监控列表')">
+            <button class="ghost-btn" @click="showToast('加入监控功能开发中')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
               加入监控
             </button>
@@ -325,6 +336,8 @@
                       class="policy-item"
                       v-for="(item, pi) in trackPolicyItems"
                       :key="pi"
+                      @click="showPolicyDetail(item)"
+                      style="cursor: pointer;"
                     >
                       <span class="policy-dot" :class="item.color === 'gold' ? 'policy-dot-gold' : 'policy-dot-blue'"></span>
                       <div>
@@ -375,7 +388,7 @@
               </div>
 
               <div class="news-list" v-if="newsList.length">
-                <div class="news-item" v-for="(news, ni) in newsList" :key="ni">
+                <div class="news-item" v-for="(news, ni) in newsPagedList" :key="newsPage * NEWS_PAGE_SIZE + ni" @click="showNewsDetailDialog(news)" style="cursor: pointer;">
                   <div class="news-date">{{ formatNewsDate(news.publishTime) }}</div>
                   <div class="news-body">
                     <div class="news-tag-row">
@@ -385,6 +398,16 @@
                     <div class="news-title">{{ news.title }}</div>
                     <div class="news-summary" v-if="news.summary">{{ news.summary }}</div>
                   </div>
+                </div>
+                <!-- 分页控件 -->
+                <div class="news-pagination" v-if="newsTotalPages > 1">
+                  <button class="news-page-btn" :disabled="newsPage === 0" @click="newsPage--">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                  </button>
+                  <span class="news-page-info">{{ newsPage + 1 }} / {{ newsTotalPages }}</span>
+                  <button class="news-page-btn" :disabled="newsPage >= newsTotalPages - 1" @click="newsPage++">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                  </button>
                 </div>
               </div>
               <div v-else class="news-empty">暂无近期资讯</div>
@@ -458,11 +481,26 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
       <span>{{ toastText }}</span>
     </div>
+
+    <!-- 政策/新闻详情弹窗 -->
+    <el-dialog v-model="detailDialogVisible" :title="detailDialogTitle" width="600px" class="news-detail-dialog" :close-on-click-modal="true" :destroy-on-close="true" style="border-radius: 18px; box-shadow: 0 8px 32px rgba(0,0,0,0.18);">
+      <div class="detail-dialog-content">
+        <div v-if="detailDialogSubtitle" class="detail-dialog-subtitle">{{ detailDialogSubtitle }}</div>
+        <div class="detail-dialog-body">{{ detailDialogBody }}</div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
+<script>
+// 模块级缓存：组件销毁后仍存活，避免每次进入页面都重新加载
+let listCache = null; // { data, time }
+let detailCache = null; // { symbol, data, time }
+const CACHE_TTL = 5 * 60 * 1000; // 5 分钟缓存
+</script>
+
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { trendApi } from '@/shared/api/api';
 import * as echarts from 'echarts/core';
 import { CandlestickChart, LineChart, BarChart } from 'echarts/charts';
@@ -489,6 +527,7 @@ const FUND_STRIPE_COLORS = ['#0b5fff', '#00b8ff', '#4d8bff', '#d4a843'];
 // ============ 状态 ============
 const searchInput = ref('');
 const currentSymbol = ref('');
+const sidebarOpen = ref(false);
 const stockList = ref([]);
 const scoreData = ref(null);
 const loading = ref(false);
@@ -497,6 +536,15 @@ const batchLoading = ref(false);
 const vetoInfo = ref(null);
 // 技术面默认展开，其余折叠
 const panelOpen = reactive({ tech: true, track: false, news: false, fund: false });
+
+// 同步恢复缓存：在模板首次渲染前设置数据，避免空状态闪现
+if (listCache && Date.now() - listCache.time < CACHE_TTL) {
+  stockList.value = listCache.data;
+  if (detailCache && Date.now() - detailCache.time < CACHE_TTL) {
+    currentSymbol.value = detailCache.symbol;
+    scoreData.value = detailCache.data;
+  }
+}
 
 // 基本面子维度展开状态
 const fundSubOpen = reactive({});
@@ -636,6 +684,15 @@ const trackPolicyItems = computed(() => {
 
 // 消息面数据
 const newsList = computed(() => newsDim.value?.detail?.news || []);
+const NEWS_PAGE_SIZE = 4;
+const newsPage = ref(0);
+const newsTotalPages = computed(() => Math.max(1, Math.ceil(newsList.value.length / NEWS_PAGE_SIZE)));
+const newsPagedList = computed(() => {
+  const start = newsPage.value * NEWS_PAGE_SIZE;
+  return newsList.value.slice(start, start + NEWS_PAGE_SIZE);
+});
+// 资讯列表变化时重置页码
+watch(newsList, () => { newsPage.value = 0; });
 const newsStats = computed(() => ({
   researchCount: newsDim.value?.detail?.researchCount || 0,
   hardCatalyst: newsDim.value?.detail?.hardCatalyst || '',
@@ -714,6 +771,26 @@ function showToast(text) {
   if (toastTimer) clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { toastVisible.value = false; }, 2200);
 }
+
+// ============ 政策/新闻详情弹窗 ============
+const detailDialogVisible = ref(false);
+const detailDialogTitle = ref('');
+const detailDialogSubtitle = ref('');
+const detailDialogBody = ref('');
+
+const showPolicyDetail = (item) => {
+  detailDialogTitle.value = item.name;
+  detailDialogSubtitle.value = '';
+  detailDialogBody.value = item.desc;
+  detailDialogVisible.value = true;
+};
+
+const showNewsDetailDialog = (news) => {
+  detailDialogTitle.value = news.title;
+  detailDialogSubtitle.value = [news.source, news.publishTime].filter(Boolean).join(' · ');
+  detailDialogBody.value = news.summary || '暂无详细内容';
+  detailDialogVisible.value = true;
+};
 
 // ============ 面板展开/折叠 ============
 function togglePanel(id) {
@@ -879,11 +956,24 @@ function renderTrackChart() {
 // ============ 数据加载 ============
 
 async function loadTopStocks() {
+  // 有缓存且未过期，直接用缓存数据，不显示加载态
+  if (listCache && Date.now() - listCache.time < CACHE_TTL) {
+    stockList.value = listCache.data;
+    // 如果 setup 阶段已恢复详情，只需重新渲染图表
+    if (detailCache && Date.now() - detailCache.time < CACHE_TTL && currentSymbol.value) {
+      await nextTick();
+      setTimeout(() => { renderStockKline(); renderConceptKline(); }, 150);
+    } else if (stockList.value.length && !currentSymbol.value) {
+      await selectStock(stockList.value[0].symbol);
+    }
+    return;
+  }
   listLoading.value = true;
   try {
-    const res = await trendApi.getTopStocks(30);
+    const res = await trendApi.getTopStocks(50);
     if (res.code === 200 && Array.isArray(res.data) && res.data.length > 0) {
       stockList.value = res.data;
+      listCache = { data: res.data, time: Date.now() };
       if (stockList.value.length && !currentSymbol.value) {
         await selectStock(stockList.value[0].symbol);
       }
@@ -900,6 +990,8 @@ async function loadTopStocks() {
 
 async function selectStock(symbol) {
   currentSymbol.value = symbol;
+  // 窄屏抽屉模式下，选择股票后自动收起侧边栏
+  sidebarOpen.value = false;
   loading.value = true;
   scoreData.value = null;
   vetoInfo.value = null;
@@ -920,6 +1012,14 @@ async function selectStock(symbol) {
         };
       } else {
         scoreData.value = res.data;
+        detailCache = { symbol, data: res.data, time: Date.now() };
+        // 从评分详情中回填板块名到列表项，供股票卡片展示概念板块标签
+        const trackDetail = res.data.dimensions?.find(d => d.name === '行业赛道景气')?.detail;
+        const sectorName = trackDetail?.sectorName;
+        if (sectorName) {
+          const listItem = stockList.value.find(s => s.symbol === symbol);
+          if (listItem) listItem.industry = sectorName;
+        }
         await nextTick();
         // 技术面默认展开，渲染 K 线（延迟等待面板 CSS 过渡完成，避免 ECharts 获取到 0 高度 DOM）
         setTimeout(() => {
@@ -974,13 +1074,25 @@ function handleResize() {
   trackChart?.resize();
 }
 
+// ResizeObserver: 监听容器宽度变化（如面板展开/折叠、sidebar 抽屉切换），自动 resize echarts
+let resizeObserver = null;
+
 onMounted(() => {
   loadTopStocks();
   window.addEventListener('resize', handleResize);
+  // 监听 main-content 容器尺寸变化
+  resizeObserver = new ResizeObserver(() => {
+    stockChart?.resize();
+    conceptChart?.resize();
+    trackChart?.resize();
+  });
+  const mainEl = document.querySelector('.main-content');
+  if (mainEl) resizeObserver.observe(mainEl);
 });
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize);
+  if (resizeObserver) resizeObserver.disconnect();
   if (toastTimer) clearTimeout(toastTimer);
   disposeCharts();
 });
@@ -1039,6 +1151,9 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
 }
+/* 桌面端隐藏移动端菜单按钮与遮罩 */
+.mobile-menu-btn { display: none; }
+.sidebar-overlay { display: none; }
 .sidebar-top {
   padding: 16px;
   border-bottom: 1px solid var(--line);
@@ -1097,36 +1212,28 @@ onUnmounted(() => {
 .list-hint { text-align: center; color: var(--ink-mute); padding: 24px 0; font-size: 13px; }
 
 .stock-item {
-  background: var(--bg-card);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+  margin-bottom: 4px;
+  background: #fff;
 }
-.stock-item::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 3px;
-  background: linear-gradient(180deg, var(--primary), var(--accent));
-  transform: scaleY(0);
-  transition: transform 0.3s ease;
+.stock-item:hover { background: #f5f7fa; border-color: #e4e7ed; }
+.stock-item.active { background: #ecf5ff; border-color: #b3d8ff; }
+.stock-code-row { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+.stock-sector-tag {
+  font-size: 10px;
+  color: #909399;
+  background: #f0f2f5;
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
 }
-.stock-item:hover {
-  border-color: rgba(11, 95, 255, 0.3);
-  transform: translateX(2px);
-  box-shadow: 0 4px 12px -4px rgba(11, 95, 255, 0.15);
-}
-.stock-item.active {
-  border-color: rgba(11, 95, 255, 0.4);
-  background: linear-gradient(135deg, #f5f9ff, #eef3ff);
-  box-shadow: 0 6px 20px -6px rgba(11, 95, 255, 0.25);
-}
-.stock-item.active::before { transform: scaleY(1); }
-.stock-item { display: flex; align-items: center; justify-content: space-between; }
 .stock-meta { display: flex; flex-direction: column; min-width: 0; }
 .stock-name { font-weight: 600; font-size: 14px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stock-code { font-family: 'JetBrains Mono', 'Consolas', 'Noto Sans SC', sans-serif; font-size: 12px; color: var(--ink-mute); margin-top: 2px; }
@@ -1484,7 +1591,7 @@ onUnmounted(() => {
 .trend-indicator.up { color: var(--up); }
 
 /* ============ 图表容器 ============ */
-.charts-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.charts-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; min-width: 0; }
 .chart-box {
   background: linear-gradient(180deg, #fbfdff, #f5f9ff);
   border: 1px solid var(--line-soft);
@@ -1544,6 +1651,8 @@ onUnmounted(() => {
   border-radius: 12px;
   background: var(--bg-soft);
   border: 1px solid var(--line-soft);
+  min-width: 0;
+  overflow: hidden;
 }
 .soft-box-title { font-size: 12px; font-weight: 600; color: var(--ink-soft); margin-bottom: 12px; }
 .policy-block { display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
@@ -1551,9 +1660,19 @@ onUnmounted(() => {
 .policy-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 7px; flex-shrink: 0; }
 .policy-dot-blue { background: var(--up); }
 .policy-dot-gold { background: var(--gold); }
-.policy-item > div { display: flex; flex-direction: column; }
-.policy-name { font-weight: 600; color: var(--ink); }
-.policy-desc { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+.policy-item > div { display: flex; flex-direction: column; min-width: 0; }
+.policy-name { font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.policy-desc {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-top: 2px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+}
 .policy-empty { color: var(--ink-mute); font-size: 13px; }
 
 /* ============ 消息面 ============ */
@@ -1594,6 +1713,46 @@ onUnmounted(() => {
   transform: translateX(2px);
 }
 .news-item:last-child { margin-bottom: 0; }
+
+/* 分页控件 */
+.news-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+}
+.news-page-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-soft);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.news-page-btn:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: #eaf2ff;
+}
+.news-page-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.news-page-info {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  font-family: 'JetBrains Mono', 'Consolas', sans-serif;
+  min-width: 48px;
+  text-align: center;
+}
 .news-date {
   flex-shrink: 0;
   width: 40px;
@@ -1605,8 +1764,18 @@ onUnmounted(() => {
 .news-body { flex: 1; min-width: 0; }
 .news-tag-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .news-source { font-size: 12px; color: var(--ink-mute); }
-.news-title { font-size: 14px; font-weight: 600; color: var(--ink); }
-.news-summary { font-size: 12px; margin-top: 4px; color: var(--ink-soft); line-height: 1.5; }
+.news-title { font-size: 14px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.news-summary {
+  font-size: 12px;
+  margin-top: 4px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .news-empty { color: var(--ink-mute); font-size: 14px; padding: 24px 0; text-align: center; }
 
 /* ============ 基本面 ============ */
@@ -1684,11 +1853,51 @@ onUnmounted(() => {
   .data-grid-4 { grid-template-columns: repeat(2, 1fr); }
   .charts-grid-2 { grid-template-columns: 1fr; }
   .factor-grid { grid-template-columns: 1fr; }
+  .sidebar { width: 240px; }
 }
 @media (max-width: 768px) {
-  .sidebar { width: 220px; }
+  .sidebar {
+    position: fixed;
+    left: -300px;
+    top: 60px;
+    bottom: 0;
+    z-index: 50;
+    transition: left 0.3s ease;
+    width: 288px;
+  }
+  .sidebar.open { left: 0; }
+  .mobile-menu-btn {
+    display: flex;
+    position: fixed;
+    top: 68px;
+    left: 12px;
+    z-index: 51;
+    background: rgba(255,255,255,0.9);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px;
+    cursor: pointer;
+    color: var(--ink);
+    align-items: center;
+    justify-content: center;
+  }
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    top: 60px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.3);
+    z-index: 49;
+  }
   .data-grid-3 { grid-template-columns: 1fr; }
   .dim-cards-grid { grid-template-columns: 1fr; }
   .total-score { font-size: 48px; }
 }
+
+/* ============ 政策/新闻详情弹窗 ============ */
+.detail-dialog-content { padding: 0 4px; }
+.detail-dialog-subtitle { font-size: 13px; color: var(--ink-mute); margin-bottom: 12px; }
+.detail-dialog-body { font-size: 14px; color: var(--ink); line-height: 1.8; white-space: pre-wrap; }
 </style>
