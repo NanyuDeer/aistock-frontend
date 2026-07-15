@@ -11,8 +11,9 @@
 </template>
 
 <script>
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useStore } from 'vuex'
 import { ElConfigProvider } from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import TheNavbar from '@/shared/components/TheNavbar.vue'
@@ -29,9 +30,35 @@ export default {
   },
   setup() {
     const route = useRoute()
+    const store = useStore()
     
     // 在登录页面不显示头部导航
     const showHeader = computed(() => route.name !== 'login')
+
+    const syncFavoritesOnReturn = () => {
+      if (store.getters.isLoggedIn) {
+        store.dispatch('syncFavoriteStocks')
+      }
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') syncFavoritesOnReturn()
+    }
+
+    const favoriteAwareRoutes = new Set(['home', 'favorites', 'search', 'stockDetail', 'TagView'])
+    watch(() => route.name, (routeName) => {
+      if (favoriteAwareRoutes.has(routeName)) syncFavoritesOnReturn()
+    })
+
+    onMounted(() => {
+      window.addEventListener('focus', syncFavoritesOnReturn)
+      document.addEventListener('visibilitychange', handleVisibilityChange)
+    })
+
+    onBeforeUnmount(() => {
+      window.removeEventListener('focus', syncFavoritesOnReturn)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    })
     
     return {
       showHeader,

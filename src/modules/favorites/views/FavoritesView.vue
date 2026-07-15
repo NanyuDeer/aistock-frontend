@@ -251,6 +251,7 @@ export default {
     const refreshing = ref(false);
     const favoriteStocks = ref([]);
     const refreshTimer = ref(null);
+    const serverFavorites = computed(() => store.getters.favoriteStocks || []);
 
     // Tab 切换
     const activeTab = ref('quotes');
@@ -344,6 +345,10 @@ export default {
       try {
         refreshing.value = true;
         if (activeTab.value === 'quotes') {
+          const synced = await store.dispatch('syncFavoriteStocks');
+          if (!synced && store.getters.favoritesSyncError) {
+            ElMessage.warning('同步失败，已保留上次数据，可再次点击刷新重试');
+          }
           await fetchFavoriteStocks({ forceRefresh: true });
         } else {
           await fetchFavoritesNews();
@@ -356,6 +361,10 @@ export default {
         refreshing.value = false;
       }
     };
+
+    watch(serverFavorites, () => {
+      void fetchFavoriteStocks();
+    }, { deep: true });
     
     // 移除自选股
     const removeFromFavorite = async (stock) => {
@@ -408,6 +417,10 @@ export default {
         return;
       }
       
+      const synced = await store.dispatch('syncFavoriteStocks');
+      if (!synced && store.getters.favoritesSyncError) {
+        ElMessage.warning('同步失败，已显示上次数据');
+      }
       await fetchFavoriteStocks();
       
       // 设置自动刷新定时器 (每3分钟刷新一次价格)
