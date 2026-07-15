@@ -2,6 +2,14 @@
 
 > 所有修改记录按时间倒序排列。每条记录标注分支、时间区间、开发者。
 
+## [main] 2026-07-15 — 删除趋势评分页模拟数据
+**开发者**: Aria
+
+### 删除
+- `src/modules/market/views/TrendScoreView.vue`：删除全部模拟数据（MOCK_STOCKS/MOCK_NEWS/genMockScoreData/genMockKlineData/genMockConceptKline）和 usingMock 回退逻辑，API 不可用时显示错误提示而非假数据
+
+---
+
 ## [main] 2026-07-15 — 趋势评分页完全重写 + 自选股双向同步合并
 **开发者**: Aria
 
