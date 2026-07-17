@@ -91,6 +91,8 @@ module.exports = {
     })
   },
   devServer: {
+    // 显式指定端口，避免默认 8080 与 aistock-agent-py 冲突
+    port: 8081,
     allowedHosts: 'all',
     // 完全禁用WebSocket服务器
     webSocketServer: false,

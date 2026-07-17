@@ -173,8 +173,8 @@ export default {
       padding: 3px 12px;
       font-size: 0.78rem;
       border-radius: 4px;
-      border: 1px solid var(--primary-color, #4f7cff);
-      background: var(--primary-color, #4f7cff);
+      border: 1px solid var(--primary-color);
+      background: var(--primary-color);
       color: #fff;
       cursor: pointer;
       transition: opacity 0.2s;
@@ -202,7 +202,7 @@ export default {
 
     .more-link {
       font-size: 0.85rem;
-      color: var(--primary-color, #4f7cff);
+      color: var(--primary-color);
       text-decoration: none;
       white-space: nowrap;
       .arrow { margin-left: 2px; }

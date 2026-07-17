@@ -777,7 +777,7 @@ export default {
 .hs-card-name {
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--primary-color, #1a56db);
+  color: var(--primary-color);
   margin: 0;
   white-space: nowrap;
   flex-shrink: 0;

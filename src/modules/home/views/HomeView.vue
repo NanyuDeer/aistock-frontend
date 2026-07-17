@@ -954,7 +954,7 @@ export default {
         const response = await stockApi.getProfitForecastList({
           page: 1,
           pageSize: FORECAST_RANKING_FETCH_LIMIT,
-          sortBy: 'forecast_netprofit_yoy',
+          sortBy: 'update_time',
           sortOrder: 'desc'
         });
 

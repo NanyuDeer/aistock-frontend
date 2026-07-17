@@ -169,8 +169,8 @@ export default {
       padding: 3px 12px;
       font-size: 0.78rem;
       border-radius: 4px;
-      border: 1px solid var(--primary-color, #4f7cff);
-      background: var(--primary-color, #4f7cff);
+      border: 1px solid var(--primary-color);
+      background: var(--primary-color);
       color: #fff;
       cursor: pointer;
       transition: opacity 0.2s;
@@ -350,14 +350,14 @@ export default {
     button {
       padding: 8px 24px;
       border-radius: 6px;
-      border: 1px solid var(--primary-color, #4f7cff);
+      border: 1px solid var(--primary-color);
       background: #fff;
-      color: var(--primary-color, #4f7cff);
+      color: var(--primary-color);
       cursor: pointer;
       font-size: 0.85rem;
       transition: all 0.2s;
 
-      &:hover { background: var(--primary-color, #4f7cff); color: #fff; }
+      &:hover { background: var(--primary-color); color: #fff; }
       &:disabled { opacity: 0.5; cursor: not-allowed; }
     }
   }

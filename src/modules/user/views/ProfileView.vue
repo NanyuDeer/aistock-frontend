@@ -24,7 +24,7 @@
               <div v-if="feishuLoading" class="feishu-loading">加载中...</div>
               <div v-else-if="feishuStatus === 'subscribed'" class="feishu-bound">
                 <div class="feishu-info">
-                  <span class="feishu-icon">✓</span>
+                  <el-icon class="feishu-icon"><Check /></el-icon>
                   <span class="feishu-name">{{ feishuName || '已绑定' }}</span>
                   <span class="feishu-badge bound">已绑定</span>
                 </div>
@@ -197,6 +197,7 @@ import { ref, onMounted } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Check } from '@element-plus/icons-vue'
 import 'element-plus/es/components/message/style/css';
 import api from '@/shared/api/api'
 

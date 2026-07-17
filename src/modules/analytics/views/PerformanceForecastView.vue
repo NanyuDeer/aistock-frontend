@@ -17,6 +17,7 @@
               </el-form-item>
               <el-form-item label="排序字段">
                 <el-select v-model="sortBy" class="filter-select" @change="handleSortFilterChange">
+                  <el-option label="更新时间" value="update_time" />
                   <el-option label="净利润同比" value="forecast_netprofit_yoy" />
                   <el-option label="股票代码" value="symbol" />
                 </el-select>
@@ -99,6 +100,7 @@
               prop="updateTime"
               label="更新时间"
               :min-width="columnMinWidth.updateTime"
+              sortable="custom"
               show-overflow-tooltip
             />
           </el-table>
@@ -129,7 +131,7 @@ import { RouterLink } from 'vue-router'
 import { stockApi } from '@/shared/api/api'
 
 const DEFAULT_SORT = {
-  sortBy: 'forecast_netprofit_yoy',
+  sortBy: 'update_time',
   sortOrder: 'desc'
 }
 const MOBILE_BREAKPOINT = 768
@@ -330,6 +332,8 @@ export default {
         sortBy.value = 'symbol'
       } else if (prop === 'forecastNetprofitYoy') {
         sortBy.value = 'forecast_netprofit_yoy'
+      } else if (prop === 'updateTime') {
+        sortBy.value = 'update_time'
       } else {
         return
       }

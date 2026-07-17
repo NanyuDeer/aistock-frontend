@@ -30,7 +30,7 @@
         size="small"
         :type="aiFilterOn ? 'primary' : ''"
         @click="toggleAIFilter"
-      >{{ aiFilterOn ? 'AI产业链 ✓' : 'AI产业链' }}</el-button>
+      >{{ aiFilterOn ? 'AI产业链' : 'AI产业链' }}<el-icon v-if="aiFilterOn" class="el-icon--right"><Check /></el-icon></el-button>
       <el-button size="small" @click="resetFocus" :disabled="!focusedNodeId">重置聚焦</el-button>
       <el-button size="small" @click="reloadGraph" :loading="loadingGraph">刷新</el-button>
     </div>
@@ -150,7 +150,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick, shallowRef } from 'vue';
-import { Close } from '@element-plus/icons-vue';
+import { Close, Check } from '@element-plus/icons-vue';
 import * as echarts from 'echarts';
 import { industryKGApi } from '@/shared/api/api';
 

@@ -2,6 +2,21 @@
 
 > 所有修改记录按时间倒序排列。每条记录标注分支、时间区间、开发者。
 
+## [main] 2026-07-17 — 跨仓库一致性修复（排序优化/emoji清理/主题变量/端口冲突/环境变量模板）
+**开发者**: Aria
+
+### 修复
+- `vue.config.js`：`devServer` 新增 `port: 8081`（原未配置端口，webpack-dev-server 默认 8080 与 aistock-agent-py 端口冲突）
+
+### 改进
+- `PerformanceForecastView.vue`：默认排序从 `forecast_netprofit_yoy` 改为 `update_time` 降序；排序下拉新增"更新时间"选项；更新时间列新增 `sortable="custom"`
+- `HomeView.vue`：首页盈利预测更新榜默认排序改为 `update_time` 降序
+- emoji/字符图标清理：`AiGraph.vue`（✓→el-icon Check）、`ProfileView.vue`（✓→el-icon Check）、`SearchView.vue`（移除🎉emoji）
+- CSS 主题变量统一：`HotBurstPanel.vue`、`WindLeaderPanel.vue`、`HotBurstView.vue` 移除 CSS fallback 颜色（`#4f7cff`/`#1a56db`），统一引用 `var(--primary-color)`
+- `.env.example`：新建环境变量模板
+
+---
+
 ## [main] 2026-07-15 — 删除趋势评分页模拟数据
 **开发者**: Aria
 

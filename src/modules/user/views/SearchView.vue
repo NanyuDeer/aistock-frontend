@@ -9,7 +9,7 @@
           </h1>
         </div>
         <div class="search-banner">
-          <p>🎉 现已支持 <span class="highlight" @click="setKeyword('茅台')">股票名称</span>、<span class="highlight" @click="setKeyword('600519')">股票代码</span>、<span class="highlight" @click="setKeyword('gzmt')">拼音首字母</span> 搜索</p>
+          <p>现已支持 <span class="highlight" @click="setKeyword('茅台')">股票名称</span>、<span class="highlight" @click="setKeyword('600519')">股票代码</span>、<span class="highlight" @click="setKeyword('gzmt')">拼音首字母</span> 搜索</p>
         </div>
         
         <div class="search-tabs">
