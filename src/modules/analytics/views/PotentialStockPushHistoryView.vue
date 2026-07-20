@@ -213,9 +213,7 @@ export default {
     }
 
     const displayReturn = (row) => {
-      const backendReturn = toFiniteNumber(row?.return_pct)
-      if (backendReturn !== null) return backendReturn
-      return calculateReturn(row?.push_price, displayPrice(row))
+      return toFiniteNumber(row?.return_pct)
     }
 
     const buildSummary = (items) => {
@@ -323,13 +321,6 @@ export default {
         top_losers: itemsWithReturn.slice().sort((a, b) => displayReturn(a) - displayReturn(b)).slice(0, 10)
       }
     })
-
-    const calculateReturn = (pushPrice, currentPrice) => {
-      const base = toFiniteNumber(pushPrice)
-      const current = toFiniteNumber(currentPrice)
-      if (!base || base <= 0 || current === null) return null
-      return Number((((current - base) / base) * 100).toFixed(2))
-    }
 
     const loadData = async () => {
       loading.value = true
