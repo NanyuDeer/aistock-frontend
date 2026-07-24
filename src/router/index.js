@@ -15,7 +15,12 @@ const HotBurstView = () => import('@/modules/news/views/HotBurstView.vue')
 const StockMonitorView = () => import('@/modules/market/views/StockMonitorView.vue')
 const PotentialStockPushHistoryView = () => import('@/modules/analytics/views/PotentialStockPushHistoryView.vue')
 
+// ==================== 事件传导模块 ====================
+const EventListView = () => import('@/modules/event/views/EventListView.vue')
+const EventDetailView = () => import('@/modules/event/views/EventDetailView.vue')
+
 const routes = [
+  // ==================== 正式路由 ====================
   {
     path: '/',
     name: 'home',
@@ -136,6 +141,24 @@ const routes = [
       title: '股票资讯AI智能分析 - 更新日志'
     }
   },
+  // ==================== 事件传导模块 ====================
+  {
+    path: '/event',
+    name: 'eventList',
+    component: EventListView,
+    meta: {
+      title: '股票资讯AI智能分析 - 事件传导'
+    }
+  },
+  {
+    path: '/event/:id',
+    name: 'eventDetail',
+    component: EventDetailView,
+    meta: {
+      title: '股票资讯AI智能分析 - AI事件分析'
+    }
+  },
+  // ==================== 板块龙头 ====================
   {
     path: '/tags/:tagCode',
     name: 'TagView',
