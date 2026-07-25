@@ -51,15 +51,15 @@
         </div>
       </div>
 
-      <!-- 个股异动 -->
-      <div v-if="isFavorite && stockMonitorEvents.length > 0" class="stock-monitor-section">
+      <!-- 个股情报 -->
+      <div v-if="isFavorite && stockIntelEvents.length > 0" class="stock-intel-section">
         <div class="card">
           <div class="card-header">
-            <h3>个股异动</h3>
+            <h3>个股情报</h3>
           </div>
           <div class="card-body">
-            <StockMonitorList
-              :events="stockMonitorEvents"
+            <StockIntelList
+              :events="stockIntelEvents"
               :show-cycle-filter="true"
               :default-cycle="activeView === 'short' ? 'short' : activeView === 'mid' ? 'mid' : activeView === 'long' ? 'long' : 'all'"
             />
@@ -557,93 +557,93 @@
           </div>
         </div>
 
-        <div v-if="shouldShowTenxModel" class="card tenx-card">
+        <div v-if="shouldShowTrendModel" class="card trend-card">
           <div class="card-header">
             <h3>趋势股模型</h3>
           </div>
           <div class="card-body">
-            <div v-if="tenxModel.error" class="tenx-error-block">
+            <div v-if="trendModel.error" class="trend-error-block">
               <i class="el-icon-warning-outline" style="font-size:32px;color:#f56c6c;"></i>
               <p style="color:#f56c6c;font-size:14px;margin-top:8px;">评分获取失败，请稍后重试</p>
             </div>
-            <div v-else class="tenx-hero" :class="getScoreClass(tenxModel.score)">
-              <div class="tenx-radar-center-wrap">
-                <canvas ref="tenxRadarCanvas" class="tenx-radar-canvas"></canvas>
-                <div class="tenx-radar-score-overlay" :class="getScoreClass(tenxModel.score)">
-                  <span class="tenx-radar-score-value">{{ tenxModel.score }}</span>
-                  <span class="tenx-radar-score-label">{{ tenxModel.expectedMultiple }}</span>
+            <div v-else class="trend-hero" :class="getScoreClass(trendModel.score)">
+              <div class="trend-radar-center-wrap">
+                <canvas ref="trendRadarCanvas" class="trend-radar-canvas"></canvas>
+                <div class="trend-radar-score-overlay" :class="getScoreClass(trendModel.score)">
+                  <span class="trend-radar-score-value">{{ trendModel.score }}</span>
+                  <span class="trend-radar-score-label">{{ trendModel.expectedMultiple }}</span>
                 </div>
               </div>
-              <div class="tenx-verdict">
-                <span class="verdict-tag" :class="getScoreClass(tenxModel.score)">{{ tenxModel.label }}</span>
-                <p class="verdict-text">{{ tenxModel.description }}</p>
-                <div class="tenx-ai-conclusion">
-                  <div class="tenx-ai-conclusion-header">
+              <div class="trend-verdict">
+                <span class="verdict-tag" :class="getScoreClass(trendModel.score)">{{ trendModel.label }}</span>
+                <p class="verdict-text">{{ trendModel.description }}</p>
+                <div class="trend-ai-conclusion">
+                  <div class="trend-ai-conclusion-header">
                     <i class="el-icon-chat-dot-round"></i>
                     <span>AI结论</span>
                   </div>
-                  <p class="tenx-ai-conclusion-text">{{ tenxModel.aiConclusion }}</p>
+                  <p class="trend-ai-conclusion-text">{{ trendModel.aiConclusion }}</p>
                 </div>
               </div>
             </div>
-            <div class="tenx-dim-section-header">
-              <span class="tenx-dim-section-title">四维因子详情</span>
-              <button class="tenx-dim-toggle-btn" @click="tenxToggleAll">
-                {{ tenxAllOpen ? '全部收起' : '全部展开' }}
+            <div class="trend-dim-section-header">
+              <span class="trend-dim-section-title">四维因子详情</span>
+              <button class="trend-dim-toggle-btn" @click="trendToggleAll">
+                {{ trendAllOpen ? '全部收起' : '全部展开' }}
               </button>
             </div>
-            <div class="tenx-dimensions-grid">
-              <template v-for="(dim, i) in tenxModel.dimensions" :key="dim.name">
+            <div class="trend-dimensions-grid">
+              <template v-for="(dim, i) in trendModel.dimensions" :key="dim.name">
                 <div
-                  class="tenx-dim-item"
-                  :class="{ 'is-expanded': tenxExpandedDims.has(i), [getScoreClass(dim.score)]: true }"
+                  class="trend-dim-item"
+                  :class="{ 'is-expanded': trendExpandedDims.has(i), [getScoreClass(dim.score)]: true }"
                 >
-                  <div class="tenx-dim-head" @click="tenxToggleDim(i)">
-                    <div class="tenx-dim-head-left">
-                      <i :class="dim.iconClass" class="tenx-dim-icon" :style="{ color: tenxSColor(dim.score) }"></i>
+                  <div class="trend-dim-head" @click="trendToggleDim(i)">
+                    <div class="trend-dim-head-left">
+                      <i :class="dim.iconClass" class="trend-dim-icon" :style="{ color: trendSColor(dim.score) }"></i>
                       <div>
-                        <span class="tenx-dim-name">{{ dim.name }}</span>
-                        <span class="tenx-dim-weight">{{ dim.weight }}%</span>
-                        <div class="tenx-dim-question">{{ dim.question }}</div>
+                        <span class="trend-dim-name">{{ dim.name }}</span>
+                        <span class="trend-dim-weight">{{ dim.weight }}%</span>
+                        <div class="trend-dim-question">{{ dim.question }}</div>
                       </div>
                     </div>
-                    <div class="tenx-dim-head-right">
-                      <span class="tenx-dim-score" :style="{ color: tenxSColor(dim.score) }">{{ dim.score }}</span>
-                      <i class="el-icon-arrow-down tenx-dim-chevron" :class="{ open: tenxExpandedDims.has(i) }"></i>
+                    <div class="trend-dim-head-right">
+                      <span class="trend-dim-score" :style="{ color: trendSColor(dim.score) }">{{ dim.score }}</span>
+                      <i class="el-icon-arrow-down trend-dim-chevron" :class="{ open: trendExpandedDims.has(i) }"></i>
                     </div>
                   </div>
-                  <div class="tenx-dim-bar">
-                    <div class="tenx-dim-bar-fill" :style="{ width: `${dim.score}%`, background: tenxSGrad(dim.score) }"></div>
+                  <div class="trend-dim-bar">
+                    <div class="trend-dim-bar-fill" :style="{ width: `${dim.score}%`, background: trendSGrad(dim.score) }"></div>
                   </div>
-                  <div class="tenx-dim-details" :class="{ open: tenxExpandedDims.has(i) }">
-                    <div class="tenx-dim-details-inner">
-                      <div v-for="(ind, j) in dim.indicators" :key="ind.name" class="tenx-ind-row">
-                        <span class="tenx-ind-name">{{ ind.name }}</span>
-                        <div class="tenx-ind-right">
-                          <span class="tenx-ind-value">{{ ind.value }}</span>
-                          <div class="tenx-ind-bar-track">
-                            <div class="tenx-ind-bar-fill" :style="{ width: `${ind.score}%`, background: tenxSGrad(ind.score) }"></div>
+                  <div class="trend-dim-details" :class="{ open: trendExpandedDims.has(i) }">
+                    <div class="trend-dim-details-inner">
+                      <div v-for="(ind, j) in dim.indicators" :key="ind.name" class="trend-ind-row">
+                        <span class="trend-ind-name">{{ ind.name }}</span>
+                        <div class="trend-ind-right">
+                          <span class="trend-ind-value">{{ ind.value }}</span>
+                          <div class="trend-ind-bar-track">
+                            <div class="trend-ind-bar-fill" :style="{ width: `${ind.score}%`, background: trendSGrad(ind.score) }"></div>
                           </div>
-                          <span class="tenx-ind-score" :style="{ color: tenxSColor(ind.score) }">{{ ind.score }}</span>
+                          <span class="trend-ind-score" :style="{ color: trendSColor(ind.score) }">{{ ind.score }}</span>
                         </div>
                       </div>
                       <!-- 基本面子维度 -->
-                      <div v-if="dim.subDimensions && dim.subDimensions.length" class="tenx-sub-dims">
-                        <div class="tenx-sub-dims-title">基本面子维度</div>
-                        <div v-for="(sub, sidx) in dim.subDimensions" :key="sidx" class="tenx-sub-dim-item">
-                          <div class="tenx-sub-dim-head">
-                            <span class="tenx-sub-dim-name">{{ sub.name }}</span>
-                            <span class="tenx-sub-dim-score" :style="{ color: tenxSColor(sub.score) }">{{ sub.score }}</span>
-                            <span class="tenx-sub-dim-weight">{{ sub.weight }}%</span>
+                      <div v-if="dim.subDimensions && dim.subDimensions.length" class="trend-sub-dims">
+                        <div class="trend-sub-dims-title">基本面子维度</div>
+                        <div v-for="(sub, sidx) in dim.subDimensions" :key="sidx" class="trend-sub-dim-item">
+                          <div class="trend-sub-dim-head">
+                            <span class="trend-sub-dim-name">{{ sub.name }}</span>
+                            <span class="trend-sub-dim-score" :style="{ color: trendSColor(sub.score) }">{{ sub.score }}</span>
+                            <span class="trend-sub-dim-weight">{{ sub.weight }}%</span>
                           </div>
-                          <div v-for="(ind, k) in sub.indicators" :key="k" class="tenx-ind-row">
-                            <span class="tenx-ind-name">{{ ind.name }}</span>
-                            <div class="tenx-ind-right">
-                              <span class="tenx-ind-value">{{ ind.value }}</span>
-                              <div class="tenx-ind-bar-track">
-                                <div class="tenx-ind-bar-fill" :style="{ width: `${ind.score}%`, background: tenxSGrad(ind.score) }"></div>
+                          <div v-for="(ind, k) in sub.indicators" :key="k" class="trend-ind-row">
+                            <span class="trend-ind-name">{{ ind.name }}</span>
+                            <div class="trend-ind-right">
+                              <span class="trend-ind-value">{{ ind.value }}</span>
+                              <div class="trend-ind-bar-track">
+                                <div class="trend-ind-bar-fill" :style="{ width: `${ind.score}%`, background: trendSGrad(ind.score) }"></div>
                               </div>
-                              <span class="tenx-ind-score" :style="{ color: tenxSColor(ind.score) }">{{ ind.score }}</span>
+                              <span class="trend-ind-score" :style="{ color: trendSColor(ind.score) }">{{ ind.score }}</span>
                             </div>
                           </div>
                         </div>
@@ -653,7 +653,7 @@
                 </div>
               </template>
             </div>
-            <div class="tenx-data-source">
+            <div class="trend-data-source">
               <span class="source-label">数据来源：</span>模型基于历史数据，不构成投资建议
             </div>
           </div>
@@ -783,8 +783,8 @@ import CycleSelect from '@/shared/components/CycleSelect.vue';
 import { useStockCycle } from '@/shared/utils/stockCycle';
 import { ttsApi } from '@/shared/api/api';
 import { getCuratedStockProfile } from '@/shared/mock/curatedStocks';
-import { trendHotspotApi } from '@/shared/api/api';
-import StockMonitorList from '@/shared/components/StockMonitorList.vue';
+import { stockIntelApi } from '@/shared/api/api';
+import StockIntelList from '@/shared/components/StockIntelList.vue';
 import { trendApi } from '@/shared/api/api';
 import 'element-plus/es/components/message/style/css';
 import * as echarts from 'echarts/core';
@@ -818,7 +818,7 @@ const invalidateCache = (code) => {
 
 export default {
   name: 'StockDetailView',
-  components: { StockChart, CycleSelect, StockMonitorList },
+  components: { StockChart, CycleSelect, StockIntelList },
   setup() {
     const route = useRoute();
     const router = useRouter();
@@ -830,16 +830,16 @@ export default {
       { key: 'long', label: '长线', desc: '季/年' }
     ];
 
-    // 个股异动数据
-    const stockMonitorEvents = ref([]);
+    // 个股情报数据
+    const stockIntelEvents = ref([]);
 
     const fetchMonitorEvents = async () => {
       try {
         const stockCode = route.params.code || '';
         if (!stockCode) return;
-        const res = await trendHotspotApi.getEventsByStock(stockCode, { cycle: 'all', limit: 20 });
+        const res = await stockIntelApi.getEventsByStock(stockCode, { cycle: 'all', limit: 20 });
         const events = res?.data?.events || [];
-        stockMonitorEvents.value = events.map(e => ({
+        stockIntelEvents.value = events.map(e => ({
           ...e,
           stock_code: (e.stock_code || e.symbol || '').replace(/^(SH|SZ)/, ''),
           industry: (stockInfo.value.industry && stockInfo.value.industry !== '--' && stockInfo.value.industry !== '未知行业')
@@ -852,7 +852,7 @@ export default {
           event_time_display: e.event_time_display || formatEventTime(e.event_time),
         }));
       } catch (err) {
-        console.warn('[StockDetail] 获取个股异动数据失败:', err);
+        console.warn('[StockDetail] 获取个股情报数据失败:', err);
       }
     };
 
@@ -887,10 +887,10 @@ export default {
     });
     const isLoggedIn = computed(() => store.getters.isLoggedIn);
     const isFavorite = ref(false);
-    // 仅对已关注该股票的用户请求个股异动数据，取消关注时清空
+    // 仅对已关注该股票的用户请求个股情报数据，取消关注时清空
     watch(isFavorite, (fav) => {
-      if (fav && stockMonitorEvents.value.length === 0) fetchMonitorEvents();
-      if (!fav) stockMonitorEvents.value = [];
+      if (fav && stockIntelEvents.value.length === 0) fetchMonitorEvents();
+      if (!fav) stockIntelEvents.value = [];
     });
     const addingToFavorites = ref(false);
     const { getCycle, setCycle } = useStockCycle();
@@ -1282,8 +1282,8 @@ export default {
       const annual = longMockData.value.annual;
       const hasMultipleModel = Boolean(curatedProfile.value) && expectedMultipleNumber.value >= 1.5;
       const planStatement = getFifteenthPlanStatement(profileTheme.value);
-      const tenxBasis = hasMultipleModel
-        ? { tag: '倍数模型高分', detail: `趋势股模型给出${tenxModel.value.score}分和"${tenxModel.value.label}"，当前倍数预期为${multiple}，因此AI给出${conclusion}。` }
+      const trendBasis = hasMultipleModel
+        ? { tag: '倍数模型高分', detail: `趋势股模型给出${trendModel.value.score}分和"${trendModel.value.label}"，当前倍数预期为${multiple}，因此AI给出${conclusion}。` }
         : { tag: '未入倍数池', detail: `当前股票未进入精选倍数模型池，长线判断暂以行业政策、护城河和年报质量为主，不单独给出倍数预期。` };
       const summary = `${profileName.value}长线核心在于${focus.slice(0, 2).join('和')}，行业政策、护城河和年报投入共同支撑长期估值弹性。`;
       return {
@@ -1294,7 +1294,7 @@ export default {
           { tag: '政策产业共振', detail: `行业政策卡片中有${policies.filter(item => item.type === 'is-good').length}条利好线索，核心方向是"${profileTheme.value}"；${planStatement} 说明长期产业空间仍有政策、资本和场景落地推动。` },
           { tag: '护城河四维支撑', detail: `公司护城河卡片显示"${moats.map(item => item.title).join('、')}"四个维度，分别对应技术、客户、规模和成长曲线，是长线估值能否扩张的基础。` },
           { tag: '研发回报双验证', detail: `年报对比中研发投入为${annual.find(item => item.label === '研发投入')?.value || '--'}，资本回报率为${annual.find(item => item.label === '资本回报率')?.value || '--'}，说明长期逻辑既看投入，也看回报质量。` },
-          tenxBasis,
+          trendBasis,
           hasMultipleModel
             ? { tag: '反向跟踪风险', detail: `需要反向跟踪的风险是：${risks[0]}，如果这个风险兑现，长线倍数模型会先于股价表现下修。` }
             : { tag: '反向跟踪风险', detail: `需要反向跟踪的风险是：${risks[0]}，如果这个风险兑现，长线判断会先从护城河和年报质量两项下修。` }
@@ -1328,41 +1328,41 @@ export default {
       { name: '基本面', iconClass: 'el-icon-coin', weight: 20, question: '基本面扎实吗？', indNames: ['业绩爆发力','估值弹性','盈利质量','竞争壁垒'] }
     ];
 
-    function tenxSColor(s) {
+    function trendSColor(s) {
       if (s >= 75) return '#22c55e';
       if (s >= 55) return '#eab308';
       return '#ef4444';
     }
-    function tenxSGrad(s) {
+    function trendSGrad(s) {
       if (s >= 75) return 'linear-gradient(90deg,#16a34a,#22c55e)';
       if (s >= 55) return 'linear-gradient(90deg,#ca8a04,#eab308)';
       return 'linear-gradient(90deg,#dc2626,#ef4444)';
     }
 
-    const tenxExpandedDims = reactive(new Set());
-    const tenxAllOpen = ref(false);
-    const tenxRadarCanvas = ref(null);
-    let tenxRadarChart = null;
+    const trendExpandedDims = reactive(new Set());
+    const trendAllOpen = ref(false);
+    const trendRadarCanvas = ref(null);
+    let trendRadarChart = null;
 
-    function tenxToggleDim(i) {
-      if (tenxExpandedDims.has(i)) tenxExpandedDims.delete(i);
-      else tenxExpandedDims.add(i);
+    function trendToggleDim(i) {
+      if (trendExpandedDims.has(i)) trendExpandedDims.delete(i);
+      else trendExpandedDims.add(i);
     }
-    function tenxToggleAll() {
-      tenxAllOpen.value = !tenxAllOpen.value;
+    function trendToggleAll() {
+      trendAllOpen.value = !trendAllOpen.value;
       TREND_DIMS.forEach((_, i) => {
-        if (tenxAllOpen.value) tenxExpandedDims.add(i);
-        else tenxExpandedDims.delete(i);
+        if (trendAllOpen.value) trendExpandedDims.add(i);
+        else trendExpandedDims.delete(i);
       });
     }
 
-    function tenxGetRadarColors(score) {
+    function trendGetRadarColors(score) {
       if (score >= 75) return { bg: 'rgba(34,197,94,0.10)', border: 'rgba(34,197,94,0.7)', point: 'rgba(34,197,94,0.9)' };
       if (score >= 55) return { bg: 'rgba(234,179,8,0.10)', border: 'rgba(234,179,8,0.7)', point: 'rgba(234,179,8,0.9)' };
       return { bg: 'rgba(239,68,68,0.10)', border: 'rgba(239,68,68,0.7)', point: 'rgba(239,68,68,0.9)' };
     }
 
-    function tenxLoadChartJs() {
+    function trendLoadChartJs() {
       return new Promise((resolve) => {
         if (window.Chart) { resolve(true); return; }
         const s = document.createElement('script');
@@ -1373,33 +1373,33 @@ export default {
       });
     }
 
-    async function tenxUpdateRadar(data) {
-      if (!tenxRadarCanvas.value) return;
-      const loaded = await tenxLoadChartJs();
+    async function trendUpdateRadar(data) {
+      if (!trendRadarCanvas.value) return;
+      const loaded = await trendLoadChartJs();
       if (!loaded) return;
       const Chart = window.Chart;
       if (!Chart) return;
-      const ctx = tenxRadarCanvas.value.getContext('2d');
-      const score = tenxModel.value ? tenxModel.value.score : 0;
-      const colors = tenxGetRadarColors(score);
-      if (tenxRadarChart) {
-        tenxRadarChart.data.datasets[0].data = data;
-        tenxRadarChart.data.datasets[0].backgroundColor = colors.bg;
-        tenxRadarChart.data.datasets[0].borderColor = colors.border;
-        tenxRadarChart.data.datasets[0].pointBackgroundColor = colors.point;
-        tenxRadarChart.data.datasets[0].pointBorderColor = colors.border;
-        tenxRadarChart.update();
+      const ctx = trendRadarCanvas.value.getContext('2d');
+      const score = trendModel.value ? trendModel.value.score : 0;
+      const colors = trendGetRadarColors(score);
+      if (trendRadarChart) {
+        trendRadarChart.data.datasets[0].data = data;
+        trendRadarChart.data.datasets[0].backgroundColor = colors.bg;
+        trendRadarChart.data.datasets[0].borderColor = colors.border;
+        trendRadarChart.data.datasets[0].pointBackgroundColor = colors.point;
+        trendRadarChart.data.datasets[0].pointBorderColor = colors.border;
+        trendRadarChart.update();
         return;
       }
       // Set explicit canvas size
-      const wrap = tenxRadarCanvas.value.parentElement;
+      const wrap = trendRadarCanvas.value.parentElement;
       const w = wrap ? wrap.offsetWidth || 300 : 300;
       const h = wrap ? wrap.offsetHeight || 260 : 260;
-      tenxRadarCanvas.value.width = w;
-      tenxRadarCanvas.value.height = h;
+      trendRadarCanvas.value.width = w;
+      trendRadarCanvas.value.height = h;
       // Start from 0 for expand animation
       const zeroData = data.map(() => 0);
-      tenxRadarChart = new Chart(ctx, {
+      trendRadarChart = new Chart(ctx, {
         type: 'radar',
         data: {
           labels: TREND_DIMS.map(d => d.name),
@@ -1438,70 +1438,70 @@ export default {
       });
       // Trigger expand animation: from 0 to actual values
       requestAnimationFrame(() => {
-        tenxRadarChart.data.datasets[0].data = data;
-        tenxRadarChart.options.animation = { duration: 1400, easing: 'easeOutQuart' };
-        tenxRadarChart.update();
+        trendRadarChart.data.datasets[0].data = data;
+        trendRadarChart.options.animation = { duration: 1400, easing: 'easeOutQuart' };
+        trendRadarChart.update();
       });
     }
 
     // 十倍股否决状态
-    const tenxVetoed = ref(false);
-    const tenxVetoReasons = ref([]);
+    const trendVetoed = ref(false);
+    const trendVetoReasons = ref([]);
 
-    const shouldShowTenxModel = computed(() => Boolean(stockInfo.value?.code) && !tenxVetoed.value);
+    const shouldShowTrendModel = computed(() => Boolean(stockInfo.value?.code) && !trendVetoed.value);
 
     // 十倍股评分 — 从后端API获取
-    const tenxApiData = ref(null);
-    const tenxApiLoading = ref(false);
-    const tenxApiError = ref(false);
+    const trendApiData = ref(null);
+    const trendApiLoading = ref(false);
+    const trendApiError = ref(false);
 
-    async function fetchTenxScore(symbol) {
+    async function fetchTrendScore(symbol) {
       if (!symbol) return;
-      tenxApiLoading.value = true;
-      tenxApiError.value = false;
-      tenxVetoed.value = false;
-      tenxVetoReasons.value = [];
+      trendApiLoading.value = true;
+      trendApiError.value = false;
+      trendVetoed.value = false;
+      trendVetoReasons.value = [];
       try {
         const res = await trendApi.getScore(symbol);
         if (res.code === 200 && res.data) {
           // 检查否决状态
           if (res.data.vetoed) {
-            tenxVetoed.value = true;
-            tenxVetoReasons.value = res.data.reasons || [];
-            tenxApiLoading.value = false;
+            trendVetoed.value = true;
+            trendVetoReasons.value = res.data.reasons || [];
+            trendApiLoading.value = false;
             return;
           }
-          tenxApiData.value = res.data;
-          tenxApiError.value = false;
+          trendApiData.value = res.data;
+          trendApiError.value = false;
         } else {
           try {
             const refreshRes = await trendApi.refreshScore(symbol);
             if (refreshRes.code === 200 && refreshRes.data) {
               // 检查否决状态
               if (refreshRes.data.vetoed) {
-                tenxVetoed.value = true;
-                tenxVetoReasons.value = refreshRes.data.reasons || [];
-                tenxApiLoading.value = false;
+                trendVetoed.value = true;
+                trendVetoReasons.value = refreshRes.data.reasons || [];
+                trendApiLoading.value = false;
                 return;
               }
-              tenxApiData.value = refreshRes.data;
-              tenxApiError.value = false;
+              trendApiData.value = refreshRes.data;
+              trendApiError.value = false;
             } else {
-              tenxApiError.value = true;
+              trendApiError.value = true;
             }
           } catch {
-            tenxApiError.value = true;
+            trendApiError.value = true;
           }
         }
       } catch {
-        tenxApiError.value = true;
+        trendApiError.value = true;
       }
-      tenxApiLoading.value = false;
+      trendApiLoading.value = false;
     }
 
-    const tenxModel = computed(() => {
-      if (tenxApiData.value) {
-        const apiData = tenxApiData.value;
+    const trendModel = computed(() => {
+      if (trendApiData.value) {
+        const apiData = trendApiData.value;
         // trend-score 返回 camelCase 字段
         const dimensions = apiData.dimensions || [];
         const dimScores = apiData.dimScores || dimensions.map(d => d.score);
@@ -1562,7 +1562,7 @@ export default {
           indicators: [],
           subDimensions: []
         })),
-        dimScores: [0, 0, 0, 0],
+        dimScores: TREND_DIMS.map(() => 0),
         error: true
       };
     });
@@ -2078,9 +2078,9 @@ export default {
     const setupAutoRefresh = () => { clearAutoRefreshTimers(); priceUpdateTimer.value = setInterval(() => { loadStockData(); }, 5 * 60 * 1000); newsUpdateTimer.value = setInterval(() => { loadNewsAndAnalysis(); }, 10 * 60 * 1000); };
     const clearAutoRefreshTimers = () => { if (priceUpdateTimer.value) { clearInterval(priceUpdateTimer.value); priceUpdateTimer.value = null; } if (newsUpdateTimer.value) { clearInterval(newsUpdateTimer.value); newsUpdateTimer.value = null; } };
     const handleWindowResize = () => { if (forecastChartInstance) forecastChartInstance.resize(); if (historyTimelineChartInstance) historyTimelineChartInstance.resize(); if (capitalFlowChartInstance) capitalFlowChartInstance.resize(); if (capitalSplitChartInstance) capitalSplitChartInstance.resize(); if (industryHealthChartInstance) industryHealthChartInstance.resize(); };
-    // Also trigger radar when stockData loads and tenxModel becomes available
-    watch(tenxModel, (m) => {
-      if (m && m.dimScores) nextTick(() => tenxUpdateRadar(m.dimScores));
+    // Also trigger radar when stockData loads and trendModel becomes available
+    watch(trendModel, (m) => {
+      if (m && m.dimScores) nextTick(() => trendUpdateRadar(m.dimScores));
     });
     watch(capitalFlowData, (d) => {
       if (d && activeView.value === 'short') {
@@ -2090,7 +2090,7 @@ export default {
     watch(() => route.params.code, (nc) => {
       if (nc && nc !== stockInfo.value.code) {
         invalidateCache(stockInfo.value.code);
-        tenxApiData.value = null;
+        trendApiData.value = null;
         capitalFlowData.value = null;
         stockInfo.value.code = nc; stockNews.value = []; totalNews.value = 0; newsCursor.value = 0;
         forecastData.value = {}; forecastSummary.value = '';
@@ -2102,7 +2102,7 @@ export default {
         if (!isCacheFresh('news', nc)) loadNewsAndAnalysis();
         if (!isCacheFresh('forecast', nc)) loadForecast();
         if (!isCacheFresh('evaluation', nc)) { loadingEvaluation.value = true; loadAIEvaluation(false); }
-        fetchTenxScore(nc);
+        fetchTrendScore(nc);
         loadCapitalFlow();
         setupAutoRefresh(); window.scrollTo(0, 0);
         if (activeView.value === 'short') {
@@ -2114,10 +2114,10 @@ export default {
       }
     });
     watch(isLoggedIn, async (l) => { if (l) { checkIfFavorite(); if (!isCacheFresh('evaluation', stockInfo.value.code)) { loadingEvaluation.value = true; await loadAIEvaluation(false); } } });
-    // 当 stockInfo.industry 加载完成后，同步更新个股异动中的行业标签
+    // 当 stockInfo.industry 加载完成后，同步更新个股情报中的行业标签
     watch(() => stockInfo.value.industry, (newIndustry) => {
-      if (newIndustry && newIndustry !== '--' && newIndustry !== '未知行业' && stockMonitorEvents.value.length > 0) {
-        stockMonitorEvents.value = stockMonitorEvents.value.map(e => ({
+      if (newIndustry && newIndustry !== '--' && newIndustry !== '未知行业' && stockIntelEvents.value.length > 0) {
+        stockIntelEvents.value = stockIntelEvents.value.map(e => ({
           ...e,
           industry: e.stock_code === stockInfo.value.code ? newIndustry : e.industry,
         }));
@@ -2151,19 +2151,19 @@ export default {
       if (!isCacheFresh('forecast', currentCode)) loadForecast();
       if (isLoggedIn.value) checkIfFavorite();
       if (!isCacheFresh('evaluation', currentCode)) { loadingEvaluation.value = true; loadAIEvaluation(false); }
-      fetchTenxScore(currentCode);
+      fetchTrendScore(currentCode);
       loadCapitalFlow();
       setupAutoRefresh(); window.addEventListener('resize', handleWindowResize); window.scrollTo(0, 0);
       setTimeout(() => { if (activeView.value === 'short') { renderCapitalFlowChart(); renderCapitalSplitChart(); } }, 200);
       setTimeout(() => { if (activeView.value === 'mid') renderIndustryHealthChart(); }, 200);
-      // Initialize tenx radar after data loads
+      // Initialize trend radar after data loads
       setTimeout(() => {
-        if (shouldShowTenxModel.value && tenxModel.value && tenxModel.value.dimScores) {
-          tenxUpdateRadar(tenxModel.value.dimScores);
+        if (shouldShowTrendModel.value && trendModel.value && trendModel.value.dimScores) {
+          trendUpdateRadar(trendModel.value.dimScores);
         }
       }, 800);
     });
-    onBeforeUnmount(() => { clearAutoRefreshTimers(); window.removeEventListener('resize', handleWindowResize); if (tenxRadarChart) { tenxRadarChart.destroy(); tenxRadarChart = null; } if (forecastChartInstance) { forecastChartInstance.dispose(); forecastChartInstance = null; } if (capitalFlowChartInstance) { capitalFlowChartInstance.dispose(); capitalFlowChartInstance = null; } if (capitalSplitChartInstance) { capitalSplitChartInstance.dispose(); capitalSplitChartInstance = null; } disposeIndustryHealthChart(); disposeHistoryTimelineChart(); cancelFlowAnimationFrames(); });
+    onBeforeUnmount(() => { clearAutoRefreshTimers(); window.removeEventListener('resize', handleWindowResize); if (trendRadarChart) { trendRadarChart.destroy(); trendRadarChart = null; } if (forecastChartInstance) { forecastChartInstance.dispose(); forecastChartInstance = null; } if (capitalFlowChartInstance) { capitalFlowChartInstance.dispose(); capitalFlowChartInstance = null; } if (capitalSplitChartInstance) { capitalSplitChartInstance.dispose(); capitalSplitChartInstance = null; } disposeIndustryHealthChart(); disposeHistoryTimelineChart(); cancelFlowAnimationFrames(); });
 
     const clampPercent = (value) => {
       if (!Number.isFinite(value)) return 0;
@@ -2345,7 +2345,7 @@ export default {
     return {
       activeView, viewTabs, stockInfo, isLoggedIn, isFavorite, addingToFavorites,
       stockCycle, onStockCycleChange,
-      stockMonitorEvents,
+      stockIntelEvents,
       stockNews, analysisResult, currentNewsDetail, newsDetailDialogVisible,
       totalNews, hasMoreNews, loadingMoreNews, loadMoreNews,
       refreshAIEvaluation, loadingEvaluation, evaluationErrorMessage, evaluationProgressText,
@@ -2357,10 +2357,10 @@ export default {
       getHistoryConclusionClass, viewNewsDetail,
       forecastChartRef, forecastData, forecastSummary, loadingForecast, refreshForecast,
       hasForecastChartData, capitalFlowChartRef, capitalSplitChartRef, industryHealthChartRef,
-      midMockData, midAiAnalysis, longMockData, longAiAnalysis, shouldShowTenxModel, tenxModel, capitalFlowInfo,
+      midMockData, midAiAnalysis, longMockData, longAiAnalysis, shouldShowTrendModel, trendModel, capitalFlowInfo,
       shortLogicTags, shortRiskTags, midBasisTags, midAdviceTags, midRiskTags, longBasisTags, longAdviceTags, longRiskTags,
-      tenxVetoed, tenxVetoReasons,
-      TREND_DIMS, tenxSColor, tenxSGrad, tenxExpandedDims, tenxAllOpen, tenxRadarCanvas, tenxToggleDim, tenxToggleAll,
+      trendVetoed, trendVetoReasons,
+      TREND_DIMS, trendSColor, trendSGrad, trendExpandedDims, trendAllOpen, trendRadarCanvas, trendToggleDim, trendToggleAll,
       toggleFavorite, getEvaluationClass, goToTagBoard, formatRatioText,
       mergedStructureChart, priceTrendClass,
       turnoverLevel, turnoverRateLevel,
@@ -2431,7 +2431,7 @@ export default {
     }
   }
 
-  .stock-monitor-section {
+  .stock-intel-section {
     margin-bottom: 20px;
   }
 
@@ -2922,15 +2922,15 @@ export default {
 
   .annual-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; @media (max-width: 576px) { grid-template-columns: repeat(2, 1fr); } .annual-item { text-align: center; padding: 12px; background: #f8fafc; border-radius: 8px; .annual-label { display: block; font-size: 0.8rem; color: #64748b; margin-bottom: 4px; } .annual-value { display: block; font-size: 1rem; font-weight: 600; color: #1e293b; margin-bottom: 2px; } .annual-note { display: block; font-size: 0.75rem; color: #94a3b8; &.is-up { color: #ef4444; } &.is-down { color: #22c55e; } } } }
 
-  .tenx-card {
-    .tenx-error-block {
+  .trend-card {
+    .trend-error-block {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 40px 20px;
     }
-    .tenx-hero {
+    .trend-hero {
       display: flex;
       align-items: flex-start;
       gap: 24px;
@@ -2944,40 +2944,40 @@ export default {
       }
     }
     /* 雷达图 + 中心分数 */
-    .tenx-radar-center-wrap {
+    .trend-radar-center-wrap {
       position: relative;
       width: 300px;
       height: 260px;
       flex-shrink: 0;
     }
-    .tenx-radar-canvas {
+    .trend-radar-canvas {
       display: block;
     }
-    .tenx-radar-score-overlay {
+    .trend-radar-score-overlay {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
       text-align: center;
       pointer-events: none;
-      &.is-high .tenx-radar-score-value { color: #22c55e; }
-      &.is-mid .tenx-radar-score-value { color: #eab308; }
-      &.is-low .tenx-radar-score-value { color: #ef4444; }
+      &.is-high .trend-radar-score-value { color: #22c55e; }
+      &.is-mid .trend-radar-score-value { color: #eab308; }
+      &.is-low .trend-radar-score-value { color: #ef4444; }
     }
-    .tenx-radar-score-value {
+    .trend-radar-score-value {
       display: block;
       font-size: 2.2rem;
       font-weight: 700;
       line-height: 1;
       transition: color 0.3s ease;
     }
-    .tenx-radar-score-label {
+    .trend-radar-score-label {
       display: block;
       font-size: 0.75rem;
       color: #94a3b8;
       margin-top: 4px;
     }
-    .tenx-verdict {
+    .trend-verdict {
       flex: 1;
       display: flex;
       flex-direction: column;
@@ -3008,7 +3008,7 @@ export default {
     }
 
     /* AI结论 */
-    .tenx-ai-conclusion {
+    .trend-ai-conclusion {
       width: 100%;
       margin-top: 4px;
       padding: 10px 12px;
@@ -3017,7 +3017,7 @@ export default {
       border: 1px solid #e4e7ed;
       flex: 1;
     }
-    .tenx-ai-conclusion-header {
+    .trend-ai-conclusion-header {
       display: flex;
       align-items: center;
       gap: 4px;
@@ -3027,7 +3027,7 @@ export default {
       color: #409eff;
       i { font-size: 13px; }
     }
-    .tenx-ai-conclusion-text {
+    .trend-ai-conclusion-text {
       font-size: 11px;
       color: #606266;
       line-height: 1.7;
@@ -3035,18 +3035,18 @@ export default {
     }
 
     /* 因子详情区 */
-    .tenx-dim-section-header {
+    .trend-dim-section-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       margin-bottom: 12px;
     }
-    .tenx-dim-section-title {
+    .trend-dim-section-title {
       font-size: 13px;
       font-weight: 600;
       color: #606266;
     }
-    .tenx-dim-toggle-btn {
+    .trend-dim-toggle-btn {
       font-size: 11px;
       padding: 4px 10px;
       border-radius: 6px;
@@ -3060,7 +3060,7 @@ export default {
     }
 
     /* 因子网格 */
-    .tenx-dimensions-grid {
+    .trend-dimensions-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 8px;
@@ -3071,27 +3071,27 @@ export default {
     }
 
     /* 因子分组分隔线 */
-    .tenx-dim-group-divider {
+    .trend-dim-group-divider {
       grid-column: 1 / -1;
       display: flex;
       align-items: center;
       gap: 8px;
       padding: 4px 0 2px;
     }
-    .tenx-dim-group-label {
+    .trend-dim-group-label {
       font-size: 10px;
       color: #c0c4cc;
       letter-spacing: 0.05em;
       white-space: nowrap;
     }
-    .tenx-dim-group-line {
+    .trend-dim-group-line {
       flex: 1;
       height: 1px;
       background: #e4e7ed;
     }
 
     /* 单个因子卡片 */
-    .tenx-dim-item {
+    .trend-dim-item {
       background: #fff;
       border: 1px solid #e4e7ed;
       border-radius: 10px;
@@ -3106,48 +3106,48 @@ export default {
     }
 
     /* 因子头部 */
-    .tenx-dim-head {
+    .trend-dim-head {
       padding: 8px 14px;
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
     }
-    .tenx-dim-head-left {
+    .trend-dim-head-left {
       display: flex;
       align-items: flex-start;
       gap: 8px;
     }
-    .tenx-dim-icon {
+    .trend-dim-icon {
       font-size: 14px;
       margin-top: 2px;
     }
-    .tenx-dim-name {
+    .trend-dim-name {
       font-size: 13px;
       font-weight: 500;
       color: #303133;
     }
-    .tenx-dim-weight {
+    .trend-dim-weight {
       font-size: 10px;
       color: #c0c4cc;
       margin-left: 4px;
     }
-    .tenx-dim-question {
+    .trend-dim-question {
       font-size: 9px;
       color: #409eff;
       opacity: 0.7;
       margin-top: 2px;
     }
-    .tenx-dim-head-right {
+    .trend-dim-head-right {
       display: flex;
       align-items: center;
       gap: 8px;
       flex-shrink: 0;
     }
-    .tenx-dim-score {
+    .trend-dim-score {
       font-size: 17px;
       font-weight: 700;
     }
-    .tenx-dim-chevron {
+    .trend-dim-chevron {
       font-size: 10px;
       color: #c0c4cc;
       transition: transform 0.3s;
@@ -3155,36 +3155,36 @@ export default {
     }
 
     /* 因子进度条 */
-    .tenx-dim-bar {
+    .trend-dim-bar {
       height: 4px;
       background: #f2f3f5;
       border-radius: 3px;
       overflow: hidden;
       margin: 0 14px 8px;
     }
-    .tenx-dim-bar-fill {
+    .trend-dim-bar-fill {
       height: 100%;
       border-radius: 3px;
       transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
     }
 
     /* 因子展开详情 */
-    .tenx-dim-details {
+    .trend-dim-details {
       max-height: 0;
       overflow: hidden;
       transition: max-height 0.35s ease;
     }
-    .tenx-dim-details.open {
+    .trend-dim-details.open {
       max-height: 400px;
     }
-    .tenx-dim-details-inner {
+    .trend-dim-details-inner {
       padding: 8px 14px 12px;
       border-top: 1px solid #f2f3f5;
       margin-top: 0;
     }
 
     /* 指标行 */
-    .tenx-ind-row {
+    .trend-ind-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -3192,39 +3192,39 @@ export default {
       border-bottom: 1px solid #fafafa;
       &:last-child { border-bottom: none; }
     }
-    .tenx-ind-name {
+    .trend-ind-name {
       font-size: 11px;
       color: #909399;
     }
-    .tenx-ind-right {
+    .trend-ind-right {
       display: flex;
       align-items: center;
       gap: 8px;
     }
-    .tenx-ind-value {
+    .trend-ind-value {
       font-size: 11px;
       color: #606266;
     }
-    .tenx-ind-bar-track {
+    .trend-ind-bar-track {
       width: 40px;
       height: 3px;
       border-radius: 2px;
       background: #f2f3f5;
       overflow: hidden;
     }
-    .tenx-ind-bar-fill {
+    .trend-ind-bar-fill {
       height: 100%;
       border-radius: 2px;
       transition: width 0.7s cubic-bezier(0.4,0,0.2,1);
     }
-    .tenx-ind-score {
+    .trend-ind-score {
       font-size: 11px;
       font-weight: 700;
       width: 20px;
       text-align: right;
     }
 
-    .tenx-data-source {
+    .trend-data-source {
       font-size: 0.72rem;
       color: #cbd5e1;
       text-align: center;

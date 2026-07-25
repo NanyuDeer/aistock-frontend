@@ -12,7 +12,7 @@ const PerformanceForecastView = () => import('@/modules/analytics/views/Performa
 const TenxScoreView = () => import('@/modules/market/views/TenxScoreView.vue')
 const TrendScoreView = () => import('@/modules/market/views/TrendScoreView.vue')
 const HotBurstView = () => import('@/modules/news/views/HotBurstView.vue')
-const StockMonitorView = () => import('@/modules/market/views/StockMonitorView.vue')
+const StockIntelView = () => import('@/modules/market/views/StockIntelView.vue')
 const PotentialStockPushHistoryView = () => import('@/modules/analytics/views/PotentialStockPushHistoryView.vue')
 
 // ==================== 事件传导模块 ====================
@@ -110,10 +110,10 @@ const routes = [
   },
   {
     path: '/stock-monitor',
-    name: 'stockMonitor',
-    component: StockMonitorView,
+    name: 'stockIntel',
+    component: StockIntelView,
     meta: {
-      title: '股票资讯AI智能分析 - 个股异动'
+      title: '股票资讯AI智能分析 - 个股情报'
     }
   },
   {

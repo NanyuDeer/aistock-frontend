@@ -129,10 +129,10 @@
             <MarketOverview />
           </div>
 
-          <!-- 个股异动（隐藏，后续可能用到） -->
-          <div v-if="false" class="stock-monitor-section">
-            <h3 class="section-title">个股异动</h3>
-            <StockMonitorList
+          <!-- 个股情报（隐藏，后续可能用到） -->
+          <div v-if="false" class="stock-intel-section">
+            <h3 class="section-title">个股情报</h3>
+            <StockIntelList
               :events="monitorEvents"
               :show-cycle-filter="true"
               default-cycle="all"
@@ -308,11 +308,11 @@ import { stockApi } from '@/shared/api/api';
 import MarketOverview from '@/modules/home/components/MarketOverview.vue';
 import NewsSlider from '@/modules/home/components/NewsSlider.vue';
 import StockCardList from '@/shared/components/StockCardList.vue';
-import StockMonitorList from '@/shared/components/StockMonitorList.vue';
+import StockIntelList from '@/shared/components/StockIntelList.vue';
 import HotBurstPanel from '@/modules/home/components/HotBurstPanel.vue';
 import WindLeaderPanel from '@/modules/home/components/WindLeaderPanel.vue';
 import AiGraph from '@/modules/home/components/AiGraph.vue';
-import { trendHotspotApi, windLeaderApi } from '@/shared/api/api';
+import { stockIntelApi, windLeaderApi } from '@/shared/api/api';
 import 'element-plus/es/components/message/style/css';
 
 // ============ 模块级缓存 ============
@@ -335,7 +335,7 @@ export default {
     MarketOverview,
     NewsSlider,
     StockCardList,
-    StockMonitorList,
+    StockIntelList,
     HotBurstPanel,
     WindLeaderPanel,
     AiGraph
@@ -344,14 +344,14 @@ export default {
     const store = useStore();
     const router = useRouter();
 
-    // 趋势风口数据
+    // 个股情报数据
     const monitorEvents = ref([]);
     const loadingMonitor = ref(false);
 
     const fetchMonitorEvents = async () => {
       loadingMonitor.value = true;
       try {
-        const res = await trendHotspotApi.getEvents({ cycle: 'all', limit: 8 });
+        const res = await stockIntelApi.getEvents({ cycle: 'all', limit: 8 });
         const events = res?.data?.events || [];
         monitorEvents.value = events.map(e => ({
           ...e,
@@ -364,7 +364,7 @@ export default {
           event_time_display: e.event_time_display || formatEventTime(e.event_time),
         }));
       } catch (err) {
-        console.warn('[HomeView] 获取趋势风口数据失败，使用空列表:', err);
+        console.warn('[HomeView] 获取个股情报数据失败，使用空列表:', err);
         monitorEvents.value = [];
       } finally {
         loadingMonitor.value = false;
@@ -1275,7 +1275,7 @@ export default {
     });
 
     return {
-      // 趋势风口
+      // 个股情报
       monitorEvents,
 
       // 风口龙头
@@ -1341,7 +1341,7 @@ export default {
     margin-bottom: 20px;
   }
 
-  .stock-monitor-section {
+  .stock-intel-section {
     margin-top: 20px;
     margin-bottom: 20px;
     padding: 16px;

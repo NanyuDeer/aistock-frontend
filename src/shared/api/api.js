@@ -764,24 +764,24 @@ export const configApi = {
   getPublicConfig: () => api.get('/api/config/public'),
 };
 
-// 风口爆发 API
-export const trendHotspotApi = {
+// 个股情报监控 API
+export const stockIntelApi = {
   /** 查询公告/新闻研判事件列表 */
   getEvents: ({ cycle = 'all', change_type, stock_code, limit = 20, offset = 0 } = {}) => {
     const params = new URLSearchParams({ cycle, limit: String(limit), offset: String(offset) });
     if (change_type) params.append('change_type', change_type);
     if (stock_code) params.append('stock_code', stock_code);
-    return api.get(`/api/cn/trend-hotspots/events?${params.toString()}`, { timeout: 8000 });
+    return api.get(`/api/cn/stock-monitors/events?${params.toString()}`, { timeout: 8000 });
   },
 
-  /** 查询指定股票的趋势风口事件 */
+  /** 查询指定股票的异动事件 */
   getEventsByStock: (stockCode, { cycle = 'all', limit = 20 } = {}) => {
-    return api.get(`/api/cn/trend-hotspots/events/${encodeURIComponent(stockCode)}?cycle=${cycle}&limit=${limit}`, { timeout: 8000 });
+    return api.get(`/api/cn/stock-monitors/events/${encodeURIComponent(stockCode)}?cycle=${cycle}&limit=${limit}`, { timeout: 8000 });
   },
 
-  /** 获取趋势风口统计概览 */
+  /** 获取个股情报统计概览 */
   getStats: () => {
-    return api.get('/api/cn/trend-hotspots/stats', { timeout: 8000 });
+    return api.get('/api/cn/stock-monitors/stats', { timeout: 8000 });
   },
 
   /** 查询用户自选股资讯（需登录） */
