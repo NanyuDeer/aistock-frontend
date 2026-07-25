@@ -559,7 +559,7 @@
 
         <div v-if="shouldShowTenxModel" class="card tenx-card">
           <div class="card-header">
-            <h3>倍数潜力模型</h3>
+            <h3>趋势股模型</h3>
           </div>
           <div class="card-body">
             <div v-if="tenxModel.error" class="tenx-error-block">
@@ -587,17 +587,13 @@
               </div>
             </div>
             <div class="tenx-dim-section-header">
-              <span class="tenx-dim-section-title">八维因子详情</span>
+              <span class="tenx-dim-section-title">四维因子详情</span>
               <button class="tenx-dim-toggle-btn" @click="tenxToggleAll">
                 {{ tenxAllOpen ? '全部收起' : '全部展开' }}
               </button>
             </div>
             <div class="tenx-dimensions-grid">
               <template v-for="(dim, i) in tenxModel.dimensions" :key="dim.name">
-                <div v-if="i === 4" class="tenx-dim-group-divider">
-                  <span class="tenx-dim-group-label">后四维 · 能走多远</span>
-                  <div class="tenx-dim-group-line"></div>
-                </div>
                 <div
                   class="tenx-dim-item"
                   :class="{ 'is-expanded': tenxExpandedDims.has(i), [getScoreClass(dim.score)]: true }"
@@ -629,6 +625,27 @@
                             <div class="tenx-ind-bar-fill" :style="{ width: `${ind.score}%`, background: tenxSGrad(ind.score) }"></div>
                           </div>
                           <span class="tenx-ind-score" :style="{ color: tenxSColor(ind.score) }">{{ ind.score }}</span>
+                        </div>
+                      </div>
+                      <!-- 基本面子维度 -->
+                      <div v-if="dim.subDimensions && dim.subDimensions.length" class="tenx-sub-dims">
+                        <div class="tenx-sub-dims-title">基本面子维度</div>
+                        <div v-for="(sub, sidx) in dim.subDimensions" :key="sidx" class="tenx-sub-dim-item">
+                          <div class="tenx-sub-dim-head">
+                            <span class="tenx-sub-dim-name">{{ sub.name }}</span>
+                            <span class="tenx-sub-dim-score" :style="{ color: tenxSColor(sub.score) }">{{ sub.score }}</span>
+                            <span class="tenx-sub-dim-weight">{{ sub.weight }}%</span>
+                          </div>
+                          <div v-for="(ind, k) in sub.indicators" :key="k" class="tenx-ind-row">
+                            <span class="tenx-ind-name">{{ ind.name }}</span>
+                            <div class="tenx-ind-right">
+                              <span class="tenx-ind-value">{{ ind.value }}</span>
+                              <div class="tenx-ind-bar-track">
+                                <div class="tenx-ind-bar-fill" :style="{ width: `${ind.score}%`, background: tenxSGrad(ind.score) }"></div>
+                              </div>
+                              <span class="tenx-ind-score" :style="{ color: tenxSColor(ind.score) }">{{ ind.score }}</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -768,7 +785,7 @@ import { ttsApi } from '@/shared/api/api';
 import { getCuratedStockProfile } from '@/shared/mock/curatedStocks';
 import { trendHotspotApi } from '@/shared/api/api';
 import StockMonitorList from '@/shared/components/StockMonitorList.vue';
-import { tenxApi } from '@/shared/api/api';
+import { trendApi } from '@/shared/api/api';
 import 'element-plus/es/components/message/style/css';
 import * as echarts from 'echarts/core';
 
@@ -1266,7 +1283,7 @@ export default {
       const hasMultipleModel = Boolean(curatedProfile.value) && expectedMultipleNumber.value >= 1.5;
       const planStatement = getFifteenthPlanStatement(profileTheme.value);
       const tenxBasis = hasMultipleModel
-        ? { tag: '倍数模型高分', detail: `倍数潜力模型给出${tenxModel.value.score}分和"${tenxModel.value.label}"，当前倍数预期为${multiple}，因此AI给出${conclusion}。` }
+        ? { tag: '倍数模型高分', detail: `趋势股模型给出${tenxModel.value.score}分和"${tenxModel.value.label}"，当前倍数预期为${multiple}，因此AI给出${conclusion}。` }
         : { tag: '未入倍数池', detail: `当前股票未进入精选倍数模型池，长线判断暂以行业政策、护城河和年报质量为主，不单独给出倍数预期。` };
       const summary = `${profileName.value}长线核心在于${focus.slice(0, 2).join('和')}，行业政策、护城河和年报投入共同支撑长期估值弹性。`;
       return {
@@ -1286,7 +1303,7 @@ export default {
           ? [
             { tag: '分批跟踪高弹性', detail: `已持有者可按长线高弹性样本跟踪，避免一次性重仓，适合用分批方式等待产业验证。` },
             { tag: '等估值回落确认', detail: `关注者优先等估值回落、业绩公告或订单数据确认，不把短期题材上涨直接等同于十倍股兑现。` },
-            { tag: '产业验证是基础', detail: `若${focus[0] || '产业空间'}和${focus[1] || '核心壁垒'}持续验证，倍数潜力模型的高分才有继续上修基础。` },
+            { tag: '产业验证是基础', detail: `若${focus[0] || '产业空间'}和${focus[1] || '核心壁垒'}持续验证，趋势股模型的高分才有继续上修基础。` },
             { tag: '四维长期跟踪', detail: `长期跟踪重点放在研发投入、客户突破、现金流改善和政策落地四个维度。` }
           ]
           : [
@@ -1296,21 +1313,19 @@ export default {
             { tag: '无验证降预期', detail: `若长期逻辑没有新订单或新利润验证，应降低倍数预期，把它视作稳健成长而非高弹性标的。` }
           ],
         riskTips: [
-          { tag: '核心风险下修', detail: `核心风险是${risks[0]}，一旦兑现，倍数潜力模型会先从成长动能和赛道景气两项下修。` },
+          { tag: '核心风险下修', detail: `核心风险是${risks[0]}，一旦兑现，趋势股模型会先从成长动能和赛道景气两项下修。` },
           { tag: '主题化停滞风险', detail: `若政策催化强但订单、利润和现金流没有同步改善，长线逻辑容易停留在主题阶段。` },
           { tag: '估值透支消化风险', detail: `若估值提前大幅透支，后续即使行业方向正确，也可能出现较长时间的震荡消化。` }
         ]
       };
     });
 
-    // TenX 六维定义（前瞻爆发版百分制）
-    const TENX_DIMS = [
-      { name: '业绩爆发力', iconClass: 'el-icon-top', weight: 30, question: '增长有多猛？', indNames: ['未来2年预期净利润复合增速','最近单季营收同比增速','最近一季利润同比加速'] },
-      { name: '赛道景气度', iconClass: 'el-icon-aim', weight: 25, question: '赛道宽不宽？', indNames: ['市场认可度','行业渗透率位置','政策/产业趋势强度'] },
-      { name: '估值弹性', iconClass: 'el-icon-data-analysis', weight: 15, question: '空间大不大？', indNames: ['PEG','当前总市值(亿)','估值双击空间(倍)'] },
-      { name: '盈利质量', iconClass: 'el-icon-coin', weight: 15, question: '赚钱含金量？', indNames: ['毛利率(%)','净利率同比提升(pct)','经营现金流/净利润'] },
-      { name: '竞争壁垒', iconClass: 'el-icon-lock', weight: 10, question: '护城河深不深？', indNames: ['细分赛道市占率趋势','合同负债环比增速','行业地位不可替代性'] },
-      { name: '消息催化', iconClass: 'el-icon-chat-dot-round', weight: 5, question: '有没有催化剂？', indNames: ['近3月机构调研家数','股东户数较上期变化率','硬催化(政策/订单)'] }
+    // 趋势股四维定义（技术面/行业赛道景气/消息面催化/基本面）
+    const TREND_DIMS = [
+      { name: '技术面', iconClass: 'el-icon-data-line', weight: 35, question: '趋势结构健康吗？', indNames: ['低点以来涨幅','60日线位置','创新高状态','最大回撤','龙头股加成'] },
+      { name: '行业赛道景气', iconClass: 'el-icon-aim', weight: 25, question: '赛道景气度如何？', indNames: ['市场认可度','行业渗透率位置','政策/产业趋势强度'] },
+      { name: '消息面催化', iconClass: 'el-icon-chat-dot-round', weight: 20, question: '有没有催化剂？', indNames: ['近1月机构调研家数','股东户数较上期变化率','硬催化(政策/订单)'] },
+      { name: '基本面', iconClass: 'el-icon-coin', weight: 20, question: '基本面扎实吗？', indNames: ['业绩爆发力','估值弹性','盈利质量','竞争壁垒'] }
     ];
 
     function tenxSColor(s) {
@@ -1335,7 +1350,7 @@ export default {
     }
     function tenxToggleAll() {
       tenxAllOpen.value = !tenxAllOpen.value;
-      TENX_DIMS.forEach((_, i) => {
+      TREND_DIMS.forEach((_, i) => {
         if (tenxAllOpen.value) tenxExpandedDims.add(i);
         else tenxExpandedDims.delete(i);
       });
@@ -1387,7 +1402,7 @@ export default {
       tenxRadarChart = new Chart(ctx, {
         type: 'radar',
         data: {
-          labels: TENX_DIMS.map(d => d.name),
+          labels: TREND_DIMS.map(d => d.name),
           datasets: [{
             data: zeroData, fill: true,
             backgroundColor: colors.bg,
@@ -1447,7 +1462,7 @@ export default {
       tenxVetoed.value = false;
       tenxVetoReasons.value = [];
       try {
-        const res = await tenxApi.getScore(symbol);
+        const res = await trendApi.getScore(symbol);
         if (res.code === 200 && res.data) {
           // 检查否决状态
           if (res.data.vetoed) {
@@ -1460,7 +1475,7 @@ export default {
           tenxApiError.value = false;
         } else {
           try {
-            const refreshRes = await tenxApi.refreshScore(symbol);
+            const refreshRes = await trendApi.refreshScore(symbol);
             if (refreshRes.code === 200 && refreshRes.data) {
               // 检查否决状态
               if (refreshRes.data.vetoed) {
@@ -1487,26 +1502,46 @@ export default {
     const tenxModel = computed(() => {
       if (tenxApiData.value) {
         const apiData = tenxApiData.value;
-        const dimensions = apiData.dimensions || apiData.indicators || [];
-        const dimScores = apiData.dim_scores || dimensions.map(d => d.score);
+        // trend-score 返回 camelCase 字段
+        const dimensions = apiData.dimensions || [];
+        const dimScores = apiData.dimScores || dimensions.map(d => d.score);
+        // 清洗无效指标值
+        const cleanVal = (v) => {
+          if (v == null) return '--';
+          const s = String(v).trim();
+          if (s === '' || s === '-' || s === '0' || s === '0.0' || s === '0.00' || s === '0%' || s === '0.0%' || s === '0.00%' || s === 'NaN') return '--';
+          return v;
+        };
         return {
           score: apiData.score || 0,
-          expectedMultiple: apiData.expected_multiple || '',
+          expectedMultiple: apiData.expectedMultiple || '',
           label: apiData.label || '',
           description: apiData.description || '',
-          aiConclusion: apiData.ai_conclusion || '',
+          aiConclusion: apiData.aiConclusion || '',
+          updatedAt: apiData.updatedAt || '',
+          scoreDate: apiData.scoreDate || '',
           dimensions: dimensions.map(d => ({
             name: d.name,
-            iconClass: TENX_DIMS.find(t => t.name === d.name)?.iconClass || 'el-icon-data-line',
+            iconClass: TREND_DIMS.find(t => t.name === d.name)?.iconClass || 'el-icon-data-line',
             weight: d.weight,
-            question: TENX_DIMS.find(t => t.name === d.name)?.question || '',
+            question: TREND_DIMS.find(t => t.name === d.name)?.question || '',
             score: d.score,
-            indicators: d.indicators.map(ind => {
-              const v = ind.value;
-              // 0.0%、0.0、0等明显无意义的默认值显示为 --
-              const cleanVal = (v === '0.0%' || v === '0.00%' || v === '0%' || v === '0.0' || v === '0' || v === '-') ? '--' : v;
-              return { name: ind.name, value: cleanVal, score: ind.score };
-            })
+            indicators: (d.indicators || []).map(ind => ({
+              name: ind.name,
+              value: cleanVal(ind.value),
+              score: ind.score
+            })),
+            // 基本面子维度
+            subDimensions: (d.detail?.subDimensions || d.subDimensions || []).map(sub => ({
+              name: sub.name,
+              weight: sub.weight,
+              score: sub.score,
+              indicators: (sub.indicators || []).map(ind => ({
+                name: ind.name,
+                value: cleanVal(ind.value),
+                score: ind.score
+              }))
+            }))
           })),
           dimScores
         };
@@ -1518,15 +1553,16 @@ export default {
         label: '获取失败',
         description: '评分获取失败，请稍后重试',
         aiConclusion: '无法连接评分服务，请检查网络后刷新重试。',
-        dimensions: TENX_DIMS.map(dim => ({
+        dimensions: TREND_DIMS.map(dim => ({
           name: dim.name,
           iconClass: dim.iconClass,
           weight: dim.weight,
           question: dim.question,
           score: 0,
-          indicators: dim.indNames.map(name => ({ name, value: '--', score: 0 }))
+          indicators: [],
+          subDimensions: []
         })),
-        dimScores: [0,0,0,0,0,0,0,0],
+        dimScores: [0, 0, 0, 0],
         error: true
       };
     });
@@ -2324,7 +2360,7 @@ export default {
       midMockData, midAiAnalysis, longMockData, longAiAnalysis, shouldShowTenxModel, tenxModel, capitalFlowInfo,
       shortLogicTags, shortRiskTags, midBasisTags, midAdviceTags, midRiskTags, longBasisTags, longAdviceTags, longRiskTags,
       tenxVetoed, tenxVetoReasons,
-      TENX_DIMS, tenxSColor, tenxSGrad, tenxExpandedDims, tenxAllOpen, tenxRadarCanvas, tenxToggleDim, tenxToggleAll,
+      TREND_DIMS, tenxSColor, tenxSGrad, tenxExpandedDims, tenxAllOpen, tenxRadarCanvas, tenxToggleDim, tenxToggleAll,
       toggleFavorite, getEvaluationClass, goToTagBoard, formatRatioText,
       mergedStructureChart, priceTrendClass,
       turnoverLevel, turnoverRateLevel,
