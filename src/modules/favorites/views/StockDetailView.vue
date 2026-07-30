@@ -51,6 +51,74 @@
         </div>
       </div>
 
+      <section class="decision-strip" :class="{ 'is-single': !isFavorite }">
+        <div class="decision-card">
+          <div class="decision-top">
+            <div>
+              <span class="decision-kicker">综合决策</span>
+              <p class="decision-summary">{{ overallDecision.summary }}</p>
+            </div>
+            <div class="decision-title-row">
+              <span :class="['decision-status', overallDecision.statusClass]">{{ overallDecision.status }}</span>
+              <span class="decision-period">{{ overallDecision.period }}</span>
+            </div>
+          </div>
+          <div class="decision-next">
+            <span class="next-label">下一步</span>
+            <strong>{{ overallDecision.nextStep }}</strong>
+          </div>
+          <div class="decision-points">
+            <div class="decision-point">
+              <div class="point-head">
+                <span class="point-label">最大机会</span>
+                <el-popover trigger="click" placement="left" :width="360" popper-class="decision-popover">
+                  <template #reference>
+                    <button type="button" class="point-more">查看完整</button>
+                  </template>
+                  <div class="decision-popover-content">{{ overallDecision.opportunity }}</div>
+                </el-popover>
+              </div>
+              <strong class="point-text" :title="overallDecision.opportunity">{{ overallDecision.opportunity }}</strong>
+            </div>
+            <div class="decision-point is-risk">
+              <div class="point-head">
+                <span class="point-label">最大风险</span>
+                <el-popover trigger="click" placement="left" :width="360" popper-class="decision-popover">
+                  <template #reference>
+                    <button type="button" class="point-more">查看完整</button>
+                  </template>
+                  <div class="decision-popover-content">{{ overallDecision.risk }}</div>
+                </el-popover>
+              </div>
+              <strong class="point-text" :title="overallDecision.risk">{{ overallDecision.risk }}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="isFavorite" class="major-event-card" :class="{ 'is-muted': !latestMajorEvent }">
+          <div class="major-event-head">
+            <span class="decision-kicker">最新重大异动</span>
+            <span v-if="latestMajorEvent" :class="['major-impact', majorEventImpactClass]">
+              {{ latestMajorEvent.ai_impact || latestMajorEvent.level }}
+            </span>
+          </div>
+          <template v-if="latestMajorEvent">
+            <p class="major-event-title">{{ latestMajorEvent.summary || latestMajorEvent.title || latestMajorEvent.change_type_name }}</p>
+            <div class="major-event-meta">
+              <span>{{ latestMajorEvent.ai_horizon || latestMajorEvent.cycle || '周期待判定' }}</span>
+              <span>{{ latestMajorEvent.change_type_name || latestMajorEvent.info_type || '资讯研判' }}</span>
+              <span>{{ latestMajorEvent.event_time_display || formatEventTime(latestMajorEvent.event_time) }}</span>
+            </div>
+          </template>
+          <template v-else>
+            <p class="major-event-title">暂无重大利好或重大利空异动</p>
+            <div class="major-event-meta">
+              <span>持续监控中</span>
+            </div>
+          </template>
+        </div>
+      </section>
+
       <!-- 个股异动 -->
       <div v-if="isFavorite && stockMonitorEvents.length > 0" class="stock-monitor-section">
         <div class="card">
@@ -72,7 +140,7 @@
           v-for="tab in viewTabs"
           :key="tab.key"
           :class="['view-tab', { 'is-active': activeView === tab.key }]"
-          @click="activeView = tab.key"
+          @click="selectActiveView(tab.key)"
         >
           <span class="tab-label">{{ tab.label }}</span>
           <span class="tab-desc">{{ tab.desc }}</span>
@@ -81,6 +149,20 @@
 
       <!-- 短线视图 -->
       <div v-show="activeView === 'short'" class="view-content">
+        <div class="card short-action-card">
+          <div class="card-header">
+            <h3>短线跟踪</h3>
+          </div>
+          <div class="card-body">
+            <div class="action-grid">
+              <div v-for="item in shortActionItems" :key="item.label" class="action-item">
+                <span class="action-label">{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="card ai-analysis-card">
           <div class="card-header">
             <h3>AI资讯分析</h3>
@@ -276,102 +358,86 @@
             <div class="data-grid">
               <div class="data-item is-key">
                 <div class="metric-line">
-                  <span class="metric-label">最新价：</span>
+                  <span class="metric-label">最新价</span>
                   <span :class="['metric-value', priceTrendClass]">{{ stockInfo.price }}</span>
                 </div>
               </div>
               <div class="data-item">
                 <div class="metric-line">
-                  <span class="metric-label">均价：</span>
-                  <span class="metric-value">{{ stockInfo.avgPrice }}</span>
-                </div>
-              </div>
-              <div class="data-item is-key">
-                <div class="metric-line">
-                  <span class="metric-label">涨跌幅：</span>
+                  <span class="metric-label">涨跌幅</span>
                   <span :class="['metric-value', priceTrendClass]">{{ formatSignedPercent(stockInfo.changePercent) }}</span>
                 </div>
               </div>
               <div class="data-item is-key">
                 <div class="metric-line">
-                  <span class="metric-label">涨跌额：</span>
+                  <span class="metric-label">涨跌额</span>
                   <span :class="['metric-value', priceTrendClass]">{{ formatSignedPrice(stockInfo.changeAmount) }}</span>
                 </div>
               </div>
               <div class="data-item">
                 <div class="metric-line">
-                  <span class="metric-label">成交量：</span>
+                  <span class="metric-label">成交量</span>
                   <span class="metric-value">{{ stockInfo.volume }}</span>
                 </div>
               </div>
               <div class="data-item">
                 <div class="metric-line">
-                  <span class="metric-label">成交额：</span>
+                  <span class="metric-label">成交额</span>
                   <span class="metric-value">{{ stockInfo.turnover }}</span>
-                  <span v-if="turnoverLevel" class="metric-hint" :class="turnoverLevel.class">{{ turnoverLevel.text }}</span>
                 </div>
               </div>
               <div class="data-item">
                 <div class="metric-line">
-                  <span class="metric-label">换手率：</span>
+                  <span class="metric-label">换手率</span>
                   <span class="metric-value">{{ stockInfo.turnoverRate }}</span>
-                  <span v-if="turnoverRateLevel" class="metric-hint" :class="turnoverRateLevel.class">{{ turnoverRateLevel.text }}</span>
                 </div>
               </div>
               <div class="data-item">
                 <div class="metric-line">
-                  <span class="metric-label">量比：</span>
+                  <span class="metric-label">量比</span>
                   <span class="metric-value">{{ stockInfo.volumeRatio }}</span>
                 </div>
               </div>
               <div class="data-item">
                 <div class="metric-line">
-                  <span class="metric-label">最高价：</span>
-                  <span class="metric-value">{{ stockInfo.high }}</span>
+                  <span class="metric-label">今开</span>
+                  <span :class="['metric-value', openTrendClass]">{{ stockInfo.open }}</span>
                 </div>
               </div>
               <div class="data-item">
                 <div class="metric-line">
-                  <span class="metric-label">最低价：</span>
-                  <span class="metric-value">{{ stockInfo.low }}</span>
+                  <span class="metric-label">最高</span>
+                  <span class="metric-value trend-up">{{ stockInfo.high }}</span>
                 </div>
               </div>
               <div class="data-item">
                 <div class="metric-line">
-                  <span class="metric-label">今开价：</span>
-                  <span class="metric-value">{{ stockInfo.open }}</span>
+                  <span class="metric-label">最低</span>
+                  <span class="metric-value trend-down">{{ stockInfo.low }}</span>
                 </div>
               </div>
               <div class="data-item">
                 <div class="metric-line">
-                  <span class="metric-label">昨收价：</span>
+                  <span class="metric-label">昨收</span>
                   <span class="metric-value">{{ stockInfo.prevClose }}</span>
                 </div>
               </div>
               <div class="data-item">
                 <div class="metric-line">
-                  <span class="metric-label">涨停价：</span>
-                  <span class="metric-value">{{ stockInfo.limitUp }}</span>
+                  <span class="metric-label">振幅</span>
+                  <span class="metric-value">{{ stockInfo.amplitude }}</span>
                 </div>
               </div>
               <div class="data-item">
                 <div class="metric-line">
-                  <span class="metric-label">跌停价：</span>
-                  <span class="metric-value">{{ stockInfo.limitDown }}</span>
+                  <span class="metric-label">市盈率</span>
+                  <span class="metric-value">{{ stockInfo.peRatio }}</span>
                 </div>
               </div>
               <div class="data-item">
                 <div class="metric-line">
-                  <span class="metric-label">流通股本：</span>
-                  <span class="metric-value">{{ stockInfo.floatShares }} / {{ stockInfo.totalShares }}</span>
-                  <span v-if="mergedStructureChart.shareFlowPercent != null" class="metric-hint">{{ formatRatioText(mergedStructureChart.shareFlowPercent) }}</span>
-                </div>
-              </div>
-              <div class="data-item">
-                <div class="metric-line">
-                  <span class="metric-label">流通市值：</span>
-                  <span class="metric-value">{{ stockInfo.floatMarketCap }} / {{ stockInfo.marketCap }}</span>
-                  <span v-if="mergedStructureChart.marketCapFlowPercent != null" class="metric-hint">{{ formatRatioText(mergedStructureChart.marketCapFlowPercent) }}</span>
+                  <span class="metric-label">市净率</span>
+                  <span class="metric-value">{{ stockInfo.pbRatio }}</span>
                 </div>
               </div>
             </div>
@@ -392,6 +458,12 @@
             </div>
             <div class="ai-logic">
               <p>{{ midAiAnalysis.logic }}</p>
+            </div>
+            <div class="ai-action-grid">
+              <div v-for="item in midActionItems" :key="item.label" class="ai-action-item">
+                <span>{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
+              </div>
             </div>
             <div class="ai-basis">
               <h4>研判依据</h4>
@@ -494,16 +566,24 @@
               <div class="industry-chart-wrap">
                 <div ref="industryHealthChartRef" class="industry-line-chart" role="img" aria-label="行业景气指数趋势"></div>
               </div>
-              <div class="industry-detail-title">行业详情（点击展开）</div>
+              <button type="button" class="industry-detail-title" @click="openIndustryDetail()">
+                行业详情（点击展开）
+              </button>
               <div class="industry-detail-grid">
-                <div v-for="item in midMockData.industryHealth.details" :key="item.title" class="industry-detail-item">
+                <button
+                  v-for="item in midMockData.industryHealth.details"
+                  :key="item.title"
+                  type="button"
+                  class="industry-detail-item"
+                  @click="openIndustryDetail(item)"
+                >
                   <span class="detail-icon">{{ item.icon }}</span>
                   <div>
                     <strong>{{ item.title }}</strong>
                     <span>{{ item.desc }}</span>
                   </div>
                   <span class="detail-arrow">›</span>
-                </div>
+                </button>
               </div>
             </div>
           </div>
@@ -522,6 +602,12 @@
             </div>
             <div class="ai-logic">
               <p>{{ longAiAnalysis.logic }}</p>
+            </div>
+            <div class="ai-action-grid">
+              <div v-for="item in longActionItems" :key="item.label" class="ai-action-item">
+                <span>{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
+              </div>
             </div>
             <div class="ai-basis">
               <h4>研判依据</h4>
@@ -566,39 +652,56 @@
               <i class="el-icon-warning-outline" style="font-size:32px;color:#f56c6c;"></i>
               <p style="color:#f56c6c;font-size:14px;margin-top:8px;">评分获取失败，请稍后重试</p>
             </div>
-            <div v-else class="tenx-hero" :class="getScoreClass(tenxModel.score)">
-              <div class="tenx-radar-center-wrap">
-                <canvas ref="tenxRadarCanvas" class="tenx-radar-canvas"></canvas>
-                <div class="tenx-radar-score-overlay" :class="getScoreClass(tenxModel.score)">
-                  <span class="tenx-radar-score-value">{{ tenxModel.score }}</span>
-                  <span class="tenx-radar-score-label">{{ tenxModel.expectedMultiple }}</span>
+            <div v-else class="tenx-overview" :class="getScoreClass(tenxModel.score)">
+              <div class="tenx-score-panel">
+                <div class="tenx-radar-center-wrap">
+                  <canvas ref="tenxRadarCanvas" class="tenx-radar-canvas"></canvas>
+                  <div class="tenx-radar-score-overlay" :class="getScoreClass(tenxModel.score)">
+                    <span class="tenx-radar-score-value">{{ tenxModel.score }}</span>
+                    <span class="tenx-radar-score-label">{{ tenxModel.expectedMultiple || '综合分' }}</span>
+                  </div>
+                </div>
+                <div class="tenx-score-meta">
+                  <span class="verdict-tag" :class="getScoreClass(tenxModel.score)">{{ tenxModel.label || getScoreLabel(tenxModel.score) }}</span>
+                  <span class="tenx-score-caption">趋势股综合评估</span>
                 </div>
               </div>
-              <div class="tenx-verdict">
-                <span class="verdict-tag" :class="getScoreClass(tenxModel.score)">{{ tenxModel.label }}</span>
-                <p class="verdict-text">{{ tenxModel.description }}</p>
-                <div class="tenx-ai-conclusion">
+              <div class="tenx-summary-panel">
+                <div class="tenx-summary-head">
+                  <div>
+                    <span class="tenx-summary-kicker">模型结论</span>
+                    <p class="verdict-text">{{ tenxModel.description }}</p>
+                  </div>
+                </div>
+                <div class="tenx-meta-row">
+                  <span class="tenx-meta-chip">{{ tenxModel.label || getScoreLabel(tenxModel.score) }}</span>
+                  <span v-if="tenxModel.expectedMultiple" class="tenx-meta-chip">期望 {{ tenxModel.expectedMultiple }}</span>
+                  <span v-if="tenxModel.scoreDate" class="tenx-meta-chip">评分日 {{ tenxModel.scoreDate }}</span>
+                </div>
+                <div v-if="tenxSupplementText" class="tenx-ai-conclusion">
                   <div class="tenx-ai-conclusion-header">
                     <i class="el-icon-chat-dot-round"></i>
-                    <span>AI结论</span>
+                    <span>补充观察</span>
                   </div>
-                  <p class="tenx-ai-conclusion-text">{{ tenxModel.aiConclusion }}</p>
+                  <p class="tenx-ai-conclusion-text">{{ tenxSupplementText }}</p>
                 </div>
               </div>
             </div>
             <div class="tenx-dim-section-header">
-              <span class="tenx-dim-section-title">四维因子详情</span>
-              <button class="tenx-dim-toggle-btn" @click="tenxToggleAll">
-                {{ tenxAllOpen ? '全部收起' : '全部展开' }}
-              </button>
+              <div>
+                <span class="tenx-dim-section-title">四维因子详情</span>
+                <span class="tenx-dim-section-subtitle">点击卡片展开指标</span>
+              </div>
             </div>
-            <div class="tenx-dimensions-grid">
-              <template v-for="(dim, i) in tenxModel.dimensions" :key="dim.name">
-                <div
-                  class="tenx-dim-item"
-                  :class="{ 'is-expanded': tenxExpandedDims.has(i), [getScoreClass(dim.score)]: true }"
-                >
-                  <div class="tenx-dim-head" @click="tenxToggleDim(i)">
+            <div class="tenx-factor-board">
+              <section
+                v-for="(dim, i) in tenxModel.dimensions"
+                :key="dim.name"
+                class="tenx-factor-panel"
+                :class="[getScoreClass(dim.score), { 'is-active': activeTenxDimIndex === i }]"
+                @click="tenxToggleActiveDim(i)"
+              >
+                  <div class="tenx-dim-head">
                     <div class="tenx-dim-head-left">
                       <i :class="dim.iconClass" class="tenx-dim-icon" :style="{ color: tenxSColor(dim.score) }"></i>
                       <div>
@@ -609,13 +712,13 @@
                     </div>
                     <div class="tenx-dim-head-right">
                       <span class="tenx-dim-score" :style="{ color: tenxSColor(dim.score) }">{{ dim.score }}</span>
-                      <i class="el-icon-arrow-down tenx-dim-chevron" :class="{ open: tenxExpandedDims.has(i) }"></i>
+                      <span class="tenx-factor-state">{{ activeTenxDimIndex === i ? '收起' : '展开' }}</span>
                     </div>
                   </div>
                   <div class="tenx-dim-bar">
                     <div class="tenx-dim-bar-fill" :style="{ width: `${dim.score}%`, background: tenxSGrad(dim.score) }"></div>
                   </div>
-                  <div class="tenx-dim-details" :class="{ open: tenxExpandedDims.has(i) }">
+                  <div v-if="activeTenxDimIndex === i" class="tenx-dim-details open" @click.stop>
                     <div class="tenx-dim-details-inner">
                       <div v-for="(ind, j) in dim.indicators" :key="ind.name" class="tenx-ind-row">
                         <span class="tenx-ind-name">{{ ind.name }}</span>
@@ -650,8 +753,7 @@
                       </div>
                     </div>
                   </div>
-                </div>
-              </template>
+              </section>
             </div>
             <div class="tenx-data-source">
               <span class="source-label">数据来源：</span>模型基于历史数据，不构成投资建议
@@ -769,11 +871,34 @@
       </div>
       <div v-else><el-empty description="暂无新闻详情"></el-empty></div>
     </el-dialog>
+
+    <el-dialog
+      v-model="industryDetailDialogVisible"
+      :title="industryDetailDialogTitle"
+      width="min(680px, 96vw)"
+      class="industry-detail-dialog"
+    >
+      <div class="industry-dialog-content">
+        <div class="industry-dialog-summary">
+          <span>{{ profileTheme }}</span>
+          <strong>{{ midMockData.industryHealth.score }} / 100</strong>
+        </div>
+        <div class="industry-dialog-list">
+          <article v-for="row in industryDetailRows" :key="row.title" class="industry-dialog-row">
+            <span class="industry-dialog-row-tag">{{ row.tag }}</span>
+            <div>
+              <h4>{{ row.title }}</h4>
+              <p>{{ row.desc }}</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
-import { ref, onMounted, watch, onBeforeUnmount, computed, nextTick, reactive } from 'vue';
+import { ref, onMounted, watch, onBeforeUnmount, computed, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { ElMessage } from 'element-plus';
@@ -787,6 +912,7 @@ import { trendHotspotApi } from '@/shared/api/api';
 import StockMonitorList from '@/shared/components/StockMonitorList.vue';
 import { trendApi } from '@/shared/api/api';
 import 'element-plus/es/components/message/style/css';
+import Chart from 'chart.js/auto';
 import * as echarts from 'echarts/core';
 
 import { LineChart, BarChart } from 'echarts/charts';
@@ -799,6 +925,7 @@ const stockDetailCache = {
   stockData: { code: '', ts: 0 },
   news: { code: '', ts: 0 },
   forecast: { code: '', ts: 0 },
+  financial: { code: '', ts: 0 },
   evaluation: { code: '', ts: 0 }
 };
 const isCacheFresh = (key, code) => {
@@ -824,11 +951,21 @@ export default {
     const router = useRouter();
     const store = useStore();
     const activeView = ref('short');
+    const userSelectedView = ref(false);
     const viewTabs = [
       { key: 'short', label: '短线', desc: '日/周' },
       { key: 'mid', label: '中线', desc: '周/月' },
       { key: 'long', label: '长线', desc: '季/年' }
     ];
+    const selectActiveView = (key) => {
+      userSelectedView.value = true;
+      activeView.value = key;
+    };
+    const viewKeyFromPeriod = (period) => {
+      if (/短|short/i.test(period)) return 'short';
+      if (/长|long/i.test(period)) return 'long';
+      return 'mid';
+    };
 
     // 个股异动数据
     const stockMonitorEvents = ref([]);
@@ -882,6 +1019,7 @@ export default {
       open: '--', prevClose: '--', high: '--', low: '--',
       limitUp: '--', limitDown: '--', volume: '--', turnover: '--', turnoverRaw: null,
       turnoverRate: '--', turnoverRateRaw: null, volumeRatio: '--', outerVolume: '--', innerVolume: '--',
+      amplitude: '--', peRatio: '--', pbRatio: '--',
       marketCap: '--', floatMarketCap: '--', marketCapValue: null, floatMarketCapValue: null,
       infoUpdatedAt: '--', lastUpdated: '--'
     });
@@ -905,6 +1043,8 @@ export default {
     const forecastData = ref({});
     const forecastSummary = ref('');
     const loadingForecast = ref(false);
+    const financialSnapshot = ref({ fundamentals: null, semiAnnual: null });
+    const loadingFinancialSnapshot = ref(false);
     const newsLimit = ref(3);
     const newsCursor = ref(0);
     const totalNews = ref(0);
@@ -1013,6 +1153,52 @@ export default {
     const longBasisTags = computed(() => extractTagsFromArray(longAiAnalysis.value.basis));
     const longAdviceTags = computed(() => extractTagsFromArray(longAiAnalysis.value.advice));
     const longRiskTags = computed(() => extractTagsFromArray(longAiAnalysis.value.riskTips));
+    const midActionItems = computed(() => {
+      const conclusion = String(midAiAnalysis.value.conclusion || '');
+      const hasRisk = midRiskTags.value.length > 0;
+      const isPositive = /看多|买入|增持|积极|继续/.test(conclusion);
+      return [
+        {
+          label: '当前判断',
+          value: isPositive
+            ? '中线逻辑仍可跟踪，但需要继续等业绩和行业数据验证。'
+            : '中线信号还不够强，先降低预期，等待更明确的基本面确认。'
+        },
+        {
+          label: '下一步验证',
+          value: '重点看业绩预期是否上修、行业景气是否延续，以及回调时成交量是否收缩。'
+        },
+        {
+          label: '不成立信号',
+          value: hasRisk
+            ? `如果${midRiskTags.value[0]?.tag}开始兑现，中线逻辑需要降级。`
+            : '如果业绩预期下修、回调放量或行业热度降温，中线逻辑需要降级。'
+        }
+      ];
+    });
+
+    const longActionItems = computed(() => {
+      const score = Number(tenxModel.value?.score || 0);
+      const risk = longRiskTags.value[0]?.tag;
+      return [
+        {
+          label: '长期判断',
+          value: score >= 75
+            ? '具备长期观察价值，但仍要确认盈利质量和行业空间能否持续。'
+            : '长期确定性还不充分，更适合作为观察池标的。'
+        },
+        {
+          label: '长期跟踪',
+          value: '重点跟踪 ROE、收入增速、利润率、竞争格局和估值消化情况。'
+        },
+        {
+          label: '移出条件',
+          value: risk
+            ? `如果${risk}兑现，或收入增速和利润率连续走弱，应降低长期关注级别。`
+            : '如果增长放缓、利润率下滑、竞争格局恶化或估值明显透支，应降低长期关注级别。'
+        }
+      ];
+    });
 
     const curatedProfile = computed(() => getCuratedStockProfile(stockInfo.value.code));
     const profileScore = computed(() => Number(curatedProfile.value?.aiScore || 78));
@@ -1162,6 +1348,165 @@ export default {
       ];
     };
 
+    const readMetricNumber = (value) => {
+      if (value === null || value === undefined) return null;
+      if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+      const text = String(value).replace(/,/g, '').replace(/%/g, '').trim();
+      if (!text || text === '--' || text === '-') return null;
+      const parsed = Number(text.replace(/[^\d.-]/g, ''));
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    const pickMetric = (source, keys) => {
+      if (!source || typeof source !== 'object') return null;
+      for (const key of keys) {
+        if (Object.prototype.hasOwnProperty.call(source, key)) {
+          const value = readMetricNumber(source[key]);
+          if (value !== null) return value;
+        }
+      }
+      const lowerKeys = Object.keys(source);
+      for (const pattern of keys) {
+        const lowerPattern = String(pattern).toLowerCase();
+        const matchedKey = lowerKeys.find(key => key.toLowerCase().includes(lowerPattern));
+        if (matchedKey) {
+          const value = readMetricNumber(source[matchedKey]);
+          if (value !== null) return value;
+        }
+      }
+      return null;
+    };
+
+    const latestSemiAnnualReport = computed(() => {
+      const reports = financialSnapshot.value?.semiAnnual?.reports;
+      return Array.isArray(reports) && reports.length > 0 ? reports[0] : null;
+    });
+
+    const formatReportPeriod = (value) => {
+      const text = String(value || '').trim();
+      if (/^\d{8}$/.test(text)) return `${text.slice(0, 4)}-${text.slice(4, 6)}-${text.slice(6, 8)}`;
+      return text || '最新报告期';
+    };
+
+    const formatAmountYi = (value) => {
+      const num = readMetricNumber(value);
+      if (num === null) return '--';
+      return `${(num / 1e8).toFixed(2)}亿`;
+    };
+
+    const formatMetricPct = (value, digits = 1) => {
+      const num = readMetricNumber(value);
+      return num === null ? '--' : `${num.toFixed(digits)}%`;
+    };
+
+    const metricType = (value) => {
+      const num = readMetricNumber(value);
+      if (num === null) return '';
+      return num >= 0 ? 'is-up' : 'is-down';
+    };
+
+    const findTrendIndicatorValue = (patterns) => {
+      const dimensions = tenxModel.value?.dimensions || [];
+      const allIndicators = [];
+      dimensions.forEach(dim => {
+        allIndicators.push(...(dim.indicators || []));
+        (dim.subDimensions || []).forEach(sub => {
+          if (Array.isArray(sub.indicators)) {
+            allIndicators.push(...sub.indicators);
+          }
+        });
+      });
+      const matched = allIndicators.find(ind => patterns.some(pattern => String(ind.name || '').includes(pattern)));
+      return matched ? matched.value : null;
+    };
+
+    const buildFinancialData = (score, multiple) => {
+      const fallback = buildFinancialMock(score, multiple);
+      const byLabel = new Map(fallback.map(item => [item.label, item]));
+      const semiAnnual = financialSnapshot.value?.semiAnnual || {};
+      const fundamentals = financialSnapshot.value?.fundamentals || {};
+      const latestReport = latestSemiAnnualReport.value;
+      const reportNote = latestReport?.end_date ? formatReportPeriod(latestReport.end_date) : '真实接口';
+      const revenueGrowth = readMetricNumber(semiAnnual.total_revenue_yoy);
+      const profitGrowth = readMetricNumber(semiAnnual.n_income_attr_p_yoy ?? semiAnnual.n_income_yoy);
+      const pe = readMetricNumber(stockInfo.value.peRatio) ?? pickMetric(fundamentals, ['市盈率', 'pe', 'pe_ttm']);
+      const pb = readMetricNumber(stockInfo.value.pbRatio) ?? pickMetric(fundamentals, ['市净率', 'pb']);
+      const grossMargin = readMetricNumber(findTrendIndicatorValue(['毛利率']));
+      const roe = pickMetric(fundamentals, ['roe', '净资产收益率']) ?? readMetricNumber(findTrendIndicatorValue(['ROE', '净资产收益率']));
+
+      return [
+        revenueGrowth !== null
+          ? { label: '营收增速', value: formatMetricPct(revenueGrowth), change: `${reportNote}同比`, type: metricType(revenueGrowth) }
+          : byLabel.get('营收增速'),
+        profitGrowth !== null
+          ? { label: '净利增速', value: formatMetricPct(profitGrowth), change: `${reportNote}同比`, type: metricType(profitGrowth) }
+          : byLabel.get('净利增速'),
+        pe !== null
+          ? { label: 'PE(TTM)', value: `${pe.toFixed(2)}倍`, change: '基础财务行情', type: '' }
+          : byLabel.get('PE(TTM)'),
+        pb !== null
+          ? { label: 'PB', value: `${pb.toFixed(2)}倍`, change: '基础财务行情', type: '' }
+          : byLabel.get('PB'),
+        grossMargin !== null
+          ? { label: '毛利率', value: formatMetricPct(grossMargin), change: '趋势评分指标', type: metricType(grossMargin) }
+          : byLabel.get('毛利率'),
+        roe !== null
+          ? { label: 'ROE', value: formatMetricPct(roe), change: '真实财务指标', type: metricType(roe) }
+          : byLabel.get('ROE')
+      ].filter(Boolean);
+    };
+
+    const forecastMetricValue = (metricName) => {
+      const details = forecastData.value?.['业绩预测详表_详细指标预测'];
+      if (!Array.isArray(details)) return null;
+      const row = details.find(item => String(item?.['预测指标'] || '').includes(metricName));
+      if (!row) return null;
+      const keys = Object.keys(row)
+        .filter(key => key.includes('平均') || key.includes('实际值'))
+        .sort()
+        .reverse();
+      for (const key of keys) {
+        const value = readMetricNumber(row[key]);
+        if (value !== null) return value;
+      }
+      return null;
+    };
+
+    const buildAnnualData = (multiple) => {
+      const latestReport = latestSemiAnnualReport.value;
+      const reportNote = latestReport?.end_date ? formatReportPeriod(latestReport.end_date) : '最新报告期';
+      const rdExpense = readMetricNumber(latestReport?.rd_exp);
+      const basicEps = readMetricNumber(latestReport?.basic_eps);
+      const profitGrowth = readMetricNumber(financialSnapshot.value?.semiAnnual?.n_income_attr_p_yoy ?? financialSnapshot.value?.semiAnnual?.n_income_yoy)
+        ?? forecastMetricValue('净利润增长率');
+      const roe = pickMetric(financialSnapshot.value?.fundamentals, ['roe', '净资产收益率'])
+        ?? readMetricNumber(findTrendIndicatorValue(['ROE', '净资产收益率']))
+        ?? forecastMetricValue('净资产收益率');
+      const ocfToProfit = readMetricNumber(findTrendIndicatorValue(['经营现金流']));
+      const holderChange = readMetricNumber(findTrendIndicatorValue(['股东户数']));
+
+      return [
+        rdExpense !== null
+          ? { label: '研发投入', value: formatAmountYi(rdExpense), note: reportNote, type: rdExpense > 0 ? 'is-up' : '' }
+          : { label: '研发投入', value: `同比+${Math.round(18 + multiple * 3)}%`, note: '待接半年报', type: 'is-up' },
+        holderChange !== null
+          ? { label: '股东结构', value: formatMetricPct(holderChange), note: holderChange <= 0 ? '筹码集中' : '筹码分散', type: holderChange <= 0 ? 'is-up' : 'is-down' }
+          : { label: '股东结构', value: multiple >= 10 ? '成长资金增配' : '机构底仓稳定', note: '待接股东户数', type: 'is-up' },
+        roe !== null
+          ? { label: '资本回报率', value: formatMetricPct(roe), note: '真实财务指标', type: metricType(roe) }
+          : { label: '资本回报率', value: `${(12 + profileScore.value / 8).toFixed(1)}%`, note: '待接ROE', type: 'is-up' },
+        ocfToProfit !== null
+          ? { label: '现金流质量', value: `${ocfToProfit.toFixed(2)}倍`, note: '经营现金流/净利润', type: ocfToProfit >= 1 ? 'is-up' : 'is-down' }
+          : { label: '现金流质量', value: multiple >= 10 ? '拐点修复' : '持续为正', note: '待接现金流', type: 'is-up' },
+        basicEps !== null
+          ? { label: '每股收益', value: `${basicEps.toFixed(2)}元`, note: reportNote, type: metricType(basicEps) }
+          : { label: '每股收益', value: '--', note: '待接半年报', type: '' },
+        profitGrowth !== null
+          ? { label: '净利同比', value: formatMetricPct(profitGrowth), note: profitGrowth >= 0 ? '利润扩张' : '利润承压', type: metricType(profitGrowth) }
+          : { label: '净利同比', value: '--', note: '待接财报/预测', type: '' }
+      ];
+    };
+
     const midMockData = computed(() => {
       const score = profileScore.value;
       const multiple = expectedMultipleNumber.value;
@@ -1173,7 +1518,7 @@ export default {
       }));
       const healthScore = trendValues[trendValues.length - 1].value;
       return {
-        finance: buildFinancialMock(score, multiple),
+        finance: buildFinancialData(score, multiple),
         industryHealth: {
           score: healthScore,
           levelClass: getIndustryHealthClass(healthScore),
@@ -1253,14 +1598,7 @@ export default {
           { icon: 'S', title: '规模效应', desc: profile.investmentLogic || `${profileName.value}具备一定规模和产业链协同基础。` },
           { icon: 'G', title: '成长曲线', desc: focus[2] || '第二增长曲线是长期估值扩张的关键。' }
         ],
-        annual: [
-          { label: '研发投入', value: `同比+${Math.round(18 + multiple * 3)}%`, note: '持续加码', type: 'is-up' },
-          { label: '股东结构', value: multiple >= 10 ? '成长资金增配' : '机构底仓稳定', note: '积极信号', type: 'is-up' },
-          { label: '资本回报率', value: `${(12 + profileScore.value / 8).toFixed(1)}%`, note: '高于行业', type: 'is-up' },
-          { label: '自由现金流', value: multiple >= 10 ? '拐点修复' : '持续为正', note: '质量改善', type: 'is-up' },
-          { label: '分红率', value: multiple >= 10 ? '低分红高投入' : '稳定分红', note: multiple >= 10 ? '成长优先' : '稳健', type: '' },
-          { label: '商誉', value: '低风险', note: '风险可控', type: '' }
-        ]
+        annual: buildAnnualData(multiple)
       };
     });
 
@@ -1329,31 +1667,22 @@ export default {
     ];
 
     function tenxSColor(s) {
-      if (s >= 75) return '#22c55e';
-      if (s >= 55) return '#eab308';
-      return '#ef4444';
+      if (s >= 75) return '#2563eb';
+      if (s >= 55) return '#64748b';
+      return '#dc2626';
     }
     function tenxSGrad(s) {
-      if (s >= 75) return 'linear-gradient(90deg,#16a34a,#22c55e)';
-      if (s >= 55) return 'linear-gradient(90deg,#ca8a04,#eab308)';
-      return 'linear-gradient(90deg,#dc2626,#ef4444)';
+      if (s >= 75) return 'linear-gradient(90deg,#3b82f6,#60a5fa)';
+      if (s >= 55) return 'linear-gradient(90deg,#64748b,#94a3b8)';
+      return 'linear-gradient(90deg,#dc2626,#f87171)';
     }
 
-    const tenxExpandedDims = reactive(new Set());
-    const tenxAllOpen = ref(false);
     const tenxRadarCanvas = ref(null);
+    const activeTenxDimIndex = ref(-1);
     let tenxRadarChart = null;
 
-    function tenxToggleDim(i) {
-      if (tenxExpandedDims.has(i)) tenxExpandedDims.delete(i);
-      else tenxExpandedDims.add(i);
-    }
-    function tenxToggleAll() {
-      tenxAllOpen.value = !tenxAllOpen.value;
-      TREND_DIMS.forEach((_, i) => {
-        if (tenxAllOpen.value) tenxExpandedDims.add(i);
-        else tenxExpandedDims.delete(i);
-      });
+    function tenxToggleActiveDim(i) {
+      activeTenxDimIndex.value = activeTenxDimIndex.value === i ? -1 : i;
     }
 
     function tenxGetRadarColors(score) {
@@ -1362,23 +1691,9 @@ export default {
       return { bg: 'rgba(239,68,68,0.10)', border: 'rgba(239,68,68,0.7)', point: 'rgba(239,68,68,0.9)' };
     }
 
-    function tenxLoadChartJs() {
-      return new Promise((resolve) => {
-        if (window.Chart) { resolve(true); return; }
-        const s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
-        s.onload = () => resolve(true);
-        s.onerror = () => resolve(false);
-        document.head.appendChild(s);
-      });
-    }
-
     async function tenxUpdateRadar(data) {
       if (!tenxRadarCanvas.value) return;
-      const loaded = await tenxLoadChartJs();
-      if (!loaded) return;
-      const Chart = window.Chart;
-      if (!Chart) return;
+      await nextTick();
       const ctx = tenxRadarCanvas.value.getContext('2d');
       const score = tenxModel.value ? tenxModel.value.score : 0;
       const colors = tenxGetRadarColors(score);
@@ -1388,15 +1703,10 @@ export default {
         tenxRadarChart.data.datasets[0].borderColor = colors.border;
         tenxRadarChart.data.datasets[0].pointBackgroundColor = colors.point;
         tenxRadarChart.data.datasets[0].pointBorderColor = colors.border;
+        tenxRadarChart.resize();
         tenxRadarChart.update();
         return;
       }
-      // Set explicit canvas size
-      const wrap = tenxRadarCanvas.value.parentElement;
-      const w = wrap ? wrap.offsetWidth || 300 : 300;
-      const h = wrap ? wrap.offsetHeight || 260 : 260;
-      tenxRadarCanvas.value.width = w;
-      tenxRadarCanvas.value.height = h;
       // Start from 0 for expand animation
       const zeroData = data.map(() => 0);
       tenxRadarChart = new Chart(ctx, {
@@ -1415,14 +1725,15 @@ export default {
           }]
         },
         options: {
-          responsive: false,
+          responsive: true,
+          maintainAspectRatio: false,
           scales: {
             r: {
               min: 0, max: 100,
               ticks: { stepSize: 25, color: 'rgba(144,147,153,0.4)', backdropColor: 'transparent', font: { size: 10 } },
               grid: { color: 'rgba(220,223,230,0.6)' },
               angleLines: { color: 'rgba(220,223,230,0.5)' },
-              pointLabels: { color: '#606266', font: { size: 11, weight: '500' } }
+              pointLabels: { color: '#606266', padding: 8, font: { size: 11, weight: '500' } }
             }
           },
           plugins: {
@@ -1438,6 +1749,7 @@ export default {
       });
       // Trigger expand animation: from 0 to actual values
       requestAnimationFrame(() => {
+        if (!tenxRadarChart) return;
         tenxRadarChart.data.datasets[0].data = data;
         tenxRadarChart.options.animation = { duration: 1400, easing: 'easeOutQuart' };
         tenxRadarChart.update();
@@ -1536,7 +1848,7 @@ export default {
               name: sub.name,
               weight: sub.weight,
               score: sub.score,
-              indicators: (sub.indicators || []).map(ind => ({
+              indicators: (Array.isArray(sub.indicators) ? sub.indicators : []).map(ind => ({
                 name: ind.name,
                 value: cleanVal(ind.value),
                 score: ind.score
@@ -1565,6 +1877,130 @@ export default {
         dimScores: [0, 0, 0, 0],
         error: true
       };
+    });
+    const tenxSupplementText = computed(() => {
+      const text = String(tenxModel.value?.aiConclusion || '').trim();
+      const desc = String(tenxModel.value?.description || '').trim();
+      if (!text || text === desc || text.includes(desc) || desc.includes(text)) return '';
+      if (tenxModel.value?.error) return '当前评分服务暂不可用，先看综合评分和四维详情。';
+      return text;
+    });
+    const compactText = (value, fallback = '--', maxLength = 72) => {
+      const text = String(value || '').replace(/\s+/g, ' ').trim();
+      if (!text) return fallback;
+      return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
+    };
+
+    const toPlainDecisionPoint = (value, fallback, maxLength = 72) => {
+      const text = compactText(value, fallback, maxLength);
+      return text
+        .replace(/^综合评分解读[:：]?/, '')
+        .replace(/^风险[:：]?/, '')
+        .replace(/^摘要[:：]?/, '')
+        .trim() || fallback;
+    };
+
+    const getEventImpact = (event) => String(event?.ai_impact || event?.level || '').trim();
+
+    const latestMajorEvent = computed(() => {
+      const majorImpacts = new Set(['重大利好', '重大利空']);
+      return stockMonitorEvents.value.find(event => majorImpacts.has(getEventImpact(event))) || null;
+    });
+
+    const majorEventImpactClass = computed(() => {
+      const impact = getEventImpact(latestMajorEvent.value);
+      if (impact.includes('利好')) return 'is-positive';
+      if (impact.includes('利空')) return 'is-negative';
+      return 'is-neutral';
+    });
+
+    const overallDecision = computed(() => {
+      const conclusion = String(displayedConclusion.value || '').trim();
+      const changePercent = toNumber(stockInfo.value.changePercent);
+      const score = Number(tenxModel.value?.score || 0);
+      const flow = Number(capitalFlowInfo.value?.mainInflow || 0);
+      const majorImpact = getEventImpact(latestMajorEvent.value);
+      const hasBearSignal = majorImpact.includes('利空')
+        || /看空|卖出|利空|回避/.test(conclusion)
+        || (changePercent !== null && changePercent <= -5);
+      const hasBullSignal = majorImpact.includes('利好')
+        || /看多|买入|利好/.test(conclusion)
+        || score >= 75
+        || (flow > 0 && changePercent !== null && changePercent >= 0);
+
+      let status = '等待确认';
+      let statusClass = 'is-neutral';
+      if (hasBearSignal) {
+        status = '控制风险';
+        statusClass = 'is-risk';
+      } else if (hasBullSignal) {
+        status = '继续跟踪';
+        statusClass = 'is-positive';
+      }
+
+      const horizon = String(latestMajorEvent.value?.ai_horizon || latestMajorEvent.value?.cycle || '');
+      let period = '中线跟踪';
+      if (/短|short/.test(horizon) || (changePercent !== null && Math.abs(changePercent) >= 5)) period = '短线观察';
+      if (/长|long/.test(horizon) || score >= 82) period = '长线观察';
+
+      const opportunitySource = latestMajorEvent.value?.summary
+        || capitalFlowInfo.value?.narrative
+        || shortLogicTags.value[0]?.tag
+        || tenxModel.value?.description;
+      const riskSource = (majorImpact.includes('利空') && latestMajorEvent.value?.summary)
+        || shortRiskTags.value[0]?.tag
+        || capitalFlowInfo.value?.risk
+        || '留意趋势破坏和消息兑现风险';
+
+      let summary = '当前信号不够明确，暂不急于操作，继续观察资金、趋势和消息变化。';
+      let nextStep = '先观察资金承接和价格位置';
+      if (hasBearSignal) {
+        summary = changePercent !== null && changePercent <= -5
+          ? '跌幅已经偏大，短线先控制风险，等待价格企稳和资金回流后再判断。'
+          : '出现利空或偏弱信号，当前不宜加仓，先观察风险是否继续扩散。';
+        nextStep = changePercent !== null && changePercent <= -5
+          ? '等价格企稳和资金回流'
+          : '先看利空是否继续扩散';
+      } else if (hasBullSignal) {
+        summary = flow > 0
+          ? '资金和趋势仍有支撑，可以继续跟踪，但买点需要等待回踩或放量确认。'
+          : '逻辑上有积极信号，可以纳入观察，但是否介入仍要看价格位置。';
+        nextStep = flow > 0
+          ? '等回踩企稳或放量确认'
+          : '先看价格位置和量能配合';
+      }
+
+      if (majorImpact.includes('利好')) {
+        nextStep = '重点看利好后的资金承接';
+      } else if (majorImpact.includes('利空')) {
+        nextStep = '先确认利空影响是否扩散';
+      } else if (period.includes('长')) {
+        nextStep = '跟踪模型评分和基本面变化';
+      } else if (period.includes('中')) {
+        nextStep = '跟踪趋势延续和业绩预期';
+      }
+
+      return {
+        status,
+        statusClass,
+        period,
+        summary,
+        nextStep,
+        opportunity: toPlainDecisionPoint(opportunitySource, '关注资金承接、趋势延续和消息催化能否兑现'),
+        risk: toPlainDecisionPoint(riskSource, '警惕冲高回落、趋势破位或利好兑现后的承接不足'),
+      };
+    });
+
+    const shortActionItems = computed(() => {
+      const low = stockInfo.value.low && stockInfo.value.low !== '--' ? stockInfo.value.low : '';
+      const high = stockInfo.value.high && stockInfo.value.high !== '--' ? stockInfo.value.high : '';
+      const volumeRatio = stockInfo.value.volumeRatio && stockInfo.value.volumeRatio !== '--' ? stockInfo.value.volumeRatio : '';
+      const turnover = stockInfo.value.turnover && stockInfo.value.turnover !== '--' ? stockInfo.value.turnover : '';
+      return [
+        { label: '风险线', value: low ? `跌破 ${low} 后短线转弱，先控制仓位` : '先等关键支撑位明确，跌破后短线转弱' },
+        { label: '观察区间', value: low && high ? `${low} - ${high} 内看承接，突破再确认强度` : '重点观察日内高低点和回踩承接' },
+        { label: '量能条件', value: volumeRatio ? `量比 ${volumeRatio}${turnover ? `，成交额 ${turnover}` : ''}，明日重点看放量后的承接` : (turnover ? `成交额 ${turnover}，继续看资金是否接力` : '观察成交额和量比是否配合') },
+      ];
     });
 
     const clearEvaluationAudioUrl = () => {
@@ -1710,6 +2146,8 @@ export default {
     const historyErrorMessage = ref('');
     const historyRecords = ref([]);
     const selectedHistoryRecord = ref(null);
+    const industryDetailDialogVisible = ref(false);
+    const selectedIndustryDetail = ref(null);
     const historyPagination = ref({ page: 1, pageSize: 10, total: 0, totalPages: 1 });
     let forecastChartInstance = null;
     let historyTimelineChartInstance = null;
@@ -1750,6 +2188,43 @@ export default {
     const openHistoryDetail = (r) => { selectedHistoryRecord.value = r ? { analysisTime: r.analysisTime || '', conclusion: r.conclusion || '', coreLogic: r.coreLogic || '', riskWarning: r.riskWarning || '' } : null; historyDetailDialogVisible.value = !!r; };
     const reloadHistoryPage = async () => { await loadEvaluationHistory(historyPagination.value.page || 1); };
     const handleHistoryPageChange = async (p) => { await loadEvaluationHistory(p); };
+    const industryDetailDialogTitle = computed(() => {
+      const itemTitle = selectedIndustryDetail.value?.title || '行业详情';
+      return `${profileTheme.value || '当前行业'} - ${itemTitle}`;
+    });
+    const industryDetailRows = computed(() => {
+      const item = selectedIndustryDetail.value || {};
+      const health = midMockData.value.industryHealth;
+      const score = health.score;
+      const theme = profileTheme.value || stockInfo.value.industry || '当前行业';
+      const planText = getFifteenthPlanStatement(theme);
+      const allRows = {
+        '相关政策': [
+          { tag: '政策', title: '产业方向', desc: planText },
+          { tag: '跟踪', title: '验证重点', desc: `重点观察${theme}是否继续出现订单、补贴、招投标或地方产业基金等落地信号。` },
+          { tag: '风险', title: '反向信号', desc: '如果政策只停留在主题催化，缺少公司收入和利润兑现，中线判断需要降温。' }
+        ],
+        '重大公告': [
+          { tag: '公告', title: '近期关注', desc: `${theme}当前景气指数为${score}分，公告侧优先看业绩预告、重大合同、减持和监管问询。` },
+          { tag: '验证', title: '影响判断', desc: '利好公告需要同时看股价位置和资金承接，利空公告优先判断是否破坏中线基本面。' },
+          { tag: '节奏', title: '操作提示', desc: '公告发布后不只看标题，要结合次日成交量、换手率和主力资金变化确认市场态度。' }
+        ],
+        '行业股票排行': [
+          { tag: '排行', title: '筛选逻辑', desc: `优先比较${theme}内景气匹配度、资金强度、估值位置和趋势完整度。` },
+          { tag: '龙头', title: '强弱判断', desc: '行业龙头应当在回调时更抗跌、反弹时先放量；弱势跟涨股不宜直接按龙头逻辑处理。' },
+          { tag: '等待', title: '后续接入', desc: '当前先展示行业分析入口，后续可接行业成分股接口后替换为实时排行列表。' }
+        ]
+      };
+      return allRows[item.title] || [
+        { tag: '景气', title: '行业状态', desc: `${theme}当前景气指数为${score}分，标签为${health.tags.map(tag => tag.text).join('、')}。` },
+        { tag: '政策', title: '政策主线', desc: planText },
+        { tag: '跟踪', title: '后续观察', desc: '继续跟踪政策、公告、资金和行业内股票强弱排序是否形成共振。' }
+      ];
+    });
+    const openIndustryDetail = (item = null) => {
+      selectedIndustryDetail.value = item;
+      industryDetailDialogVisible.value = true;
+    };
     const hasForecastChartData = computed(() => { const d = forecastData.value?.['业绩预测详表_详细指标预测']; return Array.isArray(d) && d.length > 0; });
     const hasMoreNews = computed(() => totalNews.value > stockNews.value.length);
     const parseChinaTimeToUnix = (t) => { if (!t || typeof t !== 'string') return 0; const m = t.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/); if (!m) return 0; return Math.floor(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]) - 8, Number(m[5]), Number(m[6])) / 1000); };
@@ -2011,6 +2486,19 @@ export default {
       try { const r = await store.dispatch('fetchStockForecast', { stockCode: stockInfo.value.code, refresh }); if (r && (r.symbol || r['股票代码'])) { forecastData.value = r; generateForecastSummary(); setTimeout(() => { renderForecastChart(); }, 0); } else { forecastData.value = {}; forecastSummary.value = ''; } }
       catch (e) { forecastData.value = {}; } finally { loadingForecast.value = false; if (!refresh) markCacheFresh('forecast', stockInfo.value.code); }
     };
+    const loadFinancialSnapshot = async () => {
+      const code = stockInfo.value.code;
+      if (!code || loadingFinancialSnapshot.value) return;
+      loadingFinancialSnapshot.value = true;
+      try {
+        financialSnapshot.value = await store.dispatch('fetchStockFinancialSnapshot', code);
+      } catch (e) {
+        financialSnapshot.value = { fundamentals: null, semiAnnual: null };
+      } finally {
+        loadingFinancialSnapshot.value = false;
+        markCacheFresh('financial', code);
+      }
+    };
     const refreshForecast = async () => { if (!isLoggedIn.value) return; await loadForecast(true); };
     const loadNewsAndAnalysis = async (append = false) => {
       const requestLastTime = append ? newsCursor.value : 0; if (append) loadingMoreNews.value = true;
@@ -2054,6 +2542,30 @@ export default {
           const can = toNumber(quote.涨跌额 ?? quote.change_amount);
           const cn = can !== null ? can : (lpn !== null && cpn !== null ? lpn * cpn / 100 : 0);
           stockInfo.value = { ...stockInfo.value, name: info.股票简称 || quote.股票简称 || stockInfo.value.name || '未知', code: info.股票代码 || quote.股票代码 || stockInfo.value.code, market: info.市场代码 || quote.市场代码 || stockInfo.value.market || '', regionBoard: info.地域板块 || '--', regionBoardTagId: normalizeTagCode(info.地域板块ID), price: formatPrice(lpn), avgPrice: formatPrice(apn), change: cn, changeAmount: formatPrice(can), changePercent: formatPercentValue(cpn), industry: info.所属行业 || '未知行业', industryTagId: normalizeTagCode(info.行业板块ID), listingDate: formatListingDate(info.上市时间), totalShares: formatScaledValue(info.总股本, '股'), floatShares: formatScaledValue(info.流通股, '股'), totalSharesValue: toNumber(info.总股本), floatSharesValue: toNumber(info.流通股), open: formatPrice(quote.今开价 ?? quote.今开 ?? quote.开盘价 ?? quote.open), prevClose: formatPrice(quote.昨收价 ?? quote.昨收 ?? quote.prev_close), high: formatPrice(quote.最高价 ?? quote.最高 ?? quote.high), low: formatPrice(quote.最低价 ?? quote.最低 ?? quote.low), limitUp: formatPrice(quote.涨停价 ?? quote.limit_up), limitDown: formatPrice(quote.跌停价 ?? quote.limit_down), volume: formatScaledValue(quote.成交量 ?? quote.volume), turnover: formatScaledValue(quote.成交额 ?? quote.turnover, '元'), turnoverRaw: toNumber(quote.成交额 ?? quote.turnover), turnoverRate: formatPercentText(quote.换手率 ?? quote.turnover_rate), turnoverRateRaw: toNumber(quote.换手率 ?? quote.turnover_rate), volumeRatio: formatPrice(quote.量比 ?? quote.volume_ratio), outerVolume: formatScaledValue(quote.外盘 ?? quote.outer_volume), innerVolume: formatScaledValue(quote.内盘 ?? quote.inner_volume), marketCap: formatScaledValue(info.总市值, '元'), floatMarketCap: formatScaledValue(info.流通市值, '元'), marketCapValue: toNumber(info.总市值), floatMarketCapValue: toNumber(info.流通市值), infoUpdatedAt: snapshot.infoUpdatedAt || '--', lastUpdated: quote.更新时间 || quote.时间 || quote.update_time || snapshot.quoteUpdatedAt || '--' };
+          const pickNumberByKey = (source, patterns) => {
+            if (!source || typeof source !== 'object') return null;
+            const matchedKey = Object.keys(source).find(key => patterns.some(pattern => {
+              const lowerKey = key.toLowerCase();
+              const lowerPattern = String(pattern).toLowerCase();
+              if (/^[a-z]{1,2}$/.test(lowerPattern)) return lowerKey === lowerPattern;
+              return lowerKey.includes(lowerPattern);
+            }));
+            return matchedKey ? toNumber(source[matchedKey]) : null;
+          };
+          const highValue = toNumber(stockInfo.value.high);
+          const lowValue = toNumber(stockInfo.value.low);
+          const prevCloseValue = toNumber(stockInfo.value.prevClose);
+          const amplitudeValue = pickNumberByKey(quote, ['振幅', 'amplitude']);
+          const computedAmplitude = highValue !== null && lowValue !== null && prevCloseValue
+            ? ((highValue - lowValue) / prevCloseValue) * 100
+            : null;
+          const peValue = pickNumberByKey(quote, ['市盈率', 'pe', 'peRatio', 'pe_ratio']) ?? pickNumberByKey(info, ['市盈率', 'pe', 'peRatio', 'pe_ratio']);
+          const pbValue = pickNumberByKey(quote, ['市净率', 'pb', 'pbRatio', 'pb_ratio']) ?? pickNumberByKey(info, ['市净率', 'pb', 'pbRatio', 'pb_ratio']);
+          stockInfo.value.amplitude = amplitudeValue !== null
+            ? `${amplitudeValue.toFixed(2)}%`
+            : (computedAmplitude !== null ? `${computedAmplitude.toFixed(2)}%` : '--');
+          stockInfo.value.peRatio = peValue !== null ? peValue.toFixed(2) : '--';
+          stockInfo.value.pbRatio = pbValue !== null ? pbValue.toFixed(2) : '--';
           document.title = `${stockInfo.value.name}(${stockInfo.value.market || '未知'}${stockInfo.value.code}) - AI StockLink`;
           markCacheFresh('stockData', stockInfo.value.code);
         } else { ElMessage.error('获取股票数据失败'); }
@@ -2080,6 +2592,9 @@ export default {
     const handleWindowResize = () => { if (forecastChartInstance) forecastChartInstance.resize(); if (historyTimelineChartInstance) historyTimelineChartInstance.resize(); if (capitalFlowChartInstance) capitalFlowChartInstance.resize(); if (capitalSplitChartInstance) capitalSplitChartInstance.resize(); if (industryHealthChartInstance) industryHealthChartInstance.resize(); };
     // Also trigger radar when stockData loads and tenxModel becomes available
     watch(tenxModel, (m) => {
+      const dimCount = m?.dimensions?.length || 0;
+      if (!dimCount) activeTenxDimIndex.value = -1;
+      else if (activeTenxDimIndex.value >= dimCount) activeTenxDimIndex.value = -1;
       if (m && m.dimScores) nextTick(() => tenxUpdateRadar(m.dimScores));
     });
     watch(capitalFlowData, (d) => {
@@ -2089,9 +2604,11 @@ export default {
     });
     watch(() => route.params.code, (nc) => {
       if (nc && nc !== stockInfo.value.code) {
+        userSelectedView.value = false;
         invalidateCache(stockInfo.value.code);
         tenxApiData.value = null;
         capitalFlowData.value = null;
+        financialSnapshot.value = { fundamentals: null, semiAnnual: null };
         stockInfo.value.code = nc; stockNews.value = []; totalNews.value = 0; newsCursor.value = 0;
         forecastData.value = {}; forecastSummary.value = '';
         historyDialogVisible.value = false; historyDetailDialogVisible.value = false; historyErrorMessage.value = '';
@@ -2101,6 +2618,7 @@ export default {
         if (!isCacheFresh('stockData', nc)) loadStockData();
         if (!isCacheFresh('news', nc)) loadNewsAndAnalysis();
         if (!isCacheFresh('forecast', nc)) loadForecast();
+        if (!isCacheFresh('financial', nc)) loadFinancialSnapshot();
         if (!isCacheFresh('evaluation', nc)) { loadingEvaluation.value = true; loadAIEvaluation(false); }
         fetchTenxScore(nc);
         loadCapitalFlow();
@@ -2114,6 +2632,10 @@ export default {
       }
     });
     watch(isLoggedIn, async (l) => { if (l) { checkIfFavorite(); if (!isCacheFresh('evaluation', stockInfo.value.code)) { loadingEvaluation.value = true; await loadAIEvaluation(false); } } });
+    watch(() => overallDecision.value.period, (period) => {
+      if (userSelectedView.value) return;
+      activeView.value = viewKeyFromPeriod(period);
+    }, { immediate: true });
     // 当 stockInfo.industry 加载完成后，同步更新个股异动中的行业标签
     watch(() => stockInfo.value.industry, (newIndustry) => {
       if (newIndustry && newIndustry !== '--' && newIndustry !== '未知行业' && stockMonitorEvents.value.length > 0) {
@@ -2141,6 +2663,13 @@ export default {
           }
         }, 100);
       }
+      if (nv === 'long') {
+        setTimeout(() => {
+          if (shouldShowTenxModel.value && tenxModel.value?.dimScores) {
+            tenxUpdateRadar(tenxModel.value.dimScores);
+          }
+        }, 100);
+      }
     });
     onMounted(() => {
       window.scrollTo(0, 0);
@@ -2149,6 +2678,7 @@ export default {
       if (!isCacheFresh('stockData', currentCode)) loadStockData();
       if (!isCacheFresh('news', currentCode)) loadNewsAndAnalysis();
       if (!isCacheFresh('forecast', currentCode)) loadForecast();
+      if (!isCacheFresh('financial', currentCode)) loadFinancialSnapshot();
       if (isLoggedIn.value) checkIfFavorite();
       if (!isCacheFresh('evaluation', currentCode)) { loadingEvaluation.value = true; loadAIEvaluation(false); }
       fetchTenxScore(currentCode);
@@ -2273,6 +2803,15 @@ export default {
       return 'trend-flat';
     });
 
+    const openTrendClass = computed(() => {
+      const open = toNumber(stockInfo.value.open);
+      const prevClose = toNumber(stockInfo.value.prevClose);
+      if (open === null || prevClose === null) return 'trend-flat';
+      if (open > prevClose) return 'trend-up';
+      if (open < prevClose) return 'trend-down';
+      return 'trend-flat';
+    });
+
     // 成交额级别判断
     const turnoverLevel = computed(() => {
       const raw = stockInfo.value.turnoverRaw || stockInfo.value.turnover
@@ -2343,9 +2882,9 @@ export default {
     };
 
     return {
-      activeView, viewTabs, stockInfo, isLoggedIn, isFavorite, addingToFavorites,
+      activeView, viewTabs, selectActiveView, stockInfo, isLoggedIn, isFavorite, addingToFavorites,
       stockCycle, onStockCycleChange,
-      stockMonitorEvents,
+      stockMonitorEvents, overallDecision, latestMajorEvent, majorEventImpactClass, shortActionItems,
       stockNews, analysisResult, currentNewsDetail, newsDetailDialogVisible,
       totalNews, hasMoreNews, loadingMoreNews, loadMoreNews,
       refreshAIEvaluation, loadingEvaluation, evaluationErrorMessage, evaluationProgressText,
@@ -2354,15 +2893,18 @@ export default {
       historyDialogVisible, historyDetailDialogVisible, loadingHistory, historyErrorMessage,
       historyRecords, selectedHistoryRecord, historyPagination, historyTimelineChartRef,
       openHistoryDialog, openingHistoryDialog, openHistoryDetail, reloadHistoryPage, handleHistoryPageChange,
+      industryDetailDialogVisible, industryDetailDialogTitle, industryDetailRows, openIndustryDetail,
       getHistoryConclusionClass, viewNewsDetail,
       forecastChartRef, forecastData, forecastSummary, loadingForecast, refreshForecast,
       hasForecastChartData, capitalFlowChartRef, capitalSplitChartRef, industryHealthChartRef,
-      midMockData, midAiAnalysis, longMockData, longAiAnalysis, shouldShowTenxModel, tenxModel, capitalFlowInfo,
+      midMockData, midAiAnalysis, midActionItems, longMockData, longAiAnalysis, longActionItems, shouldShowTenxModel, tenxModel, capitalFlowInfo,
+      profileTheme,
       shortLogicTags, shortRiskTags, midBasisTags, midAdviceTags, midRiskTags, longBasisTags, longAdviceTags, longRiskTags,
       tenxVetoed, tenxVetoReasons,
-      TREND_DIMS, tenxSColor, tenxSGrad, tenxExpandedDims, tenxAllOpen, tenxRadarCanvas, tenxToggleDim, tenxToggleAll,
-      toggleFavorite, getEvaluationClass, goToTagBoard, formatRatioText,
-      mergedStructureChart, priceTrendClass,
+      TREND_DIMS, tenxSColor, tenxSGrad, tenxRadarCanvas, activeTenxDimIndex, tenxToggleActiveDim,
+      tenxSupplementText,
+      toggleFavorite, getEvaluationClass, goToTagBoard, formatRatioText, formatEventTime,
+      mergedStructureChart, priceTrendClass, openTrendClass,
       turnoverLevel, turnoverRateLevel,
       formatSignedPercent, formatSignedPrice, formatFlowValue,
       getScoreClass, getScoreLabel, getScoreDescription, getScoreRingStyle
@@ -2433,6 +2975,414 @@ export default {
 
   .stock-monitor-section {
     margin-bottom: 20px;
+  }
+
+  .decision-strip {
+    display: grid;
+    grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.8fr);
+    gap: 16px;
+    margin-bottom: 20px;
+
+    &.is-single {
+      grid-template-columns: 1fr;
+    }
+
+    @media (max-width: 900px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .decision-card,
+  .major-event-card {
+    background: #ffffff;
+    border: 1px solid #eef2f7;
+    border-radius: 8px;
+    box-shadow: none;
+  }
+
+  .decision-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px 18px;
+  }
+
+  .decision-top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 16px;
+    align-items: start;
+  }
+
+  .decision-kicker {
+    display: block;
+    margin-bottom: 5px;
+    color: #64748b;
+    font-size: 0.76rem;
+    font-weight: 700;
+  }
+
+  .decision-title-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  .decision-status {
+    font-size: 1.28rem;
+    font-weight: 800;
+    line-height: 1.2;
+
+    &.is-positive { color: #dc2626; }
+    &.is-neutral { color: #2563eb; }
+    &.is-risk { color: #16a34a; }
+  }
+
+  .decision-period {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: #f3f6fb;
+    color: #475569;
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  .decision-summary {
+    margin: 0;
+    color: #10251e;
+    font-size: 0.92rem;
+    line-height: 1.55;
+    font-weight: 700;
+  }
+
+  .decision-next {
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr);
+    gap: 12px;
+    align-items: center;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #f7f9fc;
+    border: 1px solid #edf2f7;
+
+    .next-label {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 24px;
+      border-radius: 6px;
+      background: #eef4ff;
+      color: #2563eb;
+      font-size: 0.76rem;
+      font-weight: 800;
+    }
+
+    strong {
+      min-width: 0;
+      color: #1f2937;
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+  }
+
+  .decision-points {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .decision-point {
+    display: block;
+    min-width: 0;
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid #edf2f7;
+    background: #ffffff;
+    transition: border-color 0.18s ease, background-color 0.18s ease;
+
+    &:hover {
+      border-color: #dbe3ee;
+      background: #fbfdff;
+    }
+
+    &.is-risk {
+      border-color: #edf2f7;
+      background: #ffffff;
+
+      &:hover {
+        border-color: #dbe3ee;
+        background: #fbfdff;
+      }
+    }
+
+    .point-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .point-label {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #64748b;
+      font-size: 0.78rem;
+      font-weight: 800;
+      white-space: nowrap;
+
+      &::before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: #94a3b8;
+      }
+    }
+
+    &:not(.is-risk) .point-label::before { background: #ef4444; }
+    &.is-risk .point-label::before { background: #16a34a; }
+
+    .point-more {
+      flex-shrink: 0;
+      border: none;
+      padding: 0;
+      background: transparent;
+      color: #2563eb;
+      font-size: 0.72rem;
+      font-weight: 700;
+      cursor: pointer;
+
+      &:hover {
+        color: #1d4ed8;
+        text-decoration: underline;
+      }
+    }
+
+    .point-text {
+      display: -webkit-box;
+      color: #1f2937;
+      font-size: 0.88rem;
+      line-height: 1.5;
+      font-weight: 700;
+      overflow: hidden;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .decision-top {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .decision-title-row {
+      justify-content: flex-start;
+    }
+  }
+
+  @media (max-width: 720px) {
+    .decision-points {
+      grid-template-columns: 1fr;
+    }
+
+    .decision-point {
+      padding: 12px;
+    }
+  }
+
+  :deep(.decision-popover) {
+    padding: 12px 14px;
+  }
+
+  .decision-popover-content {
+    color: #1f2937;
+    font-size: 0.9rem;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .major-event-card {
+    padding: 16px 18px;
+
+    &.is-muted {
+      background: #ffffff;
+    }
+  }
+
+  .major-event-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+
+  .major-impact {
+    flex-shrink: 0;
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid;
+    font-size: 0.76rem;
+    font-weight: 800;
+
+    &.is-positive {
+      color: #dc2626;
+      border-color: #fecaca;
+      background: #fef2f2;
+    }
+
+    &.is-negative {
+      color: #16a34a;
+      border-color: #bbf7d0;
+      background: #f0fdf4;
+    }
+
+    &.is-neutral {
+      color: #64748b;
+      border-color: #cbd5e1;
+      background: #f8fafc;
+    }
+  }
+
+  .major-event-title {
+    margin: 0 0 10px;
+    color: #1f2937;
+    font-size: 0.94rem;
+    line-height: 1.55;
+    font-weight: 700;
+  }
+
+  .major-event-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+
+    span {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 1px 7px;
+      border-radius: 4px;
+      background: #f1f5f9;
+      color: #64748b;
+      font-size: 0.74rem;
+      font-weight: 700;
+    }
+  }
+
+  .short-action-card {
+    border: 1px solid #eef2f7;
+    box-shadow: none;
+
+    .card-header {
+      padding: 14px 18px 12px;
+      border-bottom-color: #eef2f7;
+
+      h3 {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #10251e;
+      }
+    }
+
+    .card-body {
+      padding: 14px 18px;
+    }
+  }
+
+  .ai-action-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+
+    @media (max-width: 900px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .action-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    border: 1px solid #edf2f7;
+    border-radius: 8px;
+    overflow: hidden;
+
+    @media (max-width: 900px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .action-item {
+    min-width: 0;
+    padding: 12px 16px;
+    background: #ffffff;
+
+    &:not(:last-child) {
+      border-right: 1px solid #edf2f7;
+    }
+
+    @media (max-width: 900px) {
+      &:not(:last-child) {
+        border-right: 0;
+        border-bottom: 1px solid #edf2f7;
+      }
+    }
+
+    span {
+      display: block;
+      margin-bottom: 6px;
+      color: #64748b;
+      font-size: 0.78rem;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    strong {
+      display: block;
+      color: #10251e;
+      font-size: 0.92rem;
+      line-height: 1.45;
+      font-weight: 700;
+    }
+  }
+
+  .ai-action-item {
+    min-width: 0;
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid #eef2f7;
+    background: #f8fafc;
+
+    span {
+      display: block;
+      margin-bottom: 6px;
+      color: #64748b;
+      font-size: 0.78rem;
+      font-weight: 800;
+    }
+
+    strong {
+      display: block;
+      color: #1f2937;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+  }
+
+  .ai-action-grid {
+    margin: 12px 0 16px;
   }
 
   .view-tabs {
@@ -2840,10 +3790,16 @@ export default {
     }
 
     .industry-detail-title {
+      display: block;
+      width: 100%;
       padding: 16px 20px 10px;
+      border: 0;
+      background: transparent;
       color: #10251e;
       font-size: 0.98rem;
       font-weight: 800;
+      text-align: left;
+      cursor: pointer;
     }
 
     .industry-detail-grid {
@@ -2862,6 +3818,17 @@ export default {
       border: 1px solid #eef1f5;
       border-radius: 10px;
       background: #fff;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+
+      &:hover,
+      &:focus-visible {
+        border-color: #bfdbfe;
+        box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
+        transform: translateY(-1px);
+        outline: none;
+      }
 
       .detail-icon {
         display: inline-flex;
@@ -2916,6 +3883,75 @@ export default {
     }
   }
 
+  .industry-detail-dialog {
+    .industry-dialog-content {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .industry-dialog-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #f8fafc;
+      color: #475569;
+
+      strong {
+        color: #10251e;
+        font-size: 1rem;
+      }
+    }
+
+    .industry-dialog-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .industry-dialog-row {
+      display: flex;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid #eef2f7;
+
+      &:last-child {
+        border-bottom: 0;
+      }
+
+      .industry-dialog-row-tag {
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 42px;
+        height: 24px;
+        border-radius: 6px;
+        background: #eef4ff;
+        color: #2563eb;
+        font-size: 0.78rem;
+        font-weight: 700;
+      }
+
+      h4 {
+        margin: 0 0 4px;
+        color: #10251e;
+        font-size: 0.95rem;
+      }
+
+      p {
+        margin: 0;
+        color: #64748b;
+        font-size: 0.9rem;
+        line-height: 1.6;
+      }
+    }
+  }
+
   .policy-list { .policy-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f5f5f5; &:last-child { border-bottom: none; } .policy-tag { font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; font-weight: 600; white-space: nowrap; &.is-good { background: #fef2f2; color: #dc2626; } &.is-bad { background: #f0fdf4; color: #16a34a; } &.is-neutral { background: #f8fafc; color: #64748b; } } .policy-text { font-size: 0.9rem; color: #334155; line-height: 1.5; } } }
 
   .moat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; @media (max-width: 576px) { grid-template-columns: 1fr; } .moat-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: #f8fafc; border-radius: 8px; .moat-icon { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; background: #eef4ff; color: #2563eb; font-size: 0.86rem; font-weight: 800; flex-shrink: 0; } .moat-info { .moat-title { display: block; font-size: 0.95rem; font-weight: 600; color: #1e293b; margin-bottom: 2px; } .moat-desc { display: block; font-size: 0.8rem; color: #64748b; } } } }
@@ -2930,12 +3966,87 @@ export default {
       justify-content: center;
       padding: 40px 20px;
     }
+    .tenx-overview {
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      gap: 18px;
+      padding: 12px;
+      margin-bottom: 16px;
+      background: #f8fafc;
+      border: 1px solid #edf2f7;
+      border-radius: 12px;
+      @media (max-width: 768px) {
+        grid-template-columns: 1fr;
+      }
+    }
+    .tenx-score-panel,
+    .tenx-summary-panel {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+    }
+    .tenx-score-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      min-height: 260px;
+    }
+    .tenx-score-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .tenx-score-caption {
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    .tenx-summary-panel {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 12px;
+      padding: 16px;
+      min-width: 0;
+    }
+    .tenx-summary-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .tenx-summary-kicker {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #334155;
+    }
+    .tenx-meta-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .tenx-meta-chip {
+      display: inline-flex;
+      align-items: center;
+      height: 26px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: #f1f5f9;
+      color: #475569;
+      font-size: 12px;
+      font-weight: 600;
+    }
     .tenx-hero {
       display: flex;
       align-items: flex-start;
-      gap: 24px;
-      padding: 20px 0;
-      margin-bottom: 16px;
+      gap: 18px;
+      padding: 14px 0 12px;
+      margin-bottom: 12px;
       border-bottom: 1px solid #f1f5f9;
       @media (max-width: 576px) {
         flex-direction: column;
@@ -2946,12 +4057,14 @@ export default {
     /* 雷达图 + 中心分数 */
     .tenx-radar-center-wrap {
       position: relative;
-      width: 300px;
-      height: 260px;
+      width: 290px;
+      height: 230px;
       flex-shrink: 0;
     }
     .tenx-radar-canvas {
       display: block;
+      width: 100% !important;
+      height: 100% !important;
     }
     .tenx-radar-score-overlay {
       position: absolute;
@@ -2960,13 +4073,14 @@ export default {
       transform: translate(-50%, -50%);
       text-align: center;
       pointer-events: none;
+      z-index: 1;
       &.is-high .tenx-radar-score-value { color: #22c55e; }
       &.is-mid .tenx-radar-score-value { color: #eab308; }
       &.is-low .tenx-radar-score-value { color: #ef4444; }
     }
     .tenx-radar-score-value {
       display: block;
-      font-size: 2.2rem;
+      font-size: 2rem;
       font-weight: 700;
       line-height: 1;
       transition: color 0.3s ease;
@@ -2981,8 +4095,9 @@ export default {
       flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      min-height: 260px;
+      gap: 8px;
+      min-height: 0;
+      justify-content: flex-start;
       @media (max-width: 576px) {
         min-height: 0;
       }
@@ -3011,11 +4126,10 @@ export default {
     .tenx-ai-conclusion {
       width: 100%;
       margin-top: 4px;
-      padding: 10px 12px;
+      padding: 8px 12px;
       background: #f5f7fa;
       border-radius: 8px;
       border: 1px solid #e4e7ed;
-      flex: 1;
     }
     .tenx-ai-conclusion-header {
       display: flex;
@@ -3039,32 +4153,28 @@ export default {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 12px;
+      gap: 12px;
+      margin-bottom: 10px;
     }
     .tenx-dim-section-title {
-      font-size: 13px;
+      display: block;
+      font-size: 14px;
       font-weight: 600;
-      color: #606266;
+      color: #1f2937;
     }
-    .tenx-dim-toggle-btn {
+    .tenx-dim-section-subtitle {
+      display: block;
+      margin-top: 2px;
       font-size: 11px;
-      padding: 4px 10px;
-      border-radius: 6px;
-      border: 1px solid #dcdfe6;
-      background: #fff;
-      color: #606266;
-      cursor: pointer;
-      font-family: inherit;
-      transition: border-color 0.2s;
-      &:hover { border-color: #409eff; color: #409eff; }
+      color: #94a3b8;
     }
-
     /* 因子网格 */
     .tenx-dimensions-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
-      margin-bottom: 12px;
+      gap: 10px;
+      align-items: start;
+      margin-bottom: 14px;
       @media (max-width: 576px) {
         grid-template-columns: 1fr;
       }
@@ -3094,36 +4204,37 @@ export default {
     .tenx-dim-item {
       background: #fff;
       border: 1px solid #e4e7ed;
-      border-radius: 10px;
+      border-radius: 12px;
       transition: all 0.25s;
-      cursor: pointer;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.03);
-      &:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.06); border-color: #c0c4cc; }
-      &.is-expanded { border-color: #409eff; box-shadow: 0 4px 12px rgba(64,158,255,0.08); }
-      &.is-high { border-left: 3px solid #22c55e; }
-      &.is-mid { border-left: 3px solid #eab308; }
-      &.is-low { border-left: 3px solid #ef4444; }
+      cursor: default;
+      box-shadow: 0 2px 8px rgba(15,23,42,0.04);
+      &:hover { box-shadow: 0 6px 14px rgba(15,23,42,0.05); border-color: #cbd5e1; }
+      &.is-high { border-left: 4px solid #22c55e; }
+      &.is-mid { border-left: 4px solid #eab308; }
+      &.is-low { border-left: 4px solid #ef4444; }
     }
 
     /* 因子头部 */
     .tenx-dim-head {
-      padding: 8px 14px;
+      padding: 12px 14px 10px;
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
+      gap: 12px;
     }
     .tenx-dim-head-left {
       display: flex;
       align-items: flex-start;
       gap: 8px;
+      min-width: 0;
     }
     .tenx-dim-icon {
       font-size: 14px;
       margin-top: 2px;
     }
     .tenx-dim-name {
-      font-size: 13px;
-      font-weight: 500;
+      font-size: 14px;
+      font-weight: 700;
       color: #303133;
     }
     .tenx-dim-weight {
@@ -3132,10 +4243,10 @@ export default {
       margin-left: 4px;
     }
     .tenx-dim-question {
-      font-size: 9px;
+      font-size: 11px;
       color: #409eff;
       opacity: 0.7;
-      margin-top: 2px;
+      margin-top: 4px;
     }
     .tenx-dim-head-right {
       display: flex;
@@ -3144,23 +4255,16 @@ export default {
       flex-shrink: 0;
     }
     .tenx-dim-score {
-      font-size: 17px;
+      font-size: 20px;
       font-weight: 700;
     }
-    .tenx-dim-chevron {
-      font-size: 10px;
-      color: #c0c4cc;
-      transition: transform 0.3s;
-      &.open { transform: rotate(180deg); }
-    }
-
     /* 因子进度条 */
     .tenx-dim-bar {
-      height: 4px;
+      height: 5px;
       background: #f2f3f5;
       border-radius: 3px;
       overflow: hidden;
-      margin: 0 14px 8px;
+      margin: 0 14px 12px;
     }
     .tenx-dim-bar-fill {
       height: 100%;
@@ -3170,17 +4274,22 @@ export default {
 
     /* 因子展开详情 */
     .tenx-dim-details {
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height 0.35s ease;
+      overflow: visible;
     }
     .tenx-dim-details.open {
-      max-height: 400px;
+      max-height: none;
     }
     .tenx-dim-details-inner {
-      padding: 8px 14px 12px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px 14px;
+      padding: 12px 14px 14px;
       border-top: 1px solid #f2f3f5;
       margin-top: 0;
+      background: #fbfdff;
+      @media (max-width: 720px) {
+        grid-template-columns: 1fr;
+      }
     }
 
     /* 指标行 */
@@ -3188,26 +4297,39 @@ export default {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 6px 0;
-      border-bottom: 1px solid #fafafa;
-      &:last-child { border-bottom: none; }
+      gap: 12px;
+      min-width: 0;
+      padding: 10px 12px;
+      border: 1px solid #eef2f7;
+      border-radius: 8px;
+      background: #fff;
     }
     .tenx-ind-name {
-      font-size: 11px;
-      color: #909399;
+      min-width: 120px;
+      font-size: 12px;
+      color: #64748b;
     }
     .tenx-ind-right {
       display: flex;
       align-items: center;
       gap: 8px;
+      flex: 1;
+      min-width: 0;
     }
     .tenx-ind-value {
-      font-size: 11px;
-      color: #606266;
+      min-width: 72px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: right;
+      font-size: 12px;
+      color: #334155;
+      font-weight: 500;
     }
     .tenx-ind-bar-track {
-      width: 40px;
-      height: 3px;
+      flex: 1;
+      min-width: 52px;
+      height: 4px;
       border-radius: 2px;
       background: #f2f3f5;
       overflow: hidden;
@@ -3218,10 +4340,264 @@ export default {
       transition: width 0.7s cubic-bezier(0.4,0,0.2,1);
     }
     .tenx-ind-score {
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 700;
-      width: 20px;
+      width: 26px;
       text-align: right;
+    }
+    .tenx-sub-dims {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      @media (max-width: 720px) {
+        grid-template-columns: 1fr;
+      }
+    }
+    .tenx-sub-dims-title {
+      grid-column: 1 / -1;
+      color: #475569;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .tenx-sub-dim-item {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+      border: 1px solid #eef2f7;
+      border-radius: 8px;
+      background: #fff;
+    }
+    .tenx-sub-dim-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tenx-sub-dim-name {
+      flex: 1;
+      color: #1f2937;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .tenx-sub-dim-score {
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .tenx-sub-dim-weight {
+      color: #94a3b8;
+      font-size: 11px;
+    }
+
+    .tenx-factor-board {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      align-items: start;
+      margin-bottom: 14px;
+      @media (max-width: 900px) {
+        grid-template-columns: 1fr;
+      }
+    }
+    .tenx-factor-panel {
+      --factor-color: #94a3b8;
+      --factor-soft: #f8fafc;
+      --factor-text: #475569;
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid #e5eaf1;
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: none;
+      cursor: pointer;
+      transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+      &.is-high {
+        --factor-color: #3b82f6;
+        --factor-soft: #f8fbff;
+        --factor-text: #1d4ed8;
+      }
+      &.is-mid {
+        --factor-color: #94a3b8;
+        --factor-soft: #f8fafc;
+        --factor-text: #475569;
+      }
+      &.is-low {
+        --factor-color: #f87171;
+        --factor-soft: #fffafa;
+        --factor-text: #dc2626;
+      }
+      &:hover {
+        border-color: #cbd5e1;
+        background: #fbfdff;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+      }
+      &.is-active {
+        grid-column: 1 / -1;
+        border-color: #cbd5e1;
+        box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+      }
+    }
+    .tenx-factor-panel .tenx-dim-head {
+      align-items: center;
+      padding: 16px 18px 12px;
+      background: var(--factor-soft);
+      border-bottom: 1px solid #eef2f7;
+    }
+    .tenx-factor-panel .tenx-dim-head-left {
+      align-items: center;
+      gap: 12px;
+    }
+    .tenx-factor-panel .tenx-dim-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      margin-top: 0;
+      border-radius: 6px;
+      background: #fff;
+      border: 1px solid #dbe3ee;
+      box-shadow: none;
+    }
+    .tenx-factor-panel .tenx-dim-name {
+      font-size: 15px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .tenx-factor-panel .tenx-dim-weight {
+      margin-left: 6px;
+      color: #94a3b8;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .tenx-factor-panel .tenx-dim-question {
+      margin-top: 4px;
+      color: #64748b;
+      font-size: 12px;
+    }
+    .tenx-factor-panel .tenx-dim-score {
+      font-size: 24px;
+      line-height: 1;
+      font-weight: 800;
+    }
+    .tenx-factor-panel .tenx-dim-head-right {
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+    }
+    .tenx-factor-state {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 48px;
+      height: 22px;
+      padding: 0 8px;
+      border-radius: 6px;
+      border: 1px solid #dbe3ee;
+      background: #ffffff;
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .tenx-factor-panel.is-active .tenx-factor-state {
+      border-color: #bfdbfe;
+      background: #eff6ff;
+      color: #2563eb;
+    }
+    .tenx-factor-panel .tenx-dim-bar {
+      height: 5px;
+      margin: 12px 18px 14px;
+      border-radius: 999px;
+      background: #edf2f7;
+    }
+    .tenx-factor-panel .tenx-dim-details-inner {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      padding: 16px 18px 18px;
+      border-top: 0;
+      background: #ffffff;
+      @media (max-width: 1100px) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      @media (max-width: 720px) {
+        grid-template-columns: 1fr;
+      }
+    }
+    .tenx-factor-panel .tenx-ind-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 8px;
+      min-width: 0;
+      padding: 12px;
+      border: 1px solid #edf2f7;
+      border-radius: 8px;
+      background: #fbfdff;
+    }
+    .tenx-factor-panel .tenx-ind-name {
+      min-width: 0;
+      overflow: hidden;
+      color: #64748b;
+      font-size: 12px;
+      line-height: 1.3;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .tenx-factor-panel .tenx-ind-right {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 34px;
+      gap: 8px;
+      align-items: center;
+    }
+    .tenx-factor-panel .tenx-ind-value {
+      min-width: 0;
+      overflow: hidden;
+      color: #0f172a;
+      font-size: 13px;
+      font-weight: 700;
+      text-align: left;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .tenx-factor-panel .tenx-ind-score {
+      width: auto;
+      font-size: 12px;
+      text-align: right;
+    }
+    .tenx-factor-panel .tenx-ind-bar-track {
+      grid-column: 1 / -1;
+      width: 100%;
+      min-width: 0;
+      height: 4px;
+      border-radius: 999px;
+      background: #eef2f7;
+    }
+    .tenx-factor-panel .tenx-sub-dims {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 4px;
+      @media (max-width: 720px) {
+        grid-template-columns: 1fr;
+      }
+    }
+    .tenx-factor-panel .tenx-sub-dims-title {
+      grid-column: 1 / -1;
+      color: #334155;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .tenx-factor-panel .tenx-sub-dim-item {
+      padding: 12px;
+      border: 1px solid #edf2f7;
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+    .tenx-factor-panel .tenx-sub-dim-head {
+      margin-bottom: 10px;
+    }
+    .tenx-factor-panel .tenx-sub-dim-name {
+      color: #0f172a;
     }
 
     .tenx-data-source {
@@ -3255,39 +4631,42 @@ export default {
     }
     .data-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 8px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1px;
       width: 100%;
+      overflow: hidden;
+      border-radius: 8px;
+      background: #e5e7eb;
 
       @media (max-width: 992px) {
         grid-template-columns: repeat(2, 1fr);
       }
       @media (max-width: 576px) {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 6px;
       }
 
       .data-item {
         display: flex;
         align-items: center;
-        justify-content: center;
-        padding: 10px 12px;
-        border-radius: 6px;
-        border: 1px solid #e5e7eb;
+        justify-content: space-between;
+        padding: 12px 14px;
+        border: 0;
+        border-radius: 0;
         background: #fff;
-        min-height: 42px;
+        min-height: 46px;
 
         &.is-key {
-          border-color: #d1d5db;
+          border-color: transparent;
         }
 
         .metric-line {
           display: flex;
           align-items: baseline;
-          justify-content: center;
-          gap: 2px;
+          justify-content: space-between;
+          gap: 12px;
+          width: 100%;
           flex-wrap: wrap;
-          text-align: center;
+          text-align: left;
           line-height: 1.4;
         }
 
@@ -3301,6 +4680,7 @@ export default {
           font-weight: 600;
           color: #111827;
           word-break: break-word;
+          text-align: right;
 
           &.trend-up {
             color: var(--danger-color);

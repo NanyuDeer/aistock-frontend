@@ -423,6 +423,20 @@ export const stockApi = {
     });
   },
 
+  // 批量获取股票基础财务行情（PE/PB/ROE/毛利率等）
+  getStockFundamentals: (symbols) => {
+    return api.get(`/api/cn/stock/fundamentals?symbols=${symbols}`, {
+      timeout: 8000
+    });
+  },
+
+  // 获取个股最近半年度关键财报数据
+  getSemiAnnualReport: (symbol) => {
+    return api.get(`/api/cn/stocks/${encodeURIComponent(symbol)}/semi-annual-report`, {
+      timeout: 12000
+    });
+  },
+
   // 获取历史K线
   getStockKline: ({ symbol, klt = 101, fqt = 1, limit = DEFAULT_KLINE_LIMIT, startDate, endDate }) => {
     const parsedLimit = Number(limit);
