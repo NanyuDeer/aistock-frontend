@@ -3,8 +3,8 @@
     <div class="page-container">
       <div class="container">
         <div class="page-header">
-          <h2 class="page-title">个股异动</h2>
-          <p class="page-desc">聚合外部爬虫返回的公告和新闻研判，发现个股异动线索</p>
+          <h2 class="page-title">个股情报</h2>
+          <p class="page-desc">聚合外部爬虫返回的公告和新闻研判，发现个股情报线索</p>
         </div>
 
         <!-- 统计概览 -->
@@ -15,9 +15,9 @@
           </div>
         </div>
 
-        <!-- 个股异动列表 -->
+        <!-- 个股情报列表 -->
         <div class="monitor-content">
-          <StockMonitorList
+          <StockIntelList
             :events="allEvents"
             :show-cycle-filter="true"
             default-cycle="all"
@@ -30,18 +30,18 @@
 
 <script>
 import { ref, computed, onMounted } from 'vue'
-import StockMonitorList from '@/shared/components/StockMonitorList.vue'
-import { trendHotspotApi } from '@/shared/api/api'
+import StockIntelList from '@/shared/components/StockIntelList.vue'
+import { stockIntelApi } from '@/shared/api/api'
 
 export default {
-  name: 'StockMonitorView',
-  components: { StockMonitorList },
+  name: 'StockIntelView',
+  components: { StockIntelList },
   setup() {
     const allEvents = ref([])
 
     const fetchEvents = async () => {
       try {
-        const res = await trendHotspotApi.getEvents({ cycle: 'all', limit: 100 })
+        const res = await stockIntelApi.getEvents({ cycle: 'all', limit: 100 })
         const events = res?.data?.events || []
         allEvents.value = events.map(e => ({
           ...e,
@@ -54,7 +54,7 @@ export default {
           event_time_display: e.event_time_display || formatEventTime(e.event_time),
         }))
       } catch (err) {
-        console.warn('[StockMonitorView] 获取个股异动数据失败:', err)
+        console.warn('[StockIntelView] 获取个股情报数据失败:', err)
       }
     }
 

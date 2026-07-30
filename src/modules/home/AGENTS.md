@@ -1,7 +1,7 @@
 # Home 模块 - 首页
 
 ## 职责
-首页是用户进入应用后的第一个页面，展示市场概览、新闻资讯、自选股卡片、个股异动、风口爆发、风口龙头、AI产业链图谱等综合信息。
+首页是用户进入应用后的第一个页面，展示市场概览、新闻资讯、自选股卡片、个股情报、风口爆发、风口龙头、AI产业链图谱等综合信息。
 
 ## 文件结构
 ```
@@ -18,14 +18,14 @@ home/
 ```
 
 ## 依赖的共享层
-- `@/shared/api/api` — stockApi, trendHotspotApi, windLeaderApi, industryKGApi
-- `@/shared/components/` — StockCardList, StockMonitorList
+- `@/shared/api/api` — stockApi, stockIntelApi, windLeaderApi, industryKGApi
+- `@/shared/components/` — StockCardList, StockIntelList
 - **注意**：TheNavbar 由 App.vue 全局渲染，模块视图不需要自行引入
 
 ## API 接口
 - `stockApi.getHeadlineNews()` / `getCnNews()` / `getHkNews()` / `getGbNews()` — 新闻
 - `stockApi.getCnIndexQuotes()` / `getGbIndexQuotes()` — 指数行情
-- `trendHotspotApi.getStats()` / `getEvents()` — 风口爆发
+- `stockIntelApi.getStats()` / `getEvents()` — 个股情报监控
 - `windLeaderApi.getWindLeaders()` — 风口龙头
 - `industryKGApi.getConcepts()` / `getGraphByConcept()` — AI产业链图谱
 

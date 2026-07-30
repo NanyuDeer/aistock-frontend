@@ -14,13 +14,13 @@ favorites/
 ```
 
 ## 依赖的共享层
-- `@/shared/api/api` — stockApi, trendHotspotApi, ttsApi, tenxApi
-- `@/shared/components/` — CycleSelect, StockChart, StockMonitorList
-- `@/shared/utils/` — stockCycle, scrollUtils, trendHotspotConstants
+- `@/shared/api/api` — stockApi, stockIntelApi, ttsApi, tenxApi
+- `@/shared/components/` — CycleSelect, StockChart, StockIntelList
+- `@/shared/utils/` — stockCycle, scrollUtils, stockIntelConstants
 - `@/shared/mock/` — curatedStocks
 
 ## API 接口
-- `trendHotspotApi.getFavoritesNews()` — 自选股风口事件
+- `stockIntelApi.getFavoritesNews()` — 自选股异动资讯
 - `stockApi.getStockKline()` — K线数据
 - `stockApi.getStockAnalysis()` / `createStockAnalysisStream()` — AI评估
 - `ttsApi.synthesize()` — 语音播报

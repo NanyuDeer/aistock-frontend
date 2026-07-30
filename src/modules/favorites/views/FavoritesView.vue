@@ -228,7 +228,7 @@ import { ElMessage } from 'element-plus';
 import CycleSelect from '@/shared/components/CycleSelect.vue';
 import { useStockCycle } from '@/shared/utils/stockCycle';
 import { useScrollReset } from '@/shared/utils/scrollUtils';
-import { trendHotspotApi } from '@/shared/api/api';
+import { stockIntelApi } from '@/shared/api/api';
 import {
   CYCLE_OPTIONS,
   filterEventsByCycle,
@@ -237,7 +237,7 @@ import {
   getImpactColor,
   getKeywordColor,
   filterDecisiveKeywords,
-} from '@/shared/utils/trendHotspotConstants';
+} from '@/shared/utils/stockIntelConstants';
 
 export default {
   name: 'FavoritesView',
@@ -269,7 +269,7 @@ export default {
     const fetchFavoritesNews = async () => {
       try {
         newsLoading.value = true;
-        const res = await trendHotspotApi.getFavoritesNews({ cycle: 'all', limit: 50 });
+        const res = await stockIntelApi.getFavoritesNews({ cycle: 'all', limit: 50 });
         if (res?.code === 200 && res?.data) {
           newsEvents.value = (res.data.events || []).map(e => ({
             ...e,

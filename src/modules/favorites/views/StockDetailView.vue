@@ -908,8 +908,8 @@ import CycleSelect from '@/shared/components/CycleSelect.vue';
 import { useStockCycle } from '@/shared/utils/stockCycle';
 import { ttsApi } from '@/shared/api/api';
 import { getCuratedStockProfile } from '@/shared/mock/curatedStocks';
-import { trendHotspotApi } from '@/shared/api/api';
-import StockMonitorList from '@/shared/components/StockMonitorList.vue';
+import { stockIntelApi } from '@/shared/api/api';
+import StockMonitorList from '@/shared/components/StockIntelList.vue';
 import { trendApi } from '@/shared/api/api';
 import 'element-plus/es/components/message/style/css';
 import Chart from 'chart.js/auto';
@@ -974,7 +974,7 @@ export default {
       try {
         const stockCode = route.params.code || '';
         if (!stockCode) return;
-        const res = await trendHotspotApi.getEventsByStock(stockCode, { cycle: 'all', limit: 20 });
+        const res = await stockIntelApi.getEventsByStock(stockCode, { cycle: 'all', limit: 20 });
         const events = res?.data?.events || [];
         stockMonitorEvents.value = events.map(e => ({
           ...e,

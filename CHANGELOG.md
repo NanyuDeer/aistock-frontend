@@ -2,6 +2,16 @@
 
 > 所有修改记录按时间倒序排列。每条记录标注分支、时间区间、开发者。
 
+## [main] 2026-07-25 — PR #38 review 修复 + StockMonitor→stockIntel 改名
+**开发者**: Aria
+
+### 修复
+- PR #38 review：StockDetailView tenx→trend 命名统一（20个标识符重命名）、dimScores 硬编码修复
+- StockMonitor → stockIntel（个股情报）全面改名，与 App 端对齐
+- 后端 API 路径 /api/cn/stock-monitors/* 与路由路径 /stock-monitor 保留不变
+
+---
+
 ## [main] 2026-07-17 — 跨仓库一致性修复（排序优化/emoji清理/主题变量/端口冲突/环境变量模板）
 **开发者**: Aria
 
