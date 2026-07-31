@@ -41,6 +41,7 @@ shared/
 - `configApi` — 配置
 - `stockIntelApi` — 个股情报监控
 - `tenxApi` — 十倍股评分
+- `agentReportApi` — Agent 已持久化报告读取
 - `windLeaderApi` — 风口龙头
 - `aiGraphApi` — AI产业链图谱
 - `industryKGApi` — 行业知识图谱

@@ -10,6 +10,7 @@ market/
 │   ├── TagView.vue            # 板块龙头页
 │   ├── TenxScoreView.vue      # 十倍股评分页
 │   ├── TrendScoreView.vue     # 趋势股评分页（/trend，单文件内嵌 ECharts 图表，无子组件）
+│   ├── TrendScoreReportView.vue # 趋势股 AI 分析报告页（/trend/report）
 │   └── StockIntelView.vue   # 个股情报页
 ├── components/                  # 模块专属组件（待抽取）
 └── AGENTS.md
@@ -26,6 +27,7 @@ market/
 - `stockApi.getTagLeaders()` — 板块龙头
 - `tenxApi.getScore()` / `refreshScore()` / `batchRefresh()` / `checkVeto()` / `getTopStocks()` — 十倍股评分
 - `trendApi.getTopStocks()` / `getDetail()` / `batchRefresh()` — 趋势股评分（后端 aistock-app-api）
+- `agentReportApi.getReport('trend_score', date)` — 已持久化趋势股 AI 分析报告（双层 `display_report` 内容）
 - `stockIntelApi.getEvents()` — 个股情报事件
 
 ## 开发注意事项

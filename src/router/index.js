@@ -11,6 +11,7 @@ const UpdateLogsView = () => import('@/modules/analytics/views/UpdateLogsView.vu
 const PerformanceForecastView = () => import('@/modules/analytics/views/PerformanceForecastView.vue')
 const TenxScoreView = () => import('@/modules/market/views/TenxScoreView.vue')
 const TrendScoreView = () => import('@/modules/market/views/TrendScoreView.vue')
+const TrendScoreReportView = () => import('@/modules/market/views/TrendScoreReportView.vue')
 const HotBurstView = () => import('@/modules/news/views/HotBurstView.vue')
 const StockIntelView = () => import('@/modules/market/views/StockIntelView.vue')
 const PotentialStockPushHistoryView = () => import('@/modules/analytics/views/PotentialStockPushHistoryView.vue')
@@ -94,6 +95,14 @@ const routes = [
     component: TrendScoreView,
     meta: {
       title: '股票资讯AI智能分析 - 趋势股评分'
+    }
+  },
+  {
+    path: '/trend/report',
+    name: 'trendScoreReport',
+    component: TrendScoreReportView,
+    meta: {
+      title: '股票资讯AI智能分析 - 趋势股评分报告'
     }
   },
   {
