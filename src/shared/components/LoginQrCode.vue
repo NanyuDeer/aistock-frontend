@@ -45,7 +45,6 @@
 <script>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { authApi } from '@/shared/api/api'
-import { useStore } from 'vuex'
 import { ElMessage } from 'element-plus'
 
 export default {
@@ -73,8 +72,6 @@ export default {
     const maxPollCount = 150 // 最大轮询次数（2秒 * 150 = 5分钟）
     const errorMessage = ref('') // 存储API错误信息
     
-    const store = useStore()
-
     // 监听状态变化
     watch(status, (newVal) => {
       console.log(`[QrCode] 二维码状态变更:`, newVal)

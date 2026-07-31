@@ -927,7 +927,7 @@ export default {
       return `${yoy >= 0 ? '+' : ''}${yoy.toFixed(2)}%`;
     };
 
-    const mapForecastRanking = (item, index) => {
+    const mapForecastRanking = (item) => {
       const code = item.symbol || item['股票代码'] || item.code || '';
       const name = item.name || item['股票简称'] || item['股票名称'] || '--';
       const yoy = parseYoy(item.forecast_netprofit_yoy ?? item['净利润同比(%)'] ?? item['净利润同比']);

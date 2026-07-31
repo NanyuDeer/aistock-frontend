@@ -39,7 +39,9 @@
                 <span class="level-tag" :class="rec.resonance_level">{{ levelLabel(rec.resonance_level) }}</span>
               </div>
               <div class="cell-keywords">
-                <span v-if="rec.keywords" class="kw-tag" v-for="(tag, i) in rec.keywords.split('、').slice(0, 4)" :key="i">{{ tag }}</span>
+                <template v-if="rec.keywords">
+                  <span v-for="(tag, i) in rec.keywords.split('、').slice(0, 4)" :key="i" class="kw-tag">{{ tag }}</span>
+                </template>
               </div>
               <div class="cell-score">
                 <span class="score-val">{{ rec.resonance_score }}</span>

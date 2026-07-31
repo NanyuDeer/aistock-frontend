@@ -1155,7 +1155,7 @@ export default createStore({
         throw error;
       }
     },
-    async fetchUpdateTypes(_) {
+    async fetchUpdateTypes() {
       try {
         console.log('[DEBUG] 发起获取更新类型请求');
         const response = await stockApi.getUpdateTypes();

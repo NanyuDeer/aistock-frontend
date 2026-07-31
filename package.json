@@ -6,7 +6,7 @@
     "serve": "vue-cli-service serve",
     "build": "node scripts/build.js",
     "build:prod": "node scripts/build.js production",
-    "lint": "vue-cli-service lint"
+    "lint": "vue-cli-service lint --ext .js,.jsx,.vue,.mjs"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",

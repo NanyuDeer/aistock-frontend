@@ -172,7 +172,7 @@
         <!-- 搜索结果列表 -->
         <div v-else class="result-list">
           <div 
-            v-for="(stock, index) in searchResults" 
+            v-for="stock in searchResults"
             :key="stock.code" 
             class="result-item"
             :class="{'fade-in': !loading}"

@@ -51,7 +51,7 @@
               rel="noopener noreferrer"
             >
               {{ detail.event.sourceInfo.name }}
-              <el-icon><Link /></el-icon>
+              <el-icon><LinkIcon /></el-icon>
             </a>
             <span v-else class="meta-value">{{ detail.event?.source || '来源暂不可验证' }}</span>
           </div>
@@ -86,7 +86,7 @@
  */
 import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft, CircleCloseFilled, Link } from '@element-plus/icons-vue'
+import { ArrowLeft, CircleCloseFilled, Link as LinkIcon } from '@element-plus/icons-vue'
 import AiEventReport from '../components/AiEventReport.vue'
 import { getEventDetail } from '@/modules/event/api/eventApi'
 
@@ -96,7 +96,7 @@ export default {
     AiEventReport,
     ArrowLeft,
     CircleCloseFilled,
-    Link,
+    LinkIcon,
   },
   setup() {
     const route = useRoute()

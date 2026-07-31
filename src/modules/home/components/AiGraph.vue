@@ -452,7 +452,7 @@ function focusOnNode(nodeId) {
 
     const directUpIds = [...(upMap.get(nodeId) || new Set())];
     const directDownIds = [...(downMap.get(nodeId) || new Set())];
-    buildFocusInfo(nodeId, directUpIds, directDownIds, null, [], [], new Set(), new Set());
+    buildFocusInfo(nodeId, directUpIds, directDownIds, null);
 
   // ---- 概念节点布局 ----
   } else if (concept) {
@@ -527,7 +527,7 @@ function focusOnNode(nodeId) {
       treeLinks.push({ source: nodeId, target: indId, color: COLORS.conceptEdge, opacity: 0.3 });
     }
 
-    buildFocusInfo(nodeId, [], [], concept, strongIds, weakIds, new Set(), new Set());
+    buildFocusInfo(nodeId, [], [], concept);
   } else {
     return;
   }
@@ -588,7 +588,7 @@ function focusOnNode(nodeId) {
 /**
  * 构建信息面板数据（概念关联行业显示上下游两个层级）
  */
-function buildFocusInfo(nodeId, upIds, downIds, concept, stronglyRelatedIds, weaklyRelatedIds, conceptUpIds, conceptDownIds) {
+function buildFocusInfo(nodeId, upIds, downIds, concept) {
   if (!graphData.value) return;
   const { idToName, upMap, downMap } = buildUpDownMap(graphData.value);
 

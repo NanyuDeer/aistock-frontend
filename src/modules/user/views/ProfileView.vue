@@ -203,6 +203,7 @@ import api from '@/shared/api/api'
 
 export default {
   name: 'ProfileView',
+  components: { Check },
   setup() {
     const store = useStore()
     const router = useRouter()

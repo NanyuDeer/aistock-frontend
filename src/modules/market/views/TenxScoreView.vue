@@ -454,7 +454,9 @@ export default {
           allStocksLoaded.value = true
           return
         }
-      } catch {}
+      } catch {
+        // Fall back to the local default list when the API is unavailable.
+      }
       // 回退：使用默认数据
       allStocks.value = tenbaggerStocks.map(s => ({
         code: s.code,
@@ -502,7 +504,7 @@ export default {
         } catch {
           // API失败时回退到本地过滤
           const q = val.trim().toLowerCase()
-          searchResults.value = allStocks.filter(s =>
+          searchResults.value = allStocks.value.filter(s =>
             s.name.toLowerCase().includes(q) || s.code.includes(q)
           )
         }

@@ -44,9 +44,6 @@ axios.interceptors.response.use(
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
   ? 'https://gupiao-api.yaozhineng.com' 
   : '';
-const EXT_API_BASE_URL = process.env.NODE_ENV === 'production'
-  ? 'https://gupiao-api.yaozhineng.com'
-  : '';
 const PREDICTION_API_BASE_URL = process.env.NODE_ENV === 'production'
   ? 'https://yingfeng64-kronos-api.hf.space'
   : '/prediction-api';
@@ -148,7 +145,7 @@ const readSseStream = async (stream, onEvent) => {
     dataLines = [];
   };
 
-  while (true) {
+  for (;;) {
     const { value, done } = await reader.read();
     buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
 
@@ -575,7 +572,7 @@ export const stockApi = {
   },
   
   // 获取自选股推送新闻
-  getPushNews: (_page = 1, _limit = 5) => {
+  getPushNews: () => {
     // 新版占位接口：当前只返回空列表
     return api.get('/api/users/me/news/push');
   },
@@ -685,7 +682,7 @@ export const stockApi = {
   },
 
   // 获取用户推送设置
-  getUserPushSettings: (_userId) => {
+  getUserPushSettings: () => {
     return api.get('/api/users/me/settings');
   },
   

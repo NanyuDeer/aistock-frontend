@@ -720,7 +720,7 @@
                   </div>
                   <div v-if="activeTenxDimIndex === i" class="tenx-dim-details open" @click.stop>
                     <div class="tenx-dim-details-inner">
-                      <div v-for="(ind, j) in dim.indicators" :key="ind.name" class="tenx-ind-row">
+                      <div v-for="ind in dim.indicators" :key="ind.name" class="tenx-ind-row">
                         <span class="tenx-ind-name">{{ ind.name }}</span>
                         <div class="tenx-ind-right">
                           <span class="tenx-ind-value">{{ ind.value }}</span>
@@ -1225,16 +1225,6 @@ export default {
         return `${matchedKey}对应${fifteenthPlanThemeMap[matchedKey]}，属于十五五期间培育新质生产力、战略性新兴产业和未来产业时容易被重点关注的方向。`;
       }
       return `${rawName || '该方向'}与十五五期间培育新质生产力、发展战略性新兴产业的政策主线存在一定关联。`;
-    };
-
-    const getTenbaggerSimilarityScore = (baseScore, multiple) => {
-      const score = Number(baseScore) || 78;
-      const m = Number(multiple) || 1.5;
-      if (m >= 10) return Math.min(98, Math.max(86, Math.round(score)));
-      if (m >= 5) return Math.min(74, Math.max(68, Math.round(64 + m + (score - 85) * 0.25)));
-      if (m >= 3) return Math.min(64, Math.max(56, Math.round(52 + m * 2 + (score - 85) * 0.18)));
-      if (m >= 2) return Math.min(55, Math.max(48, Math.round(45 + m * 2.5 + (score - 85) * 0.12)));
-      return Math.min(47, Math.max(38, Math.round(36 + m * 3 + (score - 85) * 0.1)));
     };
 
     const formatFlowValue = (value) => {
@@ -2101,7 +2091,7 @@ export default {
     const syncStreamDraft = () => {
       const preview = evaluationStreamPreview.value; if (!preview) return;
       const jsonStart = preview.indexOf('{'); const jsonEnd = preview.lastIndexOf('}');
-      if (jsonStart !== -1 && jsonEnd > jsonStart) { try { const parsed = JSON.parse(preview.slice(jsonStart, jsonEnd + 1)); if (parsed && typeof parsed === 'object') { streamedConclusion.value = parsed['结论'] || streamedConclusion.value; streamedCoreLogic.value = parsed['核心逻辑'] || streamedCoreLogic.value; streamedRiskWarning.value = parsed['风险提示'] || streamedRiskWarning.value; return; } } catch (_) {} }
+      if (jsonStart !== -1 && jsonEnd > jsonStart) { try { const parsed = JSON.parse(preview.slice(jsonStart, jsonEnd + 1)); if (parsed && typeof parsed === 'object') { streamedConclusion.value = parsed['结论'] || streamedConclusion.value; streamedCoreLogic.value = parsed['核心逻辑'] || streamedCoreLogic.value; streamedRiskWarning.value = parsed['风险提示'] || streamedRiskWarning.value; return; } } catch { /* Ignore incomplete JSON chunks while streaming. */ } }
       const c = extractStreamField(preview, '结论', ['核心逻辑', '风险提示']); const cl = extractStreamField(preview, '核心逻辑', ['风险提示']); const rw = extractStreamField(preview, '风险提示', []);
       if (c) streamedConclusion.value = c; if (cl) streamedCoreLogic.value = cl; if (rw) streamedRiskWarning.value = rw;
     };
@@ -2162,7 +2152,7 @@ export default {
     const normalizeAnalysisTimeText = (v) => v ? String(v).replace('T', ' ').trim() : '';
     const formatHistoryAxisTime = (v) => { const n = normalizeAnalysisTimeText(v).replace(/\.\d+$/, ''); if (!n) return '--'; const m = n.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})/); return m ? `${m[2]}-${m[3]} ${m[4]}` : n; };
     const toAnalysisTimestamp = (v) => { const n = normalizeAnalysisTimeText(v).replace(/\.\d+$/, ''); if (!n) return 0; const p = Date.parse(n.replace(' ', 'T')); return Number.isFinite(p) ? p : 0; };
-    const getHistoryScore = (c) => { const t = String(c || '').trim(); if (!t) return 0; if (HISTORY_SCORE_MAP.hasOwnProperty(t)) return HISTORY_SCORE_MAP[t]; if (t.includes('重大利好')) return 2; if (t.includes('利好')) return 1; if (t.includes('重大利空')) return -2; if (t.includes('利空')) return -1; if (t.includes('中性')) return 0; return 0; };
+    const getHistoryScore = (c) => { const t = String(c || '').trim(); if (!t) return 0; if (Object.prototype.hasOwnProperty.call(HISTORY_SCORE_MAP, t)) return HISTORY_SCORE_MAP[t]; if (t.includes('重大利好')) return 2; if (t.includes('利好')) return 1; if (t.includes('重大利空')) return -2; if (t.includes('利空')) return -1; if (t.includes('中性')) return 0; return 0; };
     const getHistoryScoreColor = (s) => { if (s >= 2) return '#b42318'; if (s > 0) return '#dc2626'; if (s <= -2) return '#166534'; if (s < 0) return '#15803d'; return '#64748b'; };
     const getHistoryConclusionClass = (c) => { const s = getHistoryScore(c); if (s >= 2) return 'is-strong-bull'; if (s > 0) return 'is-bull'; if (s <= -2) return 'is-strong-bear'; if (s < 0) return 'is-bear'; return 'is-neutral'; };
     const disposeHistoryTimelineChart = () => { if (historyTimelineChartInstance) { historyTimelineChartInstance.dispose(); historyTimelineChartInstance = null; } };

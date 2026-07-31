@@ -141,7 +141,7 @@ export default {
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // 粗体
         .replace(/\*(.*?)\*/g, '<em>$1</em>') // 斜体
         .replace(/\r?\n/g, '<br>') // 换行
-        .replace(/   \* /g, '&nbsp;&nbsp;&nbsp;• ') // 列表项
+        .replace(/ {3}\* /g, '&nbsp;&nbsp;&nbsp;• ') // 列表项
         .replace(/\* /g, '• '); // 简单列表项
     };
 
