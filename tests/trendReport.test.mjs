@@ -3,6 +3,7 @@ import test from 'node:test'
 
 import {
   extractReportSection,
+  hasStructuredTrendDetails,
   normalizeTrendScoreReport,
   toBulletItems,
 } from '../src/modules/market/utils/trendReport.mjs'
@@ -40,4 +41,15 @@ test('normalizes the public response and preserves the actual report date', () =
 test('returns null for a missing or malformed report', () => {
   assert.equal(normalizeTrendScoreReport({ code: 0, data: null }), null)
   assert.equal(normalizeTrendScoreReport({ content: {} }), null)
+})
+
+test('does not treat standalone risks as parsed report details', () => {
+  assert.equal(
+    hasStructuredTrendDetails('这是一段没有标准小标题的完整分析。'),
+    false,
+  )
+  assert.equal(
+    hasStructuredTrendDetails('## 趋势判断\n保持谨慎乐观'),
+    true,
+  )
 })

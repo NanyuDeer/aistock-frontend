@@ -51,6 +51,7 @@ import { useRoute } from 'vue-router';
 import { agentReportApi } from '@/shared/api/api';
 import {
   extractReportSection,
+  hasStructuredTrendDetails,
   normalizeTrendScoreReport,
   shanghaiDateString,
   toBulletItems,
@@ -66,9 +67,7 @@ const dimensions = computed(() => toBulletItems(extractReportSection(report.valu
 const trendJudgment = computed(() => toBulletItems(extractReportSection(report.value?.details, '趋势判断')).join(' '));
 const trackAnalysis = computed(() => toBulletItems(extractReportSection(report.value?.details, '赛道分析')));
 const attentionAdvice = computed(() => toBulletItems(extractReportSection(report.value?.details, '关注建议')).join(' '));
-const hasStructuredSections = computed(() => (
-  dimensions.value.length || trendJudgment.value || trackAnalysis.value.length || attentionAdvice.value || report.value?.risks.length
-));
+const hasStructuredSections = computed(() => hasStructuredTrendDetails(report.value?.details));
 const displayDate = computed(() => report.value?.reportDate || requestedDate);
 
 onMounted(async () => {

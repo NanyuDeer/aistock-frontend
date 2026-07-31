@@ -37,6 +37,11 @@ export function extractReportSection(details, heading) {
   return pattern.exec(details)?.[1]?.trim() || ''
 }
 
+export function hasStructuredTrendDetails(details) {
+  return ['维度解读', '趋势判断', '赛道分析', '关注建议']
+    .some((heading) => extractReportSection(details, heading))
+}
+
 export function toBulletItems(value) {
   if (typeof value !== 'string') return []
   return value
