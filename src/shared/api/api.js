@@ -870,6 +870,14 @@ export const trendApi = {
   }),
 };
 
+// Agent 持久化报告 API（公开只读接口，无需内部鉴权）
+export const agentReportApi = {
+  getReport: (intent, date) => api.get(
+    `/api/agent/report/${encodeURIComponent(intent)}/${encodeURIComponent(date)}`,
+    { timeout: 15000 },
+  ),
+};
+
 // 风口龙头 API
 export const windLeaderApi = {
   /** 获取风口龙头分析结果 */
