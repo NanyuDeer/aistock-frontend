@@ -4,7 +4,7 @@
       <div class="container">
         <div class="page-header">
           <h2 class="page-title">自选股情报</h2>
-          <p class="page-desc">聚合外部爬虫返回的公告和新闻研判，发现自选股情报线索</p>
+          <p class="page-desc">聚合外部爬虫返回的公告和新闻研判，发现自选股线索</p>
         </div>
 
         <!-- 统计概览 -->

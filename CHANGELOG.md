@@ -7,7 +7,7 @@
 
 ### 修复
 - PR #38 review：StockDetailView tenx→trend 命名统一（20个标识符重命名）、dimScores 硬编码修复
-- StockMonitor → stockIntel（自选股情报（原个股情报））全面改名，与 App 端对齐
+- StockMonitor → stockIntel（自选股情报，原个股情报）全面改名，与 App 端对齐
 - 后端 API 路径 /api/cn/stock-monitors/* 与路由路径 /stock-monitor 保留不变
 
 ---
