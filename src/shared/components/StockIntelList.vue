@@ -104,7 +104,9 @@ export default {
     const activeCycle = ref(props.defaultCycle)
 
     const filteredEvents = computed(() => {
-      return filterEventsByCycle(props.events, activeCycle.value)
+      // 8.1 决议：中性事件不展示
+      const nonNeutral = props.events.filter(e => e.level !== '中性')
+      return filterEventsByCycle(nonNeutral, activeCycle.value)
     })
 
     const goToDetail = (event) => {
