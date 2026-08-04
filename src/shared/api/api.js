@@ -778,7 +778,7 @@ export const configApi = {
   getPublicConfig: () => api.get('/api/config/public'),
 };
 
-// 个股情报监控 API
+// 自选股情报监控 API
 export const stockIntelApi = {
   /** 查询公告/新闻研判事件列表 */
   getEvents: ({ cycle = 'all', change_type, stock_code, limit = 20, offset = 0 } = {}) => {
@@ -793,7 +793,7 @@ export const stockIntelApi = {
     return api.get(`/api/cn/stock-monitors/events/${encodeURIComponent(stockCode)}?cycle=${cycle}&limit=${limit}`, { timeout: 8000 });
   },
 
-  /** 获取个股情报统计概览 */
+  /** 获取自选股情报统计概览 */
   getStats: () => {
     return api.get('/api/cn/stock-monitors/stats', { timeout: 8000 });
   },
