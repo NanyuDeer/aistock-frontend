@@ -122,7 +122,7 @@ const routes = [
     name: 'stockIntel',
     component: StockIntelView,
     meta: {
-      title: '股票资讯AI智能分析 - 个股情报'
+      title: '股票资讯AI智能分析 - 自选股情报'
     }
   },
   {

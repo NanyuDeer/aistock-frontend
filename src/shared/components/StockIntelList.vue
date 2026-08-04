@@ -12,7 +12,7 @@
       </button>
     </div>
 
-    <!-- 个股情报列表 -->
+    <!-- 自选股情报列表 -->
     <div class="monitor-table">
       <div class="monitor-table-head">
         <span>股票</span>
@@ -64,7 +64,7 @@
       </div>
 
       <div v-if="filteredEvents.length === 0" class="empty-state">
-        <p>暂无个股情报数据</p>
+        <p>暂无自选股情报数据</p>
       </div>
     </div>
   </div>
@@ -104,7 +104,9 @@ export default {
     const activeCycle = ref(props.defaultCycle)
 
     const filteredEvents = computed(() => {
-      return filterEventsByCycle(props.events, activeCycle.value)
+      // 8.1 决议：中性事件不展示
+      const nonNeutral = props.events.filter(e => e.level !== '中性')
+      return filterEventsByCycle(nonNeutral, activeCycle.value)
     })
 
     const goToDetail = (event) => {

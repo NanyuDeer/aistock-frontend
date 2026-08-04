@@ -1,7 +1,7 @@
 # Home 模块 - 首页
 
 ## 职责
-首页是用户进入应用后的第一个页面，展示市场概览、新闻资讯、自选股卡片、个股情报、风口爆发、风口龙头、AI产业链图谱等综合信息。
+首页是用户进入应用后的第一个页面，展示市场概览、新闻资讯、自选股卡片、自选股情报（原个股情报）、风口爆发、风口龙头、AI产业链图谱等综合信息。
 
 ## 文件结构
 ```
@@ -25,7 +25,7 @@ home/
 ## API 接口
 - `stockApi.getHeadlineNews()` / `getCnNews()` / `getHkNews()` / `getGbNews()` — 新闻
 - `stockApi.getCnIndexQuotes()` / `getGbIndexQuotes()` — 指数行情
-- `stockIntelApi.getStats()` / `getEvents()` — 个股情报监控
+- `stockIntelApi.getStats()` / `getEvents()` — 自选股情报（原个股情报）监控
 - `windLeaderApi.getWindLeaders()` — 风口龙头
 - `industryKGApi.getConcepts()` / `getGraphByConcept()` — AI产业链图谱
 

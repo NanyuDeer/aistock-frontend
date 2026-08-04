@@ -1,7 +1,7 @@
 # Market 模块 - 行情
 
 ## 职责
-提供板块龙头、十倍股评分、个股情报等行情相关功能。
+提供板块龙头、十倍股评分、自选股情报（原个股情报）等行情相关功能。
 
 ## 文件结构
 ```
@@ -11,7 +11,7 @@ market/
 │   ├── TenxScoreView.vue      # 十倍股评分页
 │   ├── TrendScoreView.vue     # 趋势股评分页（/trend，单文件内嵌 ECharts 图表，无子组件）
 │   ├── TrendScoreReportView.vue # 趋势股 AI 分析报告页（/trend/report）
-│   └── StockIntelView.vue   # 个股情报页
+│   └── StockIntelView.vue   # 自选股情报（原个股情报）页
 ├── components/                  # 模块专属组件（待抽取）
 └── AGENTS.md
 ```
@@ -28,7 +28,7 @@ market/
 - `tenxApi.getScore()` / `refreshScore()` / `batchRefresh()` / `checkVeto()` / `getTopStocks()` — 十倍股评分
 - `trendApi.getTopStocks()` / `getDetail()` / `batchRefresh()` — 趋势股评分（后端 aistock-app-api）
 - `agentReportApi.getReport('trend_score', date)` — 已持久化趋势股 AI 分析报告（双层 `display_report` 内容）
-- `stockIntelApi.getEvents()` — 个股情报事件
+- `stockIntelApi.getEvents()` — 自选股情报（原个股情报）事件
 
 ## 开发注意事项
 - TenxScoreView 使用复杂的评分维度系统（6维度18指标）

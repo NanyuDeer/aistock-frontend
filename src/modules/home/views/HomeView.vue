@@ -129,9 +129,9 @@
             <MarketOverview />
           </div>
 
-          <!-- 个股情报（隐藏，后续可能用到） -->
+          <!-- 自选股情报（隐藏，后续可能用到） -->
           <div v-if="false" class="stock-intel-section">
-            <h3 class="section-title">个股情报</h3>
+            <h3 class="section-title">自选股情报</h3>
             <StockIntelList
               :events="monitorEvents"
               :show-cycle-filter="true"
@@ -344,7 +344,7 @@ export default {
     const store = useStore();
     const router = useRouter();
 
-    // 个股情报数据
+    // 自选股情报数据
     const monitorEvents = ref([]);
     const loadingMonitor = ref(false);
 
@@ -364,7 +364,7 @@ export default {
           event_time_display: e.event_time_display || formatEventTime(e.event_time),
         }));
       } catch (err) {
-        console.warn('[HomeView] 获取个股情报数据失败，使用空列表:', err);
+        console.warn('[HomeView] 获取自选股情报数据失败，使用空列表:', err);
         monitorEvents.value = [];
       } finally {
         loadingMonitor.value = false;
@@ -1275,7 +1275,7 @@ export default {
     });
 
     return {
-      // 个股情报
+      // 自选股情报
       monitorEvents,
 
       // 风口龙头
