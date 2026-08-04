@@ -3,8 +3,8 @@
     <div class="page-container">
       <div class="container">
         <div class="page-header">
-          <h2 class="page-title">个股情报</h2>
-          <p class="page-desc">聚合外部爬虫返回的公告和新闻研判，发现个股情报线索</p>
+          <h2 class="page-title">自选股情报</h2>
+          <p class="page-desc">聚合外部爬虫返回的公告和新闻研判，发现自选股线索</p>
         </div>
 
         <!-- 统计概览 -->
@@ -15,7 +15,7 @@
           </div>
         </div>
 
-        <!-- 个股情报列表 -->
+        <!-- 自选股情报列表 -->
         <div class="monitor-content">
           <StockIntelList
             :events="allEvents"
@@ -54,7 +54,7 @@ export default {
           event_time_display: e.event_time_display || formatEventTime(e.event_time),
         }))
       } catch (err) {
-        console.warn('[StockIntelView] 获取个股情报数据失败:', err)
+        console.warn('[StockIntelView] 获取自选股情报数据失败:', err)
       }
     }
 
