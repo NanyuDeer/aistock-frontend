@@ -119,15 +119,15 @@
         </div>
       </section>
 
-      <!-- 个股异动 -->
-      <div v-if="isFavorite && stockMonitorEvents.length > 0" class="stock-monitor-section">
+      <!-- 个股情报 -->
+      <div v-if="isFavorite && stockIntelEvents.length > 0" class="stock-intel-section">
         <div class="card">
           <div class="card-header">
-            <h3>个股异动</h3>
+            <h3>个股情报</h3>
           </div>
           <div class="card-body">
-            <StockMonitorList
-              :events="stockMonitorEvents"
+            <StockIntelList
+              :events="stockIntelEvents"
               :show-cycle-filter="true"
               :default-cycle="activeView === 'short' ? 'short' : activeView === 'mid' ? 'mid' : activeView === 'long' ? 'long' : 'all'"
             />
@@ -909,7 +909,7 @@ import { useStockCycle } from '@/shared/utils/stockCycle';
 import { ttsApi } from '@/shared/api/api';
 import { getCuratedStockProfile } from '@/shared/mock/curatedStocks';
 import { stockIntelApi } from '@/shared/api/api';
-import StockMonitorList from '@/shared/components/StockIntelList.vue';
+import StockIntelList from '@/shared/components/StockIntelList.vue';
 import { trendApi } from '@/shared/api/api';
 import 'element-plus/es/components/message/style/css';
 import Chart from 'chart.js/auto';
@@ -945,7 +945,7 @@ const invalidateCache = (code) => {
 
 export default {
   name: 'StockDetailView',
-  components: { StockChart, CycleSelect, StockMonitorList },
+  components: { StockChart, CycleSelect, StockIntelList },
   setup() {
     const route = useRoute();
     const router = useRouter();
@@ -967,8 +967,8 @@ export default {
       return 'mid';
     };
 
-    // 个股异动数据
-    const stockMonitorEvents = ref([]);
+    // 个股情报数据
+    const stockIntelEvents = ref([]);
 
     const fetchMonitorEvents = async () => {
       try {
@@ -976,7 +976,7 @@ export default {
         if (!stockCode) return;
         const res = await stockIntelApi.getEventsByStock(stockCode, { cycle: 'all', limit: 20 });
         const events = res?.data?.events || [];
-        stockMonitorEvents.value = events.map(e => ({
+        stockIntelEvents.value = events.map(e => ({
           ...e,
           stock_code: (e.stock_code || e.symbol || '').replace(/^(SH|SZ)/, ''),
           industry: (stockInfo.value.industry && stockInfo.value.industry !== '--' && stockInfo.value.industry !== '未知行业')
@@ -989,7 +989,7 @@ export default {
           event_time_display: e.event_time_display || formatEventTime(e.event_time),
         }));
       } catch (err) {
-        console.warn('[StockDetail] 获取个股异动数据失败:', err);
+        console.warn('[StockDetail] 获取个股情报数据失败:', err);
       }
     };
 
@@ -1025,10 +1025,10 @@ export default {
     });
     const isLoggedIn = computed(() => store.getters.isLoggedIn);
     const isFavorite = ref(false);
-    // 仅对已关注该股票的用户请求个股异动数据，取消关注时清空
+    // 仅对已关注该股票的用户请求个股情报数据，取消关注时清空
     watch(isFavorite, (fav) => {
-      if (fav && stockMonitorEvents.value.length === 0) fetchMonitorEvents();
-      if (!fav) stockMonitorEvents.value = [];
+      if (fav && stockIntelEvents.value.length === 0) fetchMonitorEvents();
+      if (!fav) stockIntelEvents.value = [];
     });
     const addingToFavorites = ref(false);
     const { getCycle, setCycle } = useStockCycle();
@@ -1894,7 +1894,7 @@ export default {
 
     const latestMajorEvent = computed(() => {
       const majorImpacts = new Set(['重大利好', '重大利空']);
-      return stockMonitorEvents.value.find(event => majorImpacts.has(getEventImpact(event))) || null;
+      return stockIntelEvents.value.find(event => majorImpacts.has(getEventImpact(event))) || null;
     });
 
     const majorEventImpactClass = computed(() => {
@@ -2626,10 +2626,10 @@ export default {
       if (userSelectedView.value) return;
       activeView.value = viewKeyFromPeriod(period);
     }, { immediate: true });
-    // 当 stockInfo.industry 加载完成后，同步更新个股异动中的行业标签
+    // 当 stockInfo.industry 加载完成后，同步更新个股情报中的行业标签
     watch(() => stockInfo.value.industry, (newIndustry) => {
-      if (newIndustry && newIndustry !== '--' && newIndustry !== '未知行业' && stockMonitorEvents.value.length > 0) {
-        stockMonitorEvents.value = stockMonitorEvents.value.map(e => ({
+      if (newIndustry && newIndustry !== '--' && newIndustry !== '未知行业' && stockIntelEvents.value.length > 0) {
+        stockIntelEvents.value = stockIntelEvents.value.map(e => ({
           ...e,
           industry: e.stock_code === stockInfo.value.code ? newIndustry : e.industry,
         }));
@@ -2874,7 +2874,7 @@ export default {
     return {
       activeView, viewTabs, selectActiveView, stockInfo, isLoggedIn, isFavorite, addingToFavorites,
       stockCycle, onStockCycleChange,
-      stockMonitorEvents, overallDecision, latestMajorEvent, majorEventImpactClass, shortActionItems,
+      stockIntelEvents, overallDecision, latestMajorEvent, majorEventImpactClass, shortActionItems,
       stockNews, analysisResult, currentNewsDetail, newsDetailDialogVisible,
       totalNews, hasMoreNews, loadingMoreNews, loadMoreNews,
       refreshAIEvaluation, loadingEvaluation, evaluationErrorMessage, evaluationProgressText,
@@ -2963,7 +2963,7 @@ export default {
     }
   }
 
-  .stock-monitor-section {
+  .stock-intel-section {
     margin-bottom: 20px;
   }
 

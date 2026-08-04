@@ -118,7 +118,7 @@ const routes = [
     }
   },
   {
-    path: '/stock-monitor',
+    path: '/stock-intel',
     name: 'stockIntel',
     component: StockIntelView,
     meta: {
