@@ -119,11 +119,11 @@
         </div>
       </section>
 
-      <!-- 个股情报 -->
+      <!-- 自选股情报 -->
       <div v-if="isFavorite && stockIntelEvents.length > 0" class="stock-intel-section">
         <div class="card">
           <div class="card-header">
-            <h3>个股情报</h3>
+            <h3>自选股情报</h3>
           </div>
           <div class="card-body">
             <StockIntelList
@@ -967,7 +967,7 @@ export default {
       return 'mid';
     };
 
-    // 个股情报数据
+    // 自选股情报数据
     const stockIntelEvents = ref([]);
 
     const fetchMonitorEvents = async () => {
@@ -989,7 +989,7 @@ export default {
           event_time_display: e.event_time_display || formatEventTime(e.event_time),
         }));
       } catch (err) {
-        console.warn('[StockDetail] 获取个股情报数据失败:', err);
+        console.warn('[StockDetail] 获取自选股情报数据失败:', err);
       }
     };
 
@@ -1025,7 +1025,7 @@ export default {
     });
     const isLoggedIn = computed(() => store.getters.isLoggedIn);
     const isFavorite = ref(false);
-    // 仅对已关注该股票的用户请求个股情报数据，取消关注时清空
+    // 仅对已关注该股票的用户请求自选股情报数据，取消关注时清空
     watch(isFavorite, (fav) => {
       if (fav && stockIntelEvents.value.length === 0) fetchMonitorEvents();
       if (!fav) stockIntelEvents.value = [];
@@ -2626,7 +2626,7 @@ export default {
       if (userSelectedView.value) return;
       activeView.value = viewKeyFromPeriod(period);
     }, { immediate: true });
-    // 当 stockInfo.industry 加载完成后，同步更新个股情报中的行业标签
+    // 当 stockInfo.industry 加载完成后，同步更新自选股情报中的行业标签
     watch(() => stockInfo.value.industry, (newIndustry) => {
       if (newIndustry && newIndustry !== '--' && newIndustry !== '未知行业' && stockIntelEvents.value.length > 0) {
         stockIntelEvents.value = stockIntelEvents.value.map(e => ({
