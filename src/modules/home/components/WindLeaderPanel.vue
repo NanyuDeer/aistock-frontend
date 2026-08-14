@@ -132,12 +132,6 @@
                 {{ formatNetInflow(currentSector.amount_trend) }}
               </div>
             </div>
-            <div class="hs-stat-item">
-              <div class="hs-stat-label">领涨股</div>
-              <div class="hs-stat-value" style="font-size: 0.85em;">
-                {{ currentSector.leading_stock || '--' }}
-              </div>
-            </div>
           </div>
           <!-- 层级流向图 -->
           <div class="hs-flow-chart" ref="flowChartWrap"></div>
@@ -251,9 +245,23 @@ function extractTopStocksFromSectors(sectors) {
     // 构建该板块的候选股票列表（按评分降序）
     const candidates = [];
 
-    // 第一候选：概念板块页面爬取的龙头股
+    // 第一候选：长线趋势龙头（long_leader，板块成分股中 trend_scores 评分最高）
+    const longLeader = sector.long_leader;
+    if (longLeader && longLeader.code) {
+      candidates.push({
+        code: longLeader.code,
+        name: longLeader.name,
+        track: sector.name,
+        latestPrice: longLeader.price != null ? String(longLeader.price) : '--',
+        changeRate: longLeader.change_pct != null ? longLeader.change_pct : 0,
+        leaderBasis: longLeader.reason || '',
+        score: longLeader.change_pct || 0,
+      });
+    }
+
+    // 第二候选：概念板块页面爬取的龙头股
     const leadInfo = sector.leading_stock_info;
-    if (leadInfo && leadInfo.code) {
+    if (leadInfo && leadInfo.code && !candidates.some(c => c.code === leadInfo.code)) {
       candidates.push({
         code: leadInfo.code,
         name: leadInfo.name,
@@ -562,6 +570,8 @@ export default {
       const relatedNodes = nodes.filter(n => n.type === 'related');
       const upstreamNodes = nodes.filter(n => n.type === 'upstream');
       const downstreamNodes = nodes.filter(n => n.type === 'downstream');
+      // 行业板块无 related 节点（主节点直接连上下游），以主节点为枢纽
+      const hasRelated = relatedNodes.length > 0;
 
       const nodeH = 20, charW = 11, padding = 12;
       const nodeWidths = {};
@@ -574,35 +584,42 @@ export default {
 
       const positions = {};
       const upGroups = {}, downGroups = {};
-      relatedNodes.forEach(n => { upGroups[n.id] = []; downGroups[n.id] = []; });
+      const hubIds = hasRelated ? relatedNodes.map(n => n.id) : [mainNode.id];
+      hubIds.forEach(id => { upGroups[id] = []; downGroups[id] = []; });
       links.forEach(link => {
         if (link.direction === 'upstream') {
-          const rn = relatedNodes.find(n => n.id === link.target);
+          const hub = hasRelated ? relatedNodes.find(n => n.id === link.target) : (link.target === mainNode.id ? mainNode : null);
           const un = upstreamNodes.find(n => n.id === link.source);
-          if (rn && un && !upGroups[rn.id].includes(un)) upGroups[rn.id].push(un);
+          if (hub && un && !upGroups[hub.id].includes(un)) upGroups[hub.id].push(un);
         } else if (link.direction === 'downstream') {
-          const rn = relatedNodes.find(n => n.id === link.source);
+          const hub = hasRelated ? relatedNodes.find(n => n.id === link.source) : (link.source === mainNode.id ? mainNode : null);
           const dn = downstreamNodes.find(n => n.id === link.target);
-          if (rn && dn && !downGroups[rn.id].includes(dn)) downGroups[rn.id].push(dn);
+          if (hub && dn && !downGroups[hub.id].includes(dn)) downGroups[hub.id].push(dn);
         }
       });
 
       const nodeGap = 22, groupGap = 12;
-      const relatedSlots = relatedNodes.map(n => Math.max((upGroups[n.id] || []).length, (downGroups[n.id] || []).length, 1));
+      const relatedSlots = hubIds.map(id => Math.max((upGroups[id] || []).length, (downGroups[id] || []).length, 1));
       const groupHeights = relatedSlots.map(s => s * nodeGap);
       const topY = 16;
       positions[mainNode.id] = { x: width / 2, y: topY };
       let curY = topY + nodeH / 2 + 14;
 
-      relatedNodes.forEach((n, i) => {
+      hubIds.forEach((id, i) => {
         const slotH = groupHeights[i];
         const centerY = curY + slotH / 2;
-        positions[n.id] = { x: width / 2, y: centerY };
-        (upGroups[n.id] || []).forEach((un, j) => {
-          positions[un.id] = { x: width * 0.20, y: centerY + (j - (upGroups[n.id].length - 1) / 2) * nodeGap };
+        if (!hasRelated) {
+          // 行业板块：主节点保持在顶部，上下游从主节点下方居中排列
+          positions[id] = { x: width / 2, y: topY };
+          curY = topY + nodeH + 14;
+        } else {
+          positions[id] = { x: width / 2, y: centerY };
+        }
+        (upGroups[id] || []).forEach((un, j) => {
+          positions[un.id] = { x: width * 0.20, y: curY + (j - (upGroups[id].length - 1) / 2) * nodeGap };
         });
-        (downGroups[n.id] || []).forEach((dn, j) => {
-          positions[dn.id] = { x: width * 0.80, y: centerY + (j - (downGroups[n.id].length - 1) / 2) * nodeGap };
+        (downGroups[id] || []).forEach((dn, j) => {
+          positions[dn.id] = { x: width * 0.80, y: curY + (j - (downGroups[id].length - 1) / 2) * nodeGap };
         });
         curY += slotH + groupGap;
       });

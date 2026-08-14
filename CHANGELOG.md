@@ -2,6 +2,16 @@
 
 > 所有修改记录按时间倒序排列。每条记录标注分支、时间区间、开发者。
 
+## [main] 2026-08-14 — 风口龙头面板：弹窗统计格去"领涨股" + 龙头股数据源分档（优先 long_leader）
+**开发者**: Aria
+
+### 改进
+- `src/modules/home/components/WindLeaderPanel.vue`：
+  - 二级弹窗统计格移除第 4 格"领涨股"（`currentSector.leading_stock`），保留今日涨幅/均涨幅/净流入 3 格
+  - `extractTopStocksFromSectors` 候选数据源分档：第一候选改为长线趋势龙头 `sector.long_leader`（trend_scores 评分最高），第二候选 `leading_stock_info`（去重），再补充 `main_stocks`
+
+---
+
 ## [main] 2026-07-25 — PR #38 review 修复 + StockMonitor→stockIntel 改名
 **开发者**: Aria
 
