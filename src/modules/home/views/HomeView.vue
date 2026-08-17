@@ -394,11 +394,81 @@ export default {
     const hotSectorError = ref('');
     const hotSectorQuoteMap = ref({}); // 风口龙头股票实时行情
 
+    const toFiniteNumber = (value) => {
+      if (value === null || value === undefined) return null;
+      if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+      const text = String(value).replace(/,/g, '').replace('%', '').trim();
+      if (!text || text === '-' || text === '--' || text === '—') return null;
+      const parsed = Number(text);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    // 龙头股行情补全（对齐 App 端 leaders.vue enrichLeaderQuotes）：
+    // long_leader（趋势龙头，来自 trend_scores）/ leading_stock_info（爬虫）等
+    // 可能缺 price/change_pct。任何时段批量拉取实时行情回填缺失字段，
+    // 保证长线风口龙头卡片价格完整（不受 isTradingHours 限制）。
+    const enrichLeaderQuotes = async () => {
+      const codes = [];
+      const seen = new Set();
+      for (const sector of hotSectors.value) {
+        const collect = (c) => {
+          if (c?.code && !seen.has(c.code) && (c.price == null || c.change_pct == null)) {
+            seen.add(c.code);
+            codes.push(c.code);
+          }
+        };
+        collect(sector.long_leader);
+        collect(sector.leading_stock_info);
+        (sector.main_stocks || []).forEach(collect);
+      }
+      if (codes.length === 0) return;
+      try {
+        // 每批最多20个（后端限制）
+        const groups = [];
+        for (let i = 0; i < codes.length; i += 20) {
+          groups.push(codes.slice(i, i + 20).join(','));
+        }
+        const quoteMap = {};
+        await Promise.allSettled(groups.map(group =>
+          stockApi.getStockCoreQuotes(group)
+            .then(res => {
+              if (res?.code !== 200) return;
+              (res?.data?.行情 || []).forEach(q => {
+                const code = q?.股票代码;
+                if (!code) return;
+                quoteMap[code] = {
+                  price: toFiniteNumber(q?.最新价),
+                  change_pct: toFiniteNumber(q?.涨跌幅),
+                };
+              });
+            })
+            .catch(() => {})
+        ));
+        // patch 回原始 sector 对象：WindLeaderPanel.extractTopStocksFromSectors
+        // 直接读 long_leader.price/change_pct，补全后卡片价格立即可显示
+        for (const sector of hotSectors.value) {
+          const patch = (c) => {
+            if (!c?.code) return;
+            const q = quoteMap[c.code];
+            if (!q) return;
+            if (c.price == null) c.price = q.price;
+            if (c.change_pct == null) c.change_pct = q.change_pct;
+          };
+          patch(sector.long_leader);
+          patch(sector.leading_stock_info);
+          (sector.main_stocks || []).forEach(patch);
+        }
+      } catch (e) {
+        console.warn('[HomeView] 龙头股行情补全失败:', e);
+      }
+    };
+
     const fetchHotSectors = async (forceRefresh = false) => {
       // 有缓存且非强制刷新时，直接恢复
       if (!forceRefresh && homeCache.hotSectors && Date.now() - homeCache.timestamp < HOME_CACHE_TTL) {
         hotSectors.value = homeCache.hotSectors;
         hotSectorUpdateTime.value = homeCache.hotSectorUpdateTime || '';
+        enrichLeaderQuotes();
         return;
       }
       loadingHotSectors.value = true;
@@ -419,6 +489,7 @@ export default {
           homeCache.hotSectors = hotSectors.value;
           homeCache.hotSectorUpdateTime = hotSectorUpdateTime.value;
           homeCache.timestamp = Date.now();
+          enrichLeaderQuotes();
         } else if (res?.code === 404) {
           hotSectorError.value = '暂无风口龙头数据，请稍后再试';
           hotSectors.value = [];
@@ -442,15 +513,6 @@ export default {
     const foreignNews = ref([]);
     const headlineNews = ref([]);
     const favoriteStockNews = ref([]); // 添加自选股相关新闻
-
-    const toFiniteNumber = (value) => {
-      if (value === null || value === undefined) return null;
-      if (typeof value === 'number') return Number.isFinite(value) ? value : null;
-      const text = String(value).replace(/,/g, '').replace('%', '').trim();
-      if (!text || text === '-' || text === '--' || text === '—') return null;
-      const parsed = Number(text);
-      return Number.isFinite(parsed) ? parsed : null;
-    };
 
     const isValidStockPrice = (value) => {
       const price = toFiniteNumber(value);
@@ -513,8 +575,12 @@ export default {
       // 自选股
       myFavoriteStocks.value.forEach(s => { if (s.code) codes.add(s.code); });
 
-      // 风口龙头
+      // 风口龙头（含长线趋势龙头 long_leader / 短线领涨 leading_stock_info——
+      // 二者来自 trend_scores / 爬虫，本身不带实时行情，必须收集 code 回填，
+      // 否则长线风口龙头卡片价格显示 '--'。对齐 App 端 enrichLeaderQuotes。）
       hotSectors.value.forEach(sector => {
+        if (sector.long_leader?.code) codes.add(sector.long_leader.code);
+        if (sector.leading_stock_info?.code) codes.add(sector.leading_stock_info.code);
         (sector.main_stocks || []).forEach(s => { if (s.code) codes.add(s.code); });
         (sector.upstream_stocks || []).forEach(s => { if (s.code) codes.add(s.code); });
         (sector.downstream_stocks || []).forEach(s => { if (s.code) codes.add(s.code); });
