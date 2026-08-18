@@ -13,7 +13,7 @@
   <img src="@/assets/jnu-logo.svg" alt="暨大Logo" style="height: 1.2rem; vertical-align: middle; margin-right: 6px;" />
   <span class="team-info">暨大团队研发</span>
         <span style="margin: 0 8px; color: var(--text-tertiary);">|</span>
-        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">冀ICP备2025113956号</a>
+        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">粤ICP备2026026873号-2</a>
       </div>
     </div>
   </footer>
