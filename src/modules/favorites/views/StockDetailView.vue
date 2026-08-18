@@ -58,10 +58,6 @@
               <span class="decision-kicker">综合决策</span>
               <p class="decision-summary">{{ overallDecision.summary }}</p>
             </div>
-            <div class="decision-title-row">
-              <span :class="['decision-status', overallDecision.statusClass]">{{ overallDecision.status }}</span>
-              <span class="decision-period">{{ overallDecision.period }}</span>
-            </div>
           </div>
           <div class="decision-next">
             <span class="next-label">下一步</span>
@@ -165,7 +161,7 @@
 
         <div class="card ai-analysis-card">
           <div class="card-header">
-            <h3>AI资讯分析</h3>
+            <h3>AI资讯洞见</h3>
           </div>
           <div class="card-body analysis-content" :class="{ 'is-loading': showEvaluationOverlay }">
             <div class="analysis-header">
@@ -321,6 +317,7 @@
 
             <div class="cf-block cf-ai-conclusion">
               <div class="cf-ai-narrative">
+                <span class="cf-insight-label">洞见</span>
                 <p class="cf-narrative-main">{{ capitalFlowInfo.narrative }}</p>
                 <p v-if="capitalFlowInfo.risk" class="cf-narrative-risk">风险：{{ capitalFlowInfo.risk }}</p>
               </div>
@@ -450,7 +447,7 @@
       <div v-show="activeView === 'mid'" class="view-content">
         <div class="card ai-analysis-card">
           <div class="card-header">
-            <h3>中线AI研判</h3>
+            <h3>中线AI洞见</h3>
           </div>
           <div class="card-body">
             <div class="ai-conclusion">
@@ -594,7 +591,7 @@
       <div v-show="activeView === 'long'" class="view-content">
         <div class="card ai-analysis-card">
           <div class="card-header">
-            <h3>长线AI研判</h3>
+            <h3>长线AI洞见</h3>
           </div>
           <div class="card-body">
             <div class="ai-conclusion">
@@ -907,7 +904,7 @@ import StockChart from '@/shared/components/StockChart.vue';
 import CycleSelect from '@/shared/components/CycleSelect.vue';
 import { useStockCycle } from '@/shared/utils/stockCycle';
 import { ttsApi } from '@/shared/api/api';
-import { getCuratedStockProfile } from '@/shared/mock/curatedStocks';
+// 十倍股画像（curatedStocks.js）已弃用，改由后端趋势股模型 tenxModel 驱动
 import { stockIntelApi } from '@/shared/api/api';
 import StockIntelList from '@/shared/components/StockIntelList.vue';
 import { trendApi } from '@/shared/api/api';
@@ -1144,12 +1141,12 @@ export default {
     const shortLogicTags = computed(() => extractTagsFromText(displayedCoreLogicText.value));
     const shortRiskTags = computed(() => extractTagsFromText(displayedRiskWarningText.value));
 
-    // 中线研判标签
+    // 中线AI洞见标签
     const midBasisTags = computed(() => extractTagsFromArray(midAiAnalysis.value.basis));
     const midAdviceTags = computed(() => extractTagsFromArray(midAiAnalysis.value.advice));
     const midRiskTags = computed(() => extractTagsFromArray(midAiAnalysis.value.riskTips));
 
-    // 长线研判标签
+    // 长线AI洞见标签
     const longBasisTags = computed(() => extractTagsFromArray(longAiAnalysis.value.basis));
     const longAdviceTags = computed(() => extractTagsFromArray(longAiAnalysis.value.advice));
     const longRiskTags = computed(() => extractTagsFromArray(longAiAnalysis.value.riskTips));
@@ -1200,12 +1197,27 @@ export default {
       ];
     });
 
-    const curatedProfile = computed(() => getCuratedStockProfile(stockInfo.value.code));
-    const profileScore = computed(() => Number(curatedProfile.value?.aiScore || 78));
-    const profileTheme = computed(() => curatedProfile.value?.theme || stockInfo.value.industry || '成长赛道');
-    const profileName = computed(() => curatedProfile.value?.name || stockInfo.value.name || '该股');
-    const expectedMultipleText = computed(() => curatedProfile.value?.expectedMultiple || '1.5倍');
-    const expectedMultipleNumber = computed(() => Number(String(expectedMultipleText.value).replace('倍', '').trim()) || 1.5);
+    // 画像已弃用：评分/期望倍数改由后端趋势股模型 tenxModel 驱动
+    const profileScore = computed(() => {
+      const s = Number(tenxModel.value?.score || 0);
+      return s > 0 ? s : 78;
+    });
+    const profileTheme = computed(() => stockInfo.value.industry || '成长赛道');
+    const profileName = computed(() => stockInfo.value.name || '该股');
+    // 后端 expectedMultiple 为范围字符串（如 "5-10倍"），取上界作为数值
+    const parseExpectedMultipleNumber = (text) => {
+      const raw = String(text || '').trim();
+      if (!raw || raw === '--') return 0;
+      const m = raw.match(/(\d+(?:\.\d+)?)[^\d]*(\d+(?:\.\d+)?)?\s*倍/);
+      if (!m) return 0;
+      // 范围取上界，单值取该值
+      return Number(m[2] || m[1]) || 0;
+    };
+    const expectedMultipleText = computed(() => {
+      const m = tenxModel.value?.expectedMultiple;
+      return m && m !== '--' ? m : '<1倍';
+    });
+    const expectedMultipleNumber = computed(() => parseExpectedMultipleNumber(expectedMultipleText.value));
 
     const fifteenthPlanThemeMap = {
       '光通讯': '算力基础设施、数据中心网络升级和高速信息通信底座',
@@ -1280,62 +1292,12 @@ export default {
       }
     };
 
-    const industryHealthPresets = {
-      '光通讯': { values: [70, 76, 74, 82, 87, 91, 93], details: [{ icon: '政', title: '相关政策', desc: '14项' }, { icon: '告', title: '重大公告', desc: '11条' }, { icon: '排', title: '行业股票排行', desc: '查看' }] },
-      '半导体': { values: [56, 61, 65, 71, 78, 83, 86], details: [{ icon: '政', title: '相关政策', desc: '16项' }, { icon: '告', title: '重大公告', desc: '9条' }, { icon: '排', title: '行业股票排行', desc: '查看' }] },
-      'AI应用': { values: [62, 69, 68, 76, 83, 88, 90], details: [{ icon: '政', title: '相关政策', desc: '12项' }, { icon: '告', title: '重大公告', desc: '8条' }, { icon: '排', title: '行业股票排行', desc: '查看' }] },
-      '商业航天': { values: [48, 55, 60, 66, 72, 79, 83], details: [{ icon: '政', title: '相关政策', desc: '15项' }, { icon: '告', title: '重大公告', desc: '7条' }, { icon: '排', title: '行业股票排行', desc: '查看' }] },
-      '机器人': { values: [52, 59, 64, 72, 80, 85, 88], details: [{ icon: '政', title: '相关政策', desc: '13项' }, { icon: '告', title: '重大公告', desc: '10条' }, { icon: '排', title: '行业股票排行', desc: '查看' }] },
-      '锂电储能': { values: [45, 49, 52, 58, 64, 69, 72], details: [{ icon: '政', title: '相关政策', desc: '9项' }, { icon: '告', title: '重大公告', desc: '5条' }, { icon: '排', title: '行业股票排行', desc: '查看' }] },
-      '算电协同': { values: [50, 57, 63, 70, 77, 82, 85], details: [{ icon: '政', title: '相关政策', desc: '11项' }, { icon: '告', title: '重大公告', desc: '6条' }, { icon: '排', title: '行业股票排行', desc: '查看' }] },
-      '新型储能': { values: [40, 46, 52, 59, 67, 72, 76], details: [{ icon: '政', title: '相关政策', desc: '10项' }, { icon: '告', title: '重大公告', desc: '6条' }, { icon: '排', title: '行业股票排行', desc: '查看' }] }
-    };
-
     const getIndustryHealthClass = (score) => {
       const value = Number(score) || 0;
       if (value >= 85) return 'is-hot';
       if (value >= 75) return 'is-warm';
       if (value >= 55) return 'is-normal';
       return 'is-cold';
-    };
-
-    const getIndustryHealthPreset = (industryName) => {
-      const rawName = String(industryName || '').trim();
-      const matchedKey = Object.keys(industryHealthPresets).find(key => rawName === key || rawName.includes(key) || key.includes(rawName));
-      if (matchedKey) return industryHealthPresets[matchedKey];
-
-      const monthsCount = 7;
-      const seed = rawName.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
-      const base = 48 + (seed % 18);
-      const values = Array.from({ length: monthsCount }, (_, index) => {
-        const wave = ((seed + index * 5) % 7) - 3;
-        return Math.max(38, Math.min(82, Math.round(base + index * 3.2 + wave)));
-      });
-      return {
-        values,
-        details: [
-          { icon: '政', title: '相关政策', desc: `${Math.max(4, Math.round(values[values.length - 1] / 10))}项` },
-          { icon: '告', title: '重大公告', desc: `${Math.max(2, Math.round(values[values.length - 1] / 14))}条` },
-          { icon: '排', title: '行业股票排行', desc: '查看' }
-        ]
-      };
-    };
-
-    const buildFinancialMock = (score, multiple) => {
-      const revenueGrowth = Math.round(12 + score * 0.55 + multiple * 2);
-      const profitGrowth = Math.round(revenueGrowth + 8 + multiple * 1.5);
-      const pe = Math.max(18, Math.round(62 - score * 0.22 + multiple * 1.8));
-      const pb = (2.1 + score / 55 + multiple / 8).toFixed(1);
-      const margin = (22 + score * 0.18 + multiple * 0.6).toFixed(1);
-      const roe = (10 + score * 0.13 + multiple * 0.35).toFixed(1);
-      return [
-        { label: '营收增速', value: `${revenueGrowth}%`, change: `较上季+${Math.max(2, Math.round(multiple))}%`, type: 'is-up' },
-        { label: '净利增速', value: `${profitGrowth}%`, change: '利润弹性释放', type: 'is-up' },
-        { label: 'PE(TTM)', value: `${pe}倍`, change: multiple >= 10 ? '成长估值' : '行业中枢', type: multiple >= 10 ? '' : 'is-down' },
-        { label: 'PB', value: `${pb}倍`, change: '资产质量稳定', type: '' },
-        { label: '毛利率', value: `${margin}%`, change: `+${(multiple / 2).toFixed(1)}%`, type: 'is-up' },
-        { label: 'ROE', value: `${roe}%`, change: score >= 88 ? '高于行业' : '接近行业', type: 'is-up' }
-      ];
     };
 
     const readMetricNumber = (value) => {
@@ -1411,8 +1373,8 @@ export default {
     };
 
     const buildFinancialData = (score, multiple) => {
-      const fallback = buildFinancialMock(score, multiple);
-      const byLabel = new Map(fallback.map(item => [item.label, item]));
+      // 无 mock 兜底：缺失数据显示 --，避免用公式生成假值误导用户
+      void score; void multiple;
       const semiAnnual = financialSnapshot.value?.semiAnnual || {};
       const fundamentals = financialSnapshot.value?.fundamentals || {};
       const latestReport = latestSemiAnnualReport.value;
@@ -1423,26 +1385,27 @@ export default {
       const pb = readMetricNumber(stockInfo.value.pbRatio) ?? pickMetric(fundamentals, ['市净率', 'pb']);
       const grossMargin = readMetricNumber(findTrendIndicatorValue(['毛利率']));
       const roe = pickMetric(fundamentals, ['roe', '净资产收益率']) ?? readMetricNumber(findTrendIndicatorValue(['ROE', '净资产收益率']));
+      const emptyItem = (label, note = '待接口补全') => ({ label, value: '--', change: note, type: '' });
 
       return [
         revenueGrowth !== null
           ? { label: '营收增速', value: formatMetricPct(revenueGrowth), change: `${reportNote}同比`, type: metricType(revenueGrowth) }
-          : byLabel.get('营收增速'),
+          : emptyItem('营收增速'),
         profitGrowth !== null
           ? { label: '净利增速', value: formatMetricPct(profitGrowth), change: `${reportNote}同比`, type: metricType(profitGrowth) }
-          : byLabel.get('净利增速'),
+          : emptyItem('净利增速'),
         pe !== null
           ? { label: 'PE(TTM)', value: `${pe.toFixed(2)}倍`, change: '基础财务行情', type: '' }
-          : byLabel.get('PE(TTM)'),
+          : emptyItem('PE(TTM)'),
         pb !== null
           ? { label: 'PB', value: `${pb.toFixed(2)}倍`, change: '基础财务行情', type: '' }
-          : byLabel.get('PB'),
+          : emptyItem('PB'),
         grossMargin !== null
           ? { label: '毛利率', value: formatMetricPct(grossMargin), change: '趋势评分指标', type: metricType(grossMargin) }
-          : byLabel.get('毛利率'),
+          : emptyItem('毛利率'),
         roe !== null
           ? { label: 'ROE', value: formatMetricPct(roe), change: '真实财务指标', type: metricType(roe) }
-          : byLabel.get('ROE')
+          : emptyItem('ROE')
       ].filter(Boolean);
     };
 
@@ -1463,6 +1426,27 @@ export default {
     };
 
     const buildAnnualData = (multiple) => {
+      // 优先使用后端聚合接口的真实数据
+      const realData = annualFinancialData.value;
+      if (realData && realData.annual) {
+        const a = realData.annual;
+        const toType = (val) => {
+          const num = readMetricNumber(val);
+          if (num === null) return '';
+          return num >= 0 ? 'is-up' : 'is-down';
+        };
+        return [
+          { label: '研发投入', value: a.rdExpense.value, note: a.rdExpense.note, type: a.rdExpense.value !== '--' ? 'is-up' : '' },
+          { label: '股东结构', value: a.shareholder.value, note: a.shareholder.note, type: a.shareholder.value.includes('减少') ? 'is-up' : 'is-down' },
+          { label: '资本回报率', value: a.returnOnCapital.value, note: a.returnOnCapital.note, type: toType(a.returnOnCapital.value) },
+          { label: '现金流质量', value: a.cashflow.value, note: a.cashflow.note, type: a.cashflow.value.includes('充裕') || a.cashflow.value.includes('为正') ? 'is-up' : 'is-down' },
+          { label: '每股收益', value: a.eps.value, note: a.eps.note, type: a.eps.value !== '--' ? 'is-up' : '' },
+          { label: '净利同比', value: a.netProfitYoy.value, note: a.netProfitYoy.note, type: toType(a.netProfitYoy.value) }
+        ];
+      }
+
+      // Fallback：真实数据优先，无数据显示 --（不再用公式生成 mock）
+      void multiple;
       const latestReport = latestSemiAnnualReport.value;
       const reportNote = latestReport?.end_date ? formatReportPeriod(latestReport.end_date) : '最新报告期';
       const rdExpense = readMetricNumber(latestReport?.rd_exp);
@@ -1474,60 +1458,79 @@ export default {
         ?? forecastMetricValue('净资产收益率');
       const ocfToProfit = readMetricNumber(findTrendIndicatorValue(['经营现金流']));
       const holderChange = readMetricNumber(findTrendIndicatorValue(['股东户数']));
+      const emptyItem = (label, note = '待接口补全') => ({ label, value: '--', note, type: '' });
 
       return [
         rdExpense !== null
           ? { label: '研发投入', value: formatAmountYi(rdExpense), note: reportNote, type: rdExpense > 0 ? 'is-up' : '' }
-          : { label: '研发投入', value: `同比+${Math.round(18 + multiple * 3)}%`, note: '待接半年报', type: 'is-up' },
+          : emptyItem('研发投入'),
         holderChange !== null
           ? { label: '股东结构', value: formatMetricPct(holderChange), note: holderChange <= 0 ? '筹码集中' : '筹码分散', type: holderChange <= 0 ? 'is-up' : 'is-down' }
-          : { label: '股东结构', value: multiple >= 10 ? '成长资金增配' : '机构底仓稳定', note: '待接股东户数', type: 'is-up' },
+          : emptyItem('股东结构'),
         roe !== null
           ? { label: '资本回报率', value: formatMetricPct(roe), note: '真实财务指标', type: metricType(roe) }
-          : { label: '资本回报率', value: `${(12 + profileScore.value / 8).toFixed(1)}%`, note: '待接ROE', type: 'is-up' },
+          : emptyItem('资本回报率'),
         ocfToProfit !== null
           ? { label: '现金流质量', value: `${ocfToProfit.toFixed(2)}倍`, note: '经营现金流/净利润', type: ocfToProfit >= 1 ? 'is-up' : 'is-down' }
-          : { label: '现金流质量', value: multiple >= 10 ? '拐点修复' : '持续为正', note: '待接现金流', type: 'is-up' },
+          : emptyItem('现金流质量'),
         basicEps !== null
           ? { label: '每股收益', value: `${basicEps.toFixed(2)}元`, note: reportNote, type: metricType(basicEps) }
-          : { label: '每股收益', value: '--', note: '待接半年报', type: '' },
+          : emptyItem('每股收益'),
         profitGrowth !== null
           ? { label: '净利同比', value: formatMetricPct(profitGrowth), note: profitGrowth >= 0 ? '利润扩张' : '利润承压', type: metricType(profitGrowth) }
-          : { label: '净利同比', value: '--', note: '待接财报/预测', type: '' }
+          : emptyItem('净利同比')
       ];
     };
 
     const midMockData = computed(() => {
       const score = profileScore.value;
       const multiple = expectedMultipleNumber.value;
-      const months = ['10月', '11月', '12月', '1月', '2月', '3月', '4月'];
-      const industryPreset = getIndustryHealthPreset(profileTheme.value);
-      const trendValues = months.map((month, index) => ({
-        month,
-        value: industryPreset.values[index] ?? industryPreset.values[industryPreset.values.length - 1] ?? 60
-      }));
-      const healthScore = trendValues[trendValues.length - 1].value;
+
+      // 仅使用后端行业景气指数 API 的真实数据，无数据则显示空状态（不再回退 mock）
+      const realHealth = industryHealthData.value;
+      let healthScore, trendValues, healthDetails, healthTags;
+      if (realHealth && realHealth.values && realHealth.values.length > 0) {
+        healthScore = realHealth.score;
+        const monthLabels = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+        const recentMonths = realHealth.months.slice(-7).map(m => {
+          const monthNum = parseInt(m.split('-')[1], 10);
+          return monthLabels[monthNum - 1] || m;
+        });
+        trendValues = recentMonths.map((month, index) => ({
+          month,
+          value: realHealth.values[index] ?? realHealth.values[realHealth.values.length - 1] ?? 60
+        }));
+        healthDetails = (realHealth.details || []).map(d => ({ icon: '行', title: d.label, desc: d.desc }));
+        healthTags = [
+          { text: realHealth.resolvedName || profileTheme.value, type: 'success' },
+          { text: '同花顺数据', type: 'success' }
+        ];
+      } else {
+        // 空状态：API 未返回数据，不生成假数据
+        healthScore = 0;
+        trendValues = [];
+        healthDetails = [{ icon: '--', title: '暂无数据', desc: '行业景气指数待接口补全' }];
+        healthTags = [{ text: profileTheme.value, type: 'info' }];
+      }
+
       return {
         finance: buildFinancialData(score, multiple),
         industryHealth: {
           score: healthScore,
           levelClass: getIndustryHealthClass(healthScore),
-          tags: [
-            { text: profileTheme.value, type: 'success' },
-            { text: '东方财富数据', type: 'success' }
-          ],
-          months,
+          tags: healthTags,
+          months: trendValues.map(item => item.month),
           trend: trendValues,
           values: trendValues.map(item => item.value),
-          details: industryPreset.details
+          details: healthDetails
         }
       };
     });
 
     const midAiAnalysis = computed(() => {
-      const profile = curatedProfile.value || {};
-      const focus = profile.midTermFocus || ['趋势结构保持健康', '行业景气度仍在修复', '业绩拐点需要继续验证'];
-      const risks = profile.risks || ['业绩兑现节奏低于预期', '板块交易拥挤导致波动加大'];
+      // 画像已弃用，focus/risks 用通用兜底（后续可接入券商研报）
+      const focus = ['趋势结构保持健康', '行业景气度仍在修复', '业绩拐点需要继续验证'];
+      const risks = ['业绩兑现节奏低于预期', '板块交易拥挤导致波动加大'];
       const score = profileScore.value;
       const conclusion = score >= 90 ? '持有可顺势跟踪' : score >= 85 ? '关注等回踩确认' : '持有者稳健观察';
       const finance = midMockData.value.finance;
@@ -1547,7 +1550,7 @@ export default {
           { tag: '经营质量改善', detail: `毛利率为${margin?.value || '--'}、ROE为${roe?.value || '--'}，若后续继续改善，说明公司不是单纯题材上涨，而是经营质量同步抬升。` },
           { tag: '赛道景气同步', detail: `行业景气指数为${health.score}分，标签集中在"${health.tags.map(tag => tag.text).join('、')}"，说明中线逻辑和所属赛道景气度保持一致。` },
           { tag: '政策方向支撑', detail: `${planStatement} 这会强化中线资金对赛道景气和订单兑现的跟踪，但仍需要用财报增速与资金承接继续验证。` },
-          { tag: '画像方向一致', detail: `第二步股票画像中的中线关注点为"${focus.join('、')}"，与当前财报和景气卡片方向一致，因此AI给出${conclusion}。` }
+          { tag: '趋势模型一致', detail: `趋势股模型给出${score}分，与当前财报和景气卡片方向一致，据此给出${conclusion}。` }
         ],
         advice: score >= 90
           ? [
@@ -1571,34 +1574,54 @@ export default {
     });
 
     const longMockData = computed(() => {
-      const profile = curatedProfile.value || {};
+      // 画像已弃用，focus 用通用兜底
       const theme = profileTheme.value;
-      const focus = profile.longTermFocus || ['产业空间仍在扩张', '核心壁垒需要持续验证', '估值弹性取决于盈利兑现'];
+      const focus = ['产业空间仍在扩张', '核心壁垒需要持续验证', '估值弹性取决于盈利兑现'];
       const multiple = expectedMultipleNumber.value;
       const planStatement = getFifteenthPlanStatement(theme);
+
+      // 优先使用券商研报数据生成护城河
+      const research = researchReportData.value;
+      let moats;
+      if (research && research.summary && research.summary.totalReports > 0) {
+        const s = research.summary;
+        const buyCount = s.ratingDistribution.find(r => r.rating === '买入')?.count || 0;
+        const holdCount = s.ratingDistribution.find(r => r.rating === '持有')?.count || 0;
+        const sellCount = s.ratingDistribution.find(r => r.rating === '卖出')?.count || 0;
+        const buyRatio = s.totalReports > 0 ? Math.round((buyCount / s.totalReports) * 100) : 0;
+        moats = [
+          { icon: 'A', title: '技术壁垒', desc: `${s.orgCount}家机构覆盖，分析师${s.analystCount}位，市场关注度${s.totalReports}篇研报。` },
+          { icon: 'C', title: '客户资源', desc: buyRatio >= 60 ? `买入评级占比${buyRatio}%，机构普遍看好客户结构。` : `评级分布：买入${buyCount}家/持有${holdCount}家，客户认可度待验证。` },
+          { icon: 'S', title: '规模效应', desc: s.avgTargetPrice ? `机构平均目标价${s.avgTargetPrice}元，隐含估值弹性。` : '目标价数据待补，关注后续研报覆盖。' },
+          { icon: 'G', title: '成长曲线', desc: sellCount > 0 ? `存在${sellCount}份卖出评级，需关注成长风险。` : `最新评级${s.latestRating}（${s.latestReportDate || '近期'}），成长预期偏正面。` }
+        ];
+      } else {
+        moats = [
+          { icon: 'A', title: '技术壁垒', desc: focus[1] || '核心技术与产品验证周期形成进入门槛。' },
+          { icon: 'C', title: '客户资源', desc: multiple >= 5 ? '若进入核心客户供应链，成长曲线将明显陡峭。' : '客户结构稳定，适合观察份额提升。' },
+          { icon: 'S', title: '规模效应', desc: `${profileName.value}具备一定规模和产业链协同基础。` },
+          { icon: 'G', title: '成长曲线', desc: focus[2] || '第二增长曲线是长期估值扩张的关键。' }
+        ];
+      }
+
       return {
         policies: [
           { tag: '利好', type: 'is-good', text: `${planStatement}长期需求预期因此更容易获得政策资源、产业资本和应用场景共振。` },
           { tag: '利好', type: 'is-good', text: `${focus[0]}，公司若能维持份额或切入核心客户，估值体系有望继续抬升。` },
           { tag: '中性', type: 'is-neutral', text: `需要关注产业节奏和订单兑现的时间差，长线逻辑不等于短期单边上涨。` }
         ],
-        moats: [
-          { icon: 'A', title: '技术壁垒', desc: focus[1] || '核心技术与产品验证周期形成进入门槛。' },
-          { icon: 'C', title: '客户资源', desc: multiple >= 10 ? '若进入核心客户供应链，成长曲线将明显陡峭。' : '客户结构稳定，适合观察份额提升。' },
-          { icon: 'S', title: '规模效应', desc: profile.investmentLogic || `${profileName.value}具备一定规模和产业链协同基础。` },
-          { icon: 'G', title: '成长曲线', desc: focus[2] || '第二增长曲线是长期估值扩张的关键。' }
-        ],
+        moats,
         annual: buildAnnualData(multiple)
       };
     });
 
     const longAiAnalysis = computed(() => {
-      const profile = curatedProfile.value || {};
-      const focus = profile.longTermFocus || ['产业空间', '核心壁垒', '成长弹性'];
-      const risks = profile.risks || ['产业兑现节奏低于预期'];
+      // 画像已弃用，focus/risks 用通用兜底（后续可接入券商研报）
+      const focus = ['产业空间', '核心壁垒', '成长弹性'];
+      const risks = ['产业兑现节奏低于预期'];
       const multiple = expectedMultipleText.value;
       const multipleNumber = expectedMultipleNumber.value;
-      const conclusion = multiple === '10倍'
+      const conclusion = multipleNumber >= 10
         ? '长线可分批跟踪'
         : multipleNumber >= 3
           ? '长线弹性观察'
@@ -1608,15 +1631,16 @@ export default {
       const policies = longMockData.value.policies;
       const moats = longMockData.value.moats;
       const annual = longMockData.value.annual;
-      const hasMultipleModel = Boolean(curatedProfile.value) && expectedMultipleNumber.value >= 1.5;
+      // 趋势股模型有效且倍数预期 >= 2 倍时启用倍数模型逻辑
+      const hasMultipleModel = !tenxModel.value?.error && multipleNumber >= 2;
       const planStatement = getFifteenthPlanStatement(profileTheme.value);
       const tenxBasis = hasMultipleModel
-        ? { tag: '倍数模型高分', detail: `趋势股模型给出${tenxModel.value.score}分和"${tenxModel.value.label}"，当前倍数预期为${multiple}，因此AI给出${conclusion}。` }
-        : { tag: '未入倍数池', detail: `当前股票未进入精选倍数模型池，长线判断暂以行业政策、护城河和年报质量为主，不单独给出倍数预期。` };
+        ? { tag: '趋势模型高分', detail: `趋势股模型给出${tenxModel.value.score}分和"${tenxModel.value.label}"，当前倍数预期为${multiple}，据此给出${conclusion}。` }
+        : { tag: '倍数预期有限', detail: `当前趋势股模型倍数预期为${multiple}，长线判断暂以行业政策、护城河和年报质量为主。` };
       const summary = `${profileName.value}长线核心在于${focus.slice(0, 2).join('和')}，行业政策、护城河和年报投入共同支撑长期估值弹性。`;
       return {
         conclusion,
-        badgeClass: multiple === '10倍' ? 'is-bull' : 'is-hold',
+        badgeClass: multipleNumber >= 10 ? 'is-bull' : 'is-hold',
         logic: summary,
         basis: [
           { tag: '政策产业共振', detail: `行业政策卡片中有${policies.filter(item => item.type === 'is-good').length}条利好线索，核心方向是"${profileTheme.value}"；${planStatement} 说明长期产业空间仍有政策、资本和场景落地推动。` },
@@ -1627,16 +1651,16 @@ export default {
             ? { tag: '反向跟踪风险', detail: `需要反向跟踪的风险是：${risks[0]}，如果这个风险兑现，长线倍数模型会先于股价表现下修。` }
             : { tag: '反向跟踪风险', detail: `需要反向跟踪的风险是：${risks[0]}，如果这个风险兑现，长线判断会先从护城河和年报质量两项下修。` }
         ],
-        advice: multiple === '10倍'
+        advice: multipleNumber >= 10
           ? [
             { tag: '分批跟踪高弹性', detail: `已持有者可按长线高弹性样本跟踪，避免一次性重仓，适合用分批方式等待产业验证。` },
-            { tag: '等估值回落确认', detail: `关注者优先等估值回落、业绩公告或订单数据确认，不把短期题材上涨直接等同于十倍股兑现。` },
+            { tag: '等估值回落确认', detail: `关注者优先等估值回落、业绩公告或订单数据确认，不把短期题材上涨直接等同于高倍数兑现。` },
             { tag: '产业验证是基础', detail: `若${focus[0] || '产业空间'}和${focus[1] || '核心壁垒'}持续验证，趋势股模型的高分才有继续上修基础。` },
             { tag: '四维长期跟踪', detail: `长期跟踪重点放在研发投入、客户突破、现金流改善和政策落地四个维度。` }
           ]
           : [
             { tag: '趋势龙头长期观察', detail: `已持有者可按趋势龙头做长期观察，核心是验证${focus[0] || '产业空间'}能否持续兑现。` },
-            { tag: '估值业绩匹配再介入', detail: `关注者不必按十倍股预期定价，更适合在估值和业绩匹配时分批跟踪。` },
+            { tag: '估值业绩匹配再介入', detail: `关注者不必按高倍数预期定价，更适合在估值和业绩匹配时分批跟踪。` },
             { tag: '护城河改善提可信度', detail: `若护城河、研发投入和资本回报率继续改善，${multiple}空间的可信度会提高。` },
             { tag: '无验证降预期', detail: `若长期逻辑没有新订单或新利润验证，应降低倍数预期，把它视作稳健成长而非高弹性标的。` }
           ],
@@ -1756,6 +1780,47 @@ export default {
     const tenxApiData = ref(null);
     const tenxApiLoading = ref(false);
     const tenxApiError = ref(false);
+
+    // 真实数据：年报财务聚合、行业景气指数、券商研报
+    const annualFinancialData = ref(null);
+    const industryHealthData = ref(null);
+    const researchReportData = ref(null);
+
+    async function loadAnnualFinancial(symbol) {
+      if (!symbol) return;
+      try {
+        const res = await stockApi.getAnnualFinancial(symbol);
+        if (res.code === 200 && res.data) {
+          annualFinancialData.value = res.data;
+        }
+      } catch (e) {
+        console.error('加载年报财务数据失败:', e);
+      }
+    }
+
+    async function loadIndustryHealth(industryName) {
+      if (!industryName || industryName === '--' || industryName === '未知行业') return;
+      try {
+        const res = await stockApi.getIndustryHealth(industryName);
+        if (res.code === 200 && res.data) {
+          industryHealthData.value = res.data;
+        }
+      } catch (e) {
+        console.error('加载行业景气指数失败:', e);
+      }
+    }
+
+    async function loadResearchReports(symbol) {
+      if (!symbol) return;
+      try {
+        const res = await stockApi.getResearchReports(symbol);
+        if (res.code === 200 && res.data) {
+          researchReportData.value = res.data;
+        }
+      } catch (e) {
+        console.error('加载券商研报数据失败:', e);
+      }
+    }
 
     async function fetchTenxScore(symbol) {
       if (!symbol) return;
@@ -2598,6 +2663,9 @@ export default {
         invalidateCache(stockInfo.value.code);
         tenxApiData.value = null;
         capitalFlowData.value = null;
+        annualFinancialData.value = null;
+        industryHealthData.value = null;
+        researchReportData.value = null;
         financialSnapshot.value = { fundamentals: null, semiAnnual: null };
         stockInfo.value.code = nc; stockNews.value = []; totalNews.value = 0; newsCursor.value = 0;
         forecastData.value = {}; forecastSummary.value = '';
@@ -2612,6 +2680,8 @@ export default {
         if (!isCacheFresh('evaluation', nc)) { loadingEvaluation.value = true; loadAIEvaluation(false); }
         fetchTenxScore(nc);
         loadCapitalFlow();
+        loadAnnualFinancial(nc);
+        loadResearchReports(nc);
         setupAutoRefresh(); window.scrollTo(0, 0);
         if (activeView.value === 'short') {
           setTimeout(() => { renderCapitalFlowChart(); renderCapitalSplitChart(); }, 160);
@@ -2628,11 +2698,15 @@ export default {
     }, { immediate: true });
     // 当 stockInfo.industry 加载完成后，同步更新自选股情报中的行业标签
     watch(() => stockInfo.value.industry, (newIndustry) => {
-      if (newIndustry && newIndustry !== '--' && newIndustry !== '未知行业' && stockIntelEvents.value.length > 0) {
-        stockIntelEvents.value = stockIntelEvents.value.map(e => ({
-          ...e,
-          industry: e.stock_code === stockInfo.value.code ? newIndustry : e.industry,
-        }));
+      if (newIndustry && newIndustry !== '--' && newIndustry !== '未知行业') {
+        // 加载行业景气指数
+        loadIndustryHealth(newIndustry);
+        if (stockIntelEvents.value.length > 0) {
+          stockIntelEvents.value = stockIntelEvents.value.map(e => ({
+            ...e,
+            industry: e.stock_code === stockInfo.value.code ? newIndustry : e.industry,
+          }));
+        }
       }
     });
     watch(historyDialogVisible, async (v) => { if (!v) { historyDetailDialogVisible.value = false; selectedHistoryRecord.value = null; disposeHistoryTimelineChart(); return; } await nextTick(); renderHistoryTimelineChart(); setTimeout(() => { if (historyTimelineChartInstance) historyTimelineChartInstance.resize(); }, 80); });
@@ -2673,6 +2747,8 @@ export default {
       if (!isCacheFresh('evaluation', currentCode)) { loadingEvaluation.value = true; loadAIEvaluation(false); }
       fetchTenxScore(currentCode);
       loadCapitalFlow();
+      loadAnnualFinancial(currentCode);
+      loadResearchReports(currentCode);
       setupAutoRefresh(); window.addEventListener('resize', handleWindowResize); window.scrollTo(0, 0);
       setTimeout(() => { if (activeView.value === 'short') { renderCapitalFlowChart(); renderCapitalSplitChart(); } }, 200);
       setTimeout(() => { if (activeView.value === 'mid') renderIndustryHealthChart(); }, 200);
@@ -2849,16 +2925,16 @@ export default {
 
     const getScoreLabel = (score) => {
       const s = Number(score) || 0;
-      if (s >= 82) return '十倍股高相似度';
-      if (s >= 58) return '十倍股中等相似度';
-      return '十倍股低相似度';
+      if (s >= 82) return '趋势股高相似度';
+      if (s >= 58) return '趋势股中等相似度';
+      return '趋势股低相似度';
     };
 
     const getScoreDescription = (score) => {
       const s = Number(score) || 0;
-      if (s >= 82) return '十倍股相似度较高，符合高弹性成长样本特征';
-      if (s >= 58) return '具备倍数空间，但距离十倍股样本仍有差距';
-      return '更接近趋势修复或稳健成长，不按十倍股处理';
+      if (s >= 82) return '趋势股相似度较高，符合高弹性成长样本特征';
+      if (s >= 58) return '具备倍数空间，但距离趋势股样本仍有差距';
+      return '更接近趋势修复或稳健成长，不按高弹性趋势股处理';
     };
 
     const getScoreRingStyle = (score) => {
@@ -3661,6 +3737,7 @@ export default {
     background: #f8fafc; display: flex; align-items: flex-start; gap: 20px;
     .cf-ai-narrative {
       flex: 1; line-height: 1.6; font-size: 0.82rem; min-width: 0;
+      .cf-insight-label { display: inline-block; font-size: 0.7rem; font-weight: 700; color: #6366f1; background: #eef2ff; border-radius: 4px; padding: 1px 8px; margin-bottom: 6px; }
       .cf-narrative-main { color: #1e293b; margin: 0 0 4px; }
       .cf-narrative-risk { color: #dc2626; margin: 0; }
     }

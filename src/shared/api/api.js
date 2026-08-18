@@ -570,6 +570,27 @@ export const stockApi = {
       timeout: 10000
     });
   },
+
+  // 获取个股年报财务聚合数据（Tushare fina_indicator + cashflow + holder_number + balancesheet）
+  getAnnualFinancial: (symbol) => {
+    return api.get(`/api/cn/stocks/${encodeURIComponent(symbol)}/annual-financial`, {
+      timeout: 15000
+    });
+  },
+
+  // 获取行业景气指数（同花顺板块日K聚合，7个月趋势+景气评分）
+  getIndustryHealth: (industryName) => {
+    return api.get(`/api/cn/industry/${encodeURIComponent(industryName)}/health`, {
+      timeout: 15000
+    });
+  },
+
+  // 获取券商研报数据（Tushare report_rc，评级/目标价/盈利预测聚合）
+  getResearchReports: (symbol) => {
+    return api.get(`/api/cn/research/${encodeURIComponent(symbol)}/reports`, {
+      timeout: 15000
+    });
+  },
   
   // 获取自选股推送新闻
   getPushNews: () => {
