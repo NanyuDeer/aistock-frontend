@@ -5,6 +5,8 @@
       <div class="footer-links">
         <router-link to="/update-logs" class="footer-link">更新日志</router-link>
         <span class="divider">|</span>
+        <router-link to="/download" class="footer-link">下载 App</router-link>
+        <span class="divider">|</span>
         <a href="https://gupiao.yaozhineng.com" target="_blank" rel="noopener noreferrer">网站状态监测</a>
       </div>
       <div class="beian-info">

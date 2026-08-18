@@ -2,6 +2,23 @@
 
 > 所有修改记录按时间倒序排列。每条记录标注分支、时间区间、开发者。
 
+## [main] 2026-08-18 — Web 端 App 下载入口 + 安装包托管
+**开发者**: Aria
+
+### 新增
+- `public/download/version.json`：App 版本信息文件（appName/versionName/versionCode/downloadUrl/features 等），供下载页与 App 内更新读取
+- `public/download/.gitignore`：排除 APK 大文件不入库
+- `src/modules/user/views/DownloadView.vue`：下载页，含下载按钮（指向 `/download/{apk}`）、版本元信息、二维码扫码、功能亮点、安装提示
+- `src/router/index.js`：新增路由 `/download`（DownloadView）
+- `src/shared/components/TheNavbar.vue`：桌面导航 + 移动菜单新增「下载 App」入口
+- `src/shared/components/TheFooter.vue`：页脚新增「下载 App」链接
+- `package.json` / `pnpm-lock.yaml`：新增 qrcode、@types/qrcode 依赖
+
+### 验证
+- `node scripts/build.js` 构建成功，dist/download/version.json 已复制
+
+---
+
 ## [main] 2026-08-14 — 风口龙头面板：弹窗统计格去"领涨股" + 龙头股数据源分档（优先 long_leader）
 **开发者**: Aria
 

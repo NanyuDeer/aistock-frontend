@@ -1,0 +1,16 @@
+{
+  "appName": "洞见",
+  "versionName": "0.1.0",
+  "versionCode": 100,
+  "downloadUrl": "aistock-0.1.0.apk",
+  "fileSize": "待发布",
+  "releaseDate": "2026-08-18",
+  "minSystem": "Android 5.0 及以上",
+  "description": "洞见 —— AI 智能体驱动的中长线投资 App。股票资讯 AI 智能分析、自选股异动实时监控、早晚报与风口龙头、AI 对话深度分析。",
+  "features": [
+    "AI 智能投资助手：对话式深度个股与大盘分析",
+    "自选股异动实时监控：涨停雷达、重大利好利空推送",
+    "早晚报 + 风口龙头：每日 AI 生成投资摘要",
+    "趋势股评分、业绩预测、产业链知识图谱"
+  ]
+}

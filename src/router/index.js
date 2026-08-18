@@ -15,6 +15,7 @@ const TrendScoreReportView = () => import('@/modules/market/views/TrendScoreRepo
 const HotBurstView = () => import('@/modules/news/views/HotBurstView.vue')
 const StockIntelView = () => import('@/modules/market/views/StockIntelView.vue')
 const PotentialStockPushHistoryView = () => import('@/modules/analytics/views/PotentialStockPushHistoryView.vue')
+const DownloadView = () => import('@/modules/user/views/DownloadView.vue')
 
 // ==================== 事件传导模块 ====================
 const EventListView = () => import('@/modules/event/views/EventListView.vue')
@@ -148,6 +149,14 @@ const routes = [
     component: UpdateLogsView,
     meta: {
       title: '股票资讯AI智能分析 - 更新日志'
+    }
+  },
+  {
+    path: '/download',
+    name: 'download',
+    component: DownloadView,
+    meta: {
+      title: '股票资讯AI智能分析 - 下载 App'
     }
   },
   // ==================== 事件传导模块 ====================
