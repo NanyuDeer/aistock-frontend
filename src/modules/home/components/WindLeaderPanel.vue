@@ -127,9 +127,9 @@
               </div>
             </div>
             <div class="hs-stat-item">
-              <div class="hs-stat-label">净流入</div>
-              <div :class="['hs-stat-value', currentSector.amount_trend >= 0 ? 'up' : 'down']">
-                {{ formatNetInflow(currentSector.amount_trend) }}
+              <div class="hs-stat-label">成交额</div>
+              <div class="hs-stat-value">
+                {{ formatAmount(currentSector.amount) }}
               </div>
             </div>
           </div>
@@ -420,15 +420,13 @@ export default {
       return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
     };
 
-    const formatNetInflow = (val) => {
+    const formatAmount = (val) => {
       const n = parseFloat(val);
       if (isNaN(n) || n === 0) return '--';
-      // amount_trend存储的是万元
-      const yi = n / 10000;
-      if (Math.abs(yi) >= 1) {
-        return `${yi >= 0 ? '+' : ''}${yi.toFixed(2)}亿`;
-      }
-      return `${n >= 0 ? '+' : ''}${n.toFixed(0)}万`;
+      // amount 单位是元（同花顺 bk_ 实时；原净流入 net_inflow / amount_trend 已下线）
+      const yi = n / 1e8;
+      if (Math.abs(yi) >= 1) return `${yi.toFixed(2)}亿`;
+      return `${(n / 1e4).toFixed(0)}万`;
     };
 
     const getMarketCode = (code) => {
@@ -717,7 +715,7 @@ export default {
       bubbleWrap, bubbleSvg, bubbleWrapSide, bubbleSvgSide, flowChartWrap,
       modalVisible, modalTitle, currentSector,
       displayStocks, displayBubbles, displayUpdateTime,
-      formatChange, formatNetInflow, getMarketCode,
+      formatChange, formatAmount, getMarketCode,
       isLoggedIn, isFollowed, toggleFollow, followLoading, goToStockByCode, goToHistoryPerformance,
     };
   },
