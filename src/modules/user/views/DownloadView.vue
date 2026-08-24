@@ -46,7 +46,7 @@
         <!-- 扫码下载（电脑端转手机） -->
         <div v-if="qrDataUrl" class="qr-section">
           <img class="qr-img" :src="qrDataUrl" alt="扫码下载洞见 App" />
-          <p class="qr-tip">手机扫码直达下载页</p>
+          <p class="qr-tip">手机扫码直接下载安装包</p>
         </div>
 
         <!-- 功能特性 -->
@@ -86,7 +86,7 @@ export default {
     const hasMeta = computed(() => meta.value.versionName != null)
 
     const downloadUrl = computed(() => {
-      return meta.value.downloadUrl ? `/download/${meta.value.downloadUrl}` : ''
+      return meta.value.downloadUrl ? `${window.location.origin}/download/${meta.value.downloadUrl}` : ''
     })
 
     const fileName = computed(() => meta.value.downloadUrl || '')
