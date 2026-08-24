@@ -1,16 +1,15 @@
 {
   "appName": "洞见",
-  "versionName": "0.1.1",
-  "versionCode": 101,
-  "downloadUrl": "aistock-0.1.1.apk",
-  "fileSize": "22.8 MB",
+  "versionName": "0.1.2",
+  "versionCode": 102,
+  "downloadUrl": "aistock-0.1.2.apk",
+  "fileSize": "22.9 MB",
   "releaseDate": "2026-08-24",
   "minSystem": "Android 5.0 及以上",
-  "description": "洞见 —— AI 智能体驱动的中长线投资 App。股票资讯 AI 智能分析、自选股异动实时监控、早晚报与风口龙头、AI 对话深度分析。",
+  "description": "本版修复 APP 启动白屏、无法进入应用的问题。",
   "features": [
-    "AI 智能投资助手：对话式深度个股与大盘分析",
-    "自选股异动实时监控：涨停雷达、重大利好利空推送",
-    "早晚报 + 风口龙头：每日 AI 生成投资摘要",
-    "趋势股评分、业绩预测、产业链知识图谱"
+    "修复部分设备 APP 启动白屏/闪退（兼容老旧 Android WebView）",
+    "修复 K 线图加载异常导致的页面空白",
+    "优化 APP 首屏启动稳定性"
   ]
 }
