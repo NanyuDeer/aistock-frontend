@@ -2,6 +2,19 @@
 
 > 所有修改记录按时间倒序排列。每条记录标注分支、时间区间、开发者。
 
+## [main] 2026-08-24 — App 下载二维码 / 安装包直链修正 + 版本更新 SOP
+
+**开发者**: NanyuDeer
+
+### 修复
+- 下载页二维码与下载按钮改为 APK 绝对直链（`/download/<apk>`），扫码即直下安装包，修复原"扫码不下载"问题。
+- `public/download/version.json` 补齐 `fileSize`（22.6 MB），与实际 APK 一致。
+
+### 文档
+- 记录应用内版本更新发布 SOP（HBuilderX 云打包 → APK 入 download → versionCode 递增 → 部署重载）。
+
+---
+
 ## [main] 2026-08-18 — Web 页脚 ICP 备案号更新
 **开发者**: Aria
 
