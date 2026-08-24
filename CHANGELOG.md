@@ -2,6 +2,16 @@
 
 > 所有修改记录按时间倒序排列。每条记录标注分支、时间区间、开发者。
 
+## [main] 2026-08-24 — App 0.1.1 发版配套：version.json 指向新版本（APK 待替换）
+
+**开发者**: Aria
+
+### 变更
+- `public/download/version.json`：`versionName`→0.1.1、`versionCode`→101、`downloadUrl`→`aistock-0.1.1.apk`、`releaseDate`→2026-08-24。
+- 待办：APK 云打包产出后放入 `public/download/aistock-0.1.1.apk` 并确认 `fileSize`；部署后 download 目录对新版本生效（存量 0.1.0 用户将在 App 内收到更新提示）。
+
+---
+
 ## [main] 2026-08-24 — App 下载二维码 / 安装包直链修正 + 版本更新 SOP
 
 **开发者**: NanyuDeer
