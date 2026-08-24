@@ -108,9 +108,13 @@ export default {
       }
     }
 
-    // 二维码内容为当前下载页地址，手机扫码后直达本页下载
+    // 二维码内容为 APK 绝对直链，手机扫码直接触发下载
     const generateQr = () => {
-      const url = `${window.location.origin}/download`
+      if (!meta.value.downloadUrl) {
+        qrDataUrl.value = ''
+        return
+      }
+      const url = `${window.location.origin}/download/${meta.value.downloadUrl}`
       QRCode.toDataURL(url, {
         width: 160,
         margin: 1,
