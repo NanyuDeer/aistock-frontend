@@ -7,8 +7,8 @@
 **开发者**: Aria
 
 ### 变更
-- `public/download/version.json`：`versionName`→0.1.1、`versionCode`→101、`downloadUrl`→`aistock-0.1.1.apk`、`releaseDate`→2026-08-24。
-- 待办：APK 云打包产出后放入 `public/download/aistock-0.1.1.apk` 并确认 `fileSize`；部署后 download 目录对新版本生效（存量 0.1.0 用户将在 App 内收到更新提示）。
+- `public/download/version.json`：`versionName`→0.1.1、`versionCode`→101、`downloadUrl`→`aistock-0.1.1.apk`、`releaseDate`→2026-08-24、`fileSize`→22.8 MB。
+- `public/download/aistock-0.1.1.apk`：0.1.1 云打包产物已放入（23360 KB，`__UNI__73E911F__20260824191207.apk`）。部署后 download 目录对新版本生效（存量 0.1.0 用户将在 App 内收到更新提示）。
 
 ---
 
