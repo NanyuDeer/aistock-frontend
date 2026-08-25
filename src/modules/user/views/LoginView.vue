@@ -15,13 +15,12 @@
       </div>
       
       <div class="card-body">
-        <!-- 手机号验证码登录表单 -->
-        <div v-if="showSmsForm" class="sms-login-form">
-          <div class="sms-title">手机号验证码登录</div>
+        <!-- 邮箱验证码登录表单 -->
+        <div v-if="showEmailForm" class="sms-login-form">
+          <div class="sms-title">邮箱验证码登录</div>
           <el-input
-            v-model="phone"
-            :maxlength="11"
-            placeholder="请输入手机号"
+            v-model="email"
+            placeholder="请输入邮箱"
             class="sms-input"
             clearable
           />
@@ -35,8 +34,8 @@
             />
             <el-button
               class="sms-code-btn"
-              :disabled="countdown > 0 || !isValidPhone"
-              @click="handleSendSms"
+              :disabled="countdown > 0 || !isValidEmail"
+              @click="handleSendEmail"
             >
               {{ countdown > 0 ? `${countdown}s 后重发` : '获取验证码' }}
             </el-button>
@@ -44,12 +43,12 @@
           <el-button
             type="primary"
             class="sms-submit"
-            :loading="smsLoginLoading"
-            @click="handleSmsLogin"
+            :loading="emailLoginLoading"
+            @click="handleEmailLogin"
           >
             登录
           </el-button>
-          <div class="sms-back" @click="showSmsForm = false">
+          <div class="sms-back" @click="showEmailForm = false">
             <span class="sms-back-arrow">←</span>
             返回微信登录
           </div>
@@ -71,10 +70,10 @@
           <!-- 非微信浏览器：使用扫码登录 -->
           <LoginQrCode v-else @login-success="handleLoginSuccess" />
 
-          <!-- 手机号验证码登录入口 -->
-          <div class="sms-entry" @click="showSmsForm = true">
+          <!-- 邮箱验证码登录入口 -->
+          <div class="sms-entry" @click="showEmailForm = true">
             <span class="sms-entry-divider"></span>
-            手机号验证码登录
+            邮箱验证码登录
             <span class="sms-entry-arrow">›</span>
           </div>
         </template>
@@ -105,13 +104,13 @@ export default {
     // 检测是否在微信浏览器中
     const isWechat = ref(/MicroMessenger/i.test(navigator.userAgent))
 
-    // 手机号验证码登录状态
-    const showSmsForm = ref(false)
-    const phone = ref('')
+    // 邮箱验证码登录状态
+    const showEmailForm = ref(false)
+    const email = ref('')
     const smsCode = ref('')
     const countdown = ref(0)
-    const smsLoginLoading = ref(false)
-    const isValidPhone = computed(() => /^1[3-9]\d{9}$/.test(phone.value))
+    const emailLoginLoading = ref(false)
+    const isValidEmail = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value))
     let countdownTimer = null
     
     // 检查是否已登录，如果已登录则重定向到首页
@@ -187,14 +186,14 @@ export default {
       }
     };
 
-    // 发送短信验证码（60s 倒计时）
-    const handleSendSms = async () => {
-      if (!isValidPhone.value) {
-        ElMessage.warning('请输入正确的手机号');
+    // 发送邮箱验证码（60s 倒计时）
+    const handleSendEmail = async () => {
+      if (!isValidEmail.value) {
+        ElMessage.warning('请输入正确的邮箱');
         return;
       }
       try {
-        await authApi.sendSmsCode(phone.value);
+        await authApi.sendEmailCode(email.value);
         ElMessage.success('验证码已发送');
         countdown.value = 60;
         if (countdownTimer) clearInterval(countdownTimer);
@@ -211,27 +210,27 @@ export default {
       }
     };
 
-    // 手机号 + 验证码登录
-    const handleSmsLogin = async () => {
-      if (!isValidPhone.value) {
-        ElMessage.warning('请输入正确的手机号');
+    // 邮箱 + 验证码登录
+    const handleEmailLogin = async () => {
+      if (!isValidEmail.value) {
+        ElMessage.warning('请输入正确的邮箱');
         return;
       }
       if (!smsCode.value) {
         ElMessage.warning('请输入验证码');
         return;
       }
-      if (smsLoginLoading.value) return;
-      smsLoginLoading.value = true;
+      if (emailLoginLoading.value) return;
+      emailLoginLoading.value = true;
       try {
-        await authApi.smsLogin(phone.value, smsCode.value);
+        await authApi.emailLogin(email.value, smsCode.value);
         // 后端已通过 Set-Cookie 设置 httpOnly cookie，与扫码登录一致；复用同一登录完成流程
-        await handleLoginSuccess({ phone: phone.value });
+        await handleLoginSuccess({ email: email.value });
       } catch (error) {
         const msg = error?.response?.data?.message || error?.message || '登录失败，请重试';
         ElMessage.error(msg);
       } finally {
-        smsLoginLoading.value = false;
+        emailLoginLoading.value = false;
       }
     };
     
@@ -240,14 +239,14 @@ export default {
       handleWechatOAuthLogin,
       handleLoginSuccess,
       isProcessingLogin,
-      showSmsForm,
-      phone,
+      showEmailForm,
+      email,
       smsCode,
       countdown,
-      smsLoginLoading,
-      isValidPhone,
-      handleSendSms,
-      handleSmsLogin
+      emailLoginLoading,
+      isValidEmail,
+      handleSendEmail,
+      handleEmailLogin
     }
   }
 }
@@ -368,7 +367,7 @@ export default {
     }
   }
 }
-/* 手机号验证码登录样式 */
+/* 邮箱验证码登录样式 */
 .sms-entry {
   display: flex;
   align-items: center;

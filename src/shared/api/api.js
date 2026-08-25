@@ -268,6 +268,12 @@ export const authApi = {
   // 手机号 + 短信验证码登录（无账户自动创建；dev 验证码 123456）
   smsLogin: (phone, code) => api.post('/api/auth/sms/login', { phone, code }),
 
+  // 发送邮箱验证码（限流 60s，dev 环境回显 123456）
+  sendEmailCode: (email) => api.post('/api/auth/email/send', { email }),
+
+  // 邮箱 + 验证码登录（无账户自动创建；dev 验证码 123456）
+  emailLogin: (email, code) => api.post('/api/auth/email/login', { email, code }),
+
   // 退出登录（清除后端 HttpOnly Cookie）
   logout: () => api.post('/api/auth/logout')
 };
