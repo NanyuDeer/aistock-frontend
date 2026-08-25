@@ -63,8 +63,8 @@
   <div class="card">
     <div class="logo">洞</div>
     <div class="app-name" id="appName">洞见</div>
-    <div class="version" id="version">加载中…</div>
-    <a class="btn" id="downloadBtn" href="#">下载安装 App</a>
+    <div class="version" id="version">正在为你准备下载…</div>
+    <a class="btn" id="downloadBtn" href="#">下载未自动开始？点此下载</a>
     <div class="desc">
       <p id="description"></p>
       <ul id="features"></ul>
@@ -83,7 +83,18 @@
         var btn = document.getElementById('downloadBtn')
         var url = base + (info.downloadUrl || 'aistock-0.1.1.apk')
         btn.href = url
-        btn.addEventListener('click', function () { setTimeout(function(){ location.href = url }, 60) })
+        btn.addEventListener('click', startDownload)
+        // 扫码直达：页面加载后自动触发下载，无需再点击
+        setTimeout(startDownload, 500)
+        function startDownload() {
+          document.getElementById('version').textContent = '正在下载，请稍候…'
+          var a = document.createElement('a')
+          a.href = url
+          a.download = ''
+          document.body.appendChild(a)
+          a.click()
+          a.remove()
+        }
         document.getElementById('description').textContent = info.description || ''
         var f = document.getElementById('features')
         ;(info.features || []).forEach(function (t) { var li = document.createElement('li'); li.textContent = t; f.appendChild(li) })
