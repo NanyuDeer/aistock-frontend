@@ -2,6 +2,29 @@
 
 > 所有修改记录按时间倒序排列。每条记录标注分支、时间区间、开发者。
 
+## [main] 2026-08-25 — Web/H5 手机号短信验证码登录入口
+
+**开发者**: Aria
+
+### 变更
+- `src/shared/api/api.js`：`authApi` 新增 `sendSmsCode` / `smsLogin` / `getAuthMe`（Cookie 鉴权）/ `logout`
+- `src/modules/user/views/LoginView.vue`：登录页新增「手机号验证码登录」入口与表单（手机号/验证码输入、60s 倒计时、dev 固定测试码 123456、可返回微信登录）
+- 登录态与扫码登录一致：后端经 Set-Cookie 写 httpOnly Cookie，前端复用同一登录完成流程
+
+### 说明
+- Web 端手机号登录与微信扫码/网页授权登录并存，两套入口可切换
+
+---
+
+## [main] 2026-08-25 — 修复个股详情页 stockApi 未导入导致的三处调用报错
+
+**开发者**: Aria
+
+### 修复
+- `src/modules/favorites/views/StockDetailView.vue`：补导入 `stockApi`（此前仅导入 ttsApi/stockIntelApi/trendApi），修复 `getAnnualFinancial` / `getIndustryHealth` / `getResearchReports` 三处调用 `stockApi is not defined`（存量 lint 错误，`vue-cli-service lint` 全量通过）
+
+---
+
 ## [main] 2026-08-24 — App 0.1.1 发版配套：version.json 指向新版本（APK 待替换）
 
 **开发者**: Aria

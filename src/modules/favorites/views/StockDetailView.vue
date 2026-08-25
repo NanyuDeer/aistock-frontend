@@ -904,6 +904,7 @@ import StockChart from '@/shared/components/StockChart.vue';
 import CycleSelect from '@/shared/components/CycleSelect.vue';
 import { useStockCycle } from '@/shared/utils/stockCycle';
 import { ttsApi } from '@/shared/api/api';
+import { stockApi } from '@/shared/api/api';
 // 十倍股画像（curatedStocks.js）已弃用，改由后端趋势股模型 tenxModel 驱动
 import { stockIntelApi } from '@/shared/api/api';
 import StockIntelList from '@/shared/components/StockIntelList.vue';

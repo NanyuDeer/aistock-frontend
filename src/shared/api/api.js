@@ -262,6 +262,12 @@ export const authApi = {
   // 通过 Cookie 获取当前登录用户信息和自选股
   getAuthMe: () => api.get('/api/users/me'),
 
+  // 发送短信验证码（限流 60s，dev 环境回显 123456）
+  sendSmsCode: (phone) => api.post('/api/auth/sms/send', { phone }),
+
+  // 手机号 + 短信验证码登录（无账户自动创建；dev 验证码 123456）
+  smsLogin: (phone, code) => api.post('/api/auth/sms/login', { phone, code }),
+
   // 退出登录（清除后端 HttpOnly Cookie）
   logout: () => api.post('/api/auth/logout')
 };
