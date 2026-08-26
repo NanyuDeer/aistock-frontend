@@ -1,15 +1,18 @@
 {
   "appName": "洞见",
-  "versionName": "0.1.1",
-  "versionCode": 101,
-  "downloadUrl": "aistock-0.1.1.apk",
-  "fileSize": "22.9 MB",
-  "releaseDate": "2026-08-24",
+  "versionName": "0.1.2",
+  "versionCode": 102,
+  "downloadUrl": "aistock-0.1.2.apk",
+  "fileSize": "23.0 MB",
+  "releaseDate": "2026-08-26",
   "minSystem": "Android 5.0 及以上",
-  "description": "本版修复 APP 启动白屏、无法进入应用的问题。",
+  "description": "本版重点优化首页滑动与卡片点击体验，并修复登录相关问题。",
   "features": [
-    "修复部分设备 APP 启动白屏/闪退（兼容老旧 Android WebView）",
-    "修复 K 线图加载异常导致的页面空白",
-    "优化 APP 首屏启动稳定性"
+    "修复 App 首页滑动卡顿的问题（无需多次滑动即可顺畅翻页）",
+    "首页功能卡片支持整卡点击进入对应页面（风口龙头/事件传导/市场洞见/今日分析概览/重磅事件跟踪）",
+    "风口龙头、事件传导卡片内的预览内容可单独点击进入详情页",
+    "修复微信扫码登录按钮图标不显示的问题",
+    "优化首页标签配色，事件传导卡片标签改为显示时间",
+    "提升页面滚动流畅度"
   ]
 }
