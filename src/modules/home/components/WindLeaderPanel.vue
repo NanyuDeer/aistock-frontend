@@ -135,11 +135,14 @@
           </div>
           <!-- 层级流向图 -->
           <div class="hs-flow-chart" ref="flowChartWrap"></div>
+          <!-- 板块洞见：持续原因/传递方向/传递判断 同蓝色卡片（分隔线分开）；风险独立红色横幅 -->
           <div class="hs-transfer-info">
-            <div><span class="hs-label">传递方向：</span>{{ currentSector.ai_analysis?.transfer_direction || '--' }}</div>
-            <div><span class="hs-label">传递判断：</span>{{ currentSector.ai_analysis?.transfer_reason || '--' }}</div>
-            <div><span class="hs-label">持续原因：</span>{{ currentSector.ai_analysis?.persistence_reason || '--' }}</div>
-            <div><span class="hs-label">风险：</span><span class="hs-risk-tag">{{ currentSector.ai_analysis?.risk_warning || '--' }}</span></div>
+            <div class="hs-blue-card">
+              <div class="hs-blue-row"><span class="hs-label">传递方向</span><span class="hs-value">{{ currentSector.ai_analysis?.transfer_direction || '--' }}</span></div>
+              <div class="hs-blue-row"><span class="hs-label">传递判断</span><span class="hs-value">{{ currentSector.ai_analysis?.transfer_reason || '--' }}</span></div>
+              <div class="hs-blue-row"><span class="hs-label">持续原因</span><span class="hs-value">{{ currentSector.ai_analysis?.persistence_reason || '--' }}</span></div>
+            </div>
+            <div class="hs-risk-banner"><span class="hs-label">风险</span><span class="hs-value">{{ currentSector.ai_analysis?.risk_warning || '--' }}</span></div>
           </div>
         </div>
         <!-- 右侧：筛选股票 -->
@@ -936,8 +939,16 @@ export default {
 .hs-stat-value { font-weight: 600; font-size: 12px; }
 .hs-stat-value.up { color: #dc2626; }
 .hs-stat-value.down { color: #16a34a; }
-.hs-transfer-info { padding: 5px 8px; background: #f8fafc; border-radius: 4px; font-size: 11px; color: #6b7280; line-height: 1.5; }
-.hs-transfer-info .hs-label { color: #2563eb; font-weight: 600; }
+/* 板块洞见：蓝色卡片（持续原因/传递方向/传递判断 分隔线分开）+ 独立红色风险横幅 */
+.hs-transfer-info { display: flex; flex-direction: column; gap: 6px; }
+.hs-blue-card { background: #0b5fff; border-radius: 6px; padding: 5px 10px; box-shadow: 0 2px 8px rgba(11, 95, 255, 0.18); }
+.hs-blue-row { padding: 6px 0; font-size: 11px; line-height: 1.5; }
+.hs-blue-row + .hs-blue-row { border-top: 1px solid rgba(255, 255, 255, 0.18); }
+.hs-blue-row .hs-label { color: rgba(255, 255, 255, 0.85); font-weight: 600; margin-right: 5px; }
+.hs-blue-row .hs-value { color: #ffffff; font-weight: 600; }
+.hs-risk-banner { background: #e54d5e; border-radius: 6px; padding: 5px 10px; font-size: 11px; line-height: 1.5; box-shadow: 0 2px 8px rgba(229, 77, 94, 0.18); }
+.hs-risk-banner .hs-label { color: rgba(255, 255, 255, 0.85); font-weight: 600; margin-right: 5px; }
+.hs-risk-banner .hs-value { color: #ffffff; font-weight: 600; }
 .hs-sector-right { flex: 1; padding: 12px 14px; display: flex; flex-direction: column; gap: 0; min-width: 0; overflow-y: auto; }
 .hs-stock-group { margin-bottom: 8px; }
 .hs-stock-group-label { font-size: 11px; font-weight: 600; color: #9ca3af; margin-bottom: 3px; display: flex; align-items: center; gap: 4px; padding-bottom: 2px; border-bottom: 1px solid #f0f0f0; }
@@ -973,7 +984,6 @@ export default {
 .hs-reason-tag.tag-trend { color: #ea580c; background: #fff7ed; }
 .hs-reason-tag.tag-fund { color: #2563eb; background: #eff6ff; }
 .hs-detail-empty { font-size: 11px; color: #d1d5db; padding: 2px 0; }
-.hs-risk-tag { display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 10px; background: #fef2f2; color: #dc2626; }
 
 /* 响应式 */
 @media (max-width: 1100px) {
