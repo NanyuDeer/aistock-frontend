@@ -2,6 +2,19 @@
 
 > 所有修改记录按时间倒序排列。每条记录标注分支、时间区间、开发者。
 
+## [main] 2026-09-09 — 隐藏更新日志页后端仓库链接与首页页脚「更新日志」入口
+
+**开发者**: Aria
+
+### 变更
+- `src/modules/analytics/views/UpdateLogsView.vue`：移除工具栏「查看后端仓库」链接（指向 `github.com/fengwm64/aistock-api-cf`）及随之无用的 `.toolbar` / `.repo-link` 样式
+- `src/shared/components/TheFooter.vue`：移除首页页脚「更新日志」入口及前导分隔符（保留「下载 App」与「网站状态监测」）
+
+### 说明
+- `/update-logs` 页面路由保留，但不再从页脚暴露入口；更新日志中的后端仓库链接不再对外展示
+
+---
+
 ## [main] 2026-08-28 — 板块洞见改为蓝色卡片（与 App 端一致）
 
 **开发者**: Aria
