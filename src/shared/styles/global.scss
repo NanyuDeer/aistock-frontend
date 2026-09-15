@@ -1,3 +1,9 @@
+/* 事件模块 Design Token
+ * 注意：:root 自定义属性必须在此全局（非 scoped）样式中定义。
+ * 若写在组件的 <style scoped> 内，会被 Vue 编译成 `[data-v-xxx]:root`，
+ * 而 <html> 不具备该属性，导致整份 --ev-* token 失效、所有 var(--ev-*) 回退为默认值。 */
+@import '../../modules/event/styles/_event-tokens.scss';
+
 /* 全局样式重置 */
 * {
   margin: 0;

@@ -48,11 +48,11 @@ export const IMPORTANCE_LABELS = {
 
 // ==================== 市场情绪 ====================
 
-/** 市场情绪颜色 */
+/** 市场情绪颜色（A股 红涨绿跌，对齐 APP $up/$down/$ink-mute） */
 export const SENTIMENT_COLORS = {
-  bullish: { text: '#DC2626', bg: '#FEF2F2' },
-  bearish: { text: '#16A34A', bg: '#F0FDF4' },
-  neutral: { text: '#9CA3AF', bg: '#F1F5F9' },
+  bullish: { text: '#e54d5e', bg: 'rgba(229, 77, 94, 0.08)' },
+  bearish: { text: '#18a058', bg: 'rgba(24, 160, 88, 0.08)' },
+  neutral: { text: '#8a96b0', bg: 'rgba(148, 163, 184, 0.08)' },
 }
 
 /** 市场情绪文字 */
