@@ -383,3 +383,6 @@ size-plugin-ssr.json
 
 .trae/
 changelog-pending.md
+
+# Isolated local Git worktrees
+.worktrees/

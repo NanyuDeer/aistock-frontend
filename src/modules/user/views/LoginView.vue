@@ -15,30 +15,79 @@
       </div>
       
       <div class="card-body">
-        <!-- 微信浏览器：使用网页授权跳转登录 -->
-        <div v-if="isWechat" class="wechat-oauth-login">
-          <div class="oauth-icon">
-            <img src="@/assets/wechat.svg" alt="微信" class="wechat-big-logo" />
+        <!-- 邮箱验证码登录表单 -->
+        <div v-if="showEmailForm" class="sms-login-form">
+          <div class="sms-title">邮箱验证码登录</div>
+          <el-input
+            v-model="email"
+            placeholder="请输入邮箱"
+            class="sms-input"
+            clearable
+          />
+          <div class="sms-code-row">
+            <el-input
+              v-model="smsCode"
+              :maxlength="6"
+              placeholder="请输入验证码"
+              class="sms-code-input"
+              clearable
+            />
+            <el-button
+              class="sms-code-btn"
+              :disabled="countdown > 0 || !isValidEmail"
+              @click="handleSendEmail"
+            >
+              {{ countdown > 0 ? `${countdown}s 后重发` : '获取验证码' }}
+            </el-button>
           </div>
-          <p class="oauth-hint">点击下方按钮，授权微信登录</p>
-          <button class="wechat-login-btn" @click="handleWechatOAuthLogin">
-            <img src="@/assets/wechat.svg" alt="" class="btn-icon" />
-            微信授权登录
-          </button>
+          <el-button
+            type="primary"
+            class="sms-submit"
+            :loading="emailLoginLoading"
+            @click="handleEmailLogin"
+          >
+            登录
+          </el-button>
+          <div class="sms-back" @click="showEmailForm = false">
+            <span class="sms-back-arrow">←</span>
+            返回微信登录
+          </div>
         </div>
-        <!-- 非微信浏览器：使用扫码登录 -->
-        <LoginQrCode v-else @login-success="handleLoginSuccess" />
+
+        <!-- 微信登录（扫码 / 网页授权） -->
+        <template v-else>
+          <!-- 微信浏览器：使用网页授权跳转登录 -->
+          <div v-if="isWechat" class="wechat-oauth-login">
+            <div class="oauth-icon">
+              <img src="@/assets/wechat.svg" alt="微信" class="wechat-big-logo" />
+            </div>
+            <p class="oauth-hint">点击下方按钮，授权微信登录</p>
+            <button class="wechat-login-btn" @click="handleWechatOAuthLogin">
+              <img src="@/assets/wechat.svg" alt="" class="btn-icon" />
+              微信授权登录
+            </button>
+          </div>
+          <!-- 非微信浏览器：使用扫码登录 -->
+          <LoginQrCode v-else @login-success="handleLoginSuccess" />
+
+          <!-- 邮箱验证码登录入口 -->
+          <div class="sms-entry" @click="showEmailForm = true">
+            <span class="sms-entry-divider"></span>
+            邮箱验证码登录
+            <span class="sms-entry-arrow">›</span>
+          </div>
+        </template>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
 import LoginQrCode from '@/shared/components/LoginQrCode.vue'
-import { WECHAT_OAUTH_LOGIN_URL } from '@/shared/api/api'
+import { authApi, WECHAT_OAUTH_LOGIN_URL } from '@/shared/api/api'
 import { ElMessage } from 'element-plus'
 import 'element-plus/es/components/message/style/css';
 
@@ -54,6 +103,15 @@ export default {
 
     // 检测是否在微信浏览器中
     const isWechat = ref(/MicroMessenger/i.test(navigator.userAgent))
+
+    // 邮箱验证码登录状态
+    const showEmailForm = ref(false)
+    const email = ref('')
+    const smsCode = ref('')
+    const countdown = ref(0)
+    const emailLoginLoading = ref(false)
+    const isValidEmail = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value))
+    let countdownTimer = null
     
     // 检查是否已登录，如果已登录则重定向到首页
     onMounted(() => {
@@ -62,6 +120,13 @@ export default {
       
       if (store.getters.isLoggedIn) {
         router.push('/');
+      }
+    });
+
+    onBeforeUnmount(() => {
+      if (countdownTimer) {
+        clearInterval(countdownTimer);
+        countdownTimer = null;
       }
     });
 
@@ -120,12 +185,68 @@ export default {
         isProcessingLogin.value = false;
       }
     };
+
+    // 发送邮箱验证码（60s 倒计时）
+    const handleSendEmail = async () => {
+      if (!isValidEmail.value) {
+        ElMessage.warning('请输入正确的邮箱');
+        return;
+      }
+      try {
+        await authApi.sendEmailCode(email.value);
+        ElMessage.success('验证码已发送');
+        countdown.value = 60;
+        if (countdownTimer) clearInterval(countdownTimer);
+        countdownTimer = setInterval(() => {
+          countdown.value -= 1;
+          if (countdown.value <= 0) {
+            clearInterval(countdownTimer);
+            countdownTimer = null;
+          }
+        }, 1000);
+      } catch (error) {
+        const msg = error?.response?.data?.message || error?.message || '发送失败，请稍后再试';
+        ElMessage.error(msg);
+      }
+    };
+
+    // 邮箱 + 验证码登录
+    const handleEmailLogin = async () => {
+      if (!isValidEmail.value) {
+        ElMessage.warning('请输入正确的邮箱');
+        return;
+      }
+      if (!smsCode.value) {
+        ElMessage.warning('请输入验证码');
+        return;
+      }
+      if (emailLoginLoading.value) return;
+      emailLoginLoading.value = true;
+      try {
+        await authApi.emailLogin(email.value, smsCode.value);
+        // 后端已通过 Set-Cookie 设置 httpOnly cookie，与扫码登录一致；复用同一登录完成流程
+        await handleLoginSuccess({ email: email.value });
+      } catch (error) {
+        const msg = error?.response?.data?.message || error?.message || '登录失败，请重试';
+        ElMessage.error(msg);
+      } finally {
+        emailLoginLoading.value = false;
+      }
+    };
     
     return {
       isWechat,
       handleWechatOAuthLogin,
       handleLoginSuccess,
-      isProcessingLogin
+      isProcessingLogin,
+      showEmailForm,
+      email,
+      smsCode,
+      countdown,
+      emailLoginLoading,
+      isValidEmail,
+      handleSendEmail,
+      handleEmailLogin
     }
   }
 }
@@ -243,6 +364,80 @@ export default {
       width: 20px;
       height: 20px;
       filter: brightness(10);
+    }
+  }
+}
+/* 邮箱验证码登录样式 */
+.sms-entry {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color, #ebeef5);
+  font-size: 14px;
+  color: var(--primary-color);
+  cursor: pointer;
+  transition: opacity 0.2s;
+
+  &:hover {
+    opacity: 0.8;
+  }
+
+  .sms-entry-arrow {
+    font-size: 16px;
+    line-height: 1;
+  }
+}
+
+.sms-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px 0;
+
+  .sms-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary, #303133);
+    text-align: center;
+    margin-bottom: 4px;
+  }
+
+  .sms-code-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .sms-code-input {
+      flex: 1;
+    }
+  }
+
+  .sms-submit {
+    width: 100%;
+    margin-top: 4px;
+  }
+
+  .sms-back {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 8px;
+    font-size: 14px;
+    color: var(--text-secondary, #909399);
+    cursor: pointer;
+    transition: opacity 0.2s;
+
+    &:hover {
+      opacity: 0.8;
+    }
+
+    .sms-back-arrow {
+      font-size: 14px;
+      line-height: 1;
     }
   }
 }

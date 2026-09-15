@@ -162,7 +162,7 @@ export default {
       }
     };
 
-    const handleTouchEnd = (event) => {
+    const handleTouchEnd = () => {
       if (!touchState.value.isSwipe) {
         return;
       }

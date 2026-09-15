@@ -1,5 +1,5 @@
 <template>
-  <div class="stock-monitor-list">
+  <div class="stock-intel-list">
     <!-- 周期筛选标签 -->
     <div v-if="showCycleFilter" class="cycle-filter">
       <button
@@ -12,7 +12,7 @@
       </button>
     </div>
 
-    <!-- 个股异动列表 -->
+    <!-- 自选股情报列表 -->
     <div class="monitor-table">
       <div class="monitor-table-head">
         <span>股票</span>
@@ -64,7 +64,7 @@
       </div>
 
       <div v-if="filteredEvents.length === 0" class="empty-state">
-        <p>暂无个股异动数据</p>
+        <p>暂无自选股情报数据</p>
       </div>
     </div>
   </div>
@@ -81,10 +81,10 @@ import {
   getInfoTypeLabel,
   getKeywordColor,
   filterDecisiveKeywords,
-} from '@/shared/utils/trendHotspotConstants'
+} from '@/shared/utils/stockIntelConstants'
 
 export default {
-  name: 'StockMonitorList',
+  name: 'StockIntelList',
   props: {
     events: {
       type: Array,
@@ -104,7 +104,9 @@ export default {
     const activeCycle = ref(props.defaultCycle)
 
     const filteredEvents = computed(() => {
-      return filterEventsByCycle(props.events, activeCycle.value)
+      // 8.1 决议：中性事件不展示
+      const nonNeutral = props.events.filter(e => e.level !== '中性')
+      return filterEventsByCycle(nonNeutral, activeCycle.value)
     })
 
     const goToDetail = (event) => {
@@ -156,7 +158,7 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.stock-monitor-list {
+.stock-intel-list {
   .cycle-filter {
     display: flex;
     gap: 8px;
@@ -375,7 +377,7 @@ export default {
 }
 
 @media (max-width: 768px) {
-  .stock-monitor-list {
+  .stock-intel-list {
     .monitor-table-head,
     .monitor-row {
       grid-template-columns: minmax(90px, 0.85fr) minmax(48px, 0.35fr) minmax(48px, 0.35fr) minmax(120px, 1.2fr) 44px 90px;

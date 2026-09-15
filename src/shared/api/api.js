@@ -44,9 +44,6 @@ axios.interceptors.response.use(
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
   ? 'https://gupiao-api.yaozhineng.com' 
   : '';
-const EXT_API_BASE_URL = process.env.NODE_ENV === 'production'
-  ? 'https://gupiao-api.yaozhineng.com'
-  : '';
 const PREDICTION_API_BASE_URL = process.env.NODE_ENV === 'production'
   ? 'https://yingfeng64-kronos-api.hf.space'
   : '/prediction-api';
@@ -148,7 +145,7 @@ const readSseStream = async (stream, onEvent) => {
     dataLines = [];
   };
 
-  while (true) {
+  for (;;) {
     const { value, done } = await reader.read();
     buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
 
@@ -264,6 +261,18 @@ export const authApi = {
 
   // 通过 Cookie 获取当前登录用户信息和自选股
   getAuthMe: () => api.get('/api/users/me'),
+
+  // 发送短信验证码（限流 60s，dev 环境回显 123456）
+  sendSmsCode: (phone) => api.post('/api/auth/sms/send', { phone }),
+
+  // 手机号 + 短信验证码登录（无账户自动创建；dev 验证码 123456）
+  smsLogin: (phone, code) => api.post('/api/auth/sms/login', { phone, code }),
+
+  // 发送邮箱验证码（限流 60s，dev 环境回显 123456）
+  sendEmailCode: (email) => api.post('/api/auth/email/send', { email }),
+
+  // 邮箱 + 验证码登录（无账户自动创建；dev 验证码 123456）
+  emailLogin: (email, code) => api.post('/api/auth/email/login', { email, code }),
 
   // 退出登录（清除后端 HttpOnly Cookie）
   logout: () => api.post('/api/auth/logout')
@@ -423,6 +432,20 @@ export const stockApi = {
     });
   },
 
+  // 批量获取股票基础财务行情（PE/PB/ROE/毛利率等）
+  getStockFundamentals: (symbols) => {
+    return api.get(`/api/cn/stock/fundamentals?symbols=${symbols}`, {
+      timeout: 8000
+    });
+  },
+
+  // 获取个股最近半年度关键财报数据
+  getSemiAnnualReport: (symbol) => {
+    return api.get(`/api/cn/stocks/${encodeURIComponent(symbol)}/semi-annual-report`, {
+      timeout: 12000
+    });
+  },
+
   // 获取历史K线
   getStockKline: ({ symbol, klt = 101, fqt = 1, limit = DEFAULT_KLINE_LIMIT, startDate, endDate }) => {
     const parsedLimit = Number(limit);
@@ -559,9 +582,30 @@ export const stockApi = {
       timeout: 10000
     });
   },
+
+  // 获取个股年报财务聚合数据（Tushare fina_indicator + cashflow + holder_number + balancesheet）
+  getAnnualFinancial: (symbol) => {
+    return api.get(`/api/cn/stocks/${encodeURIComponent(symbol)}/annual-financial`, {
+      timeout: 15000
+    });
+  },
+
+  // 获取行业景气指数（同花顺板块日K聚合，7个月趋势+景气评分）
+  getIndustryHealth: (industryName) => {
+    return api.get(`/api/cn/industry/${encodeURIComponent(industryName)}/health`, {
+      timeout: 15000
+    });
+  },
+
+  // 获取券商研报数据（Tushare report_rc，评级/目标价/盈利预测聚合）
+  getResearchReports: (symbol) => {
+    return api.get(`/api/cn/research/${encodeURIComponent(symbol)}/reports`, {
+      timeout: 15000
+    });
+  },
   
   // 获取自选股推送新闻
-  getPushNews: (_page = 1, _limit = 5) => {
+  getPushNews: () => {
     // 新版占位接口：当前只返回空列表
     return api.get('/api/users/me/news/push');
   },
@@ -671,7 +715,7 @@ export const stockApi = {
   },
 
   // 获取用户推送设置
-  getUserPushSettings: (_userId) => {
+  getUserPushSettings: () => {
     return api.get('/api/users/me/settings');
   },
   
@@ -764,24 +808,24 @@ export const configApi = {
   getPublicConfig: () => api.get('/api/config/public'),
 };
 
-// 风口爆发 API
-export const trendHotspotApi = {
+// 自选股情报监控 API
+export const stockIntelApi = {
   /** 查询公告/新闻研判事件列表 */
   getEvents: ({ cycle = 'all', change_type, stock_code, limit = 20, offset = 0 } = {}) => {
     const params = new URLSearchParams({ cycle, limit: String(limit), offset: String(offset) });
     if (change_type) params.append('change_type', change_type);
     if (stock_code) params.append('stock_code', stock_code);
-    return api.get(`/api/cn/trend-hotspots/events?${params.toString()}`, { timeout: 8000 });
+    return api.get(`/api/cn/stock-monitors/events?${params.toString()}`, { timeout: 8000 });
   },
 
-  /** 查询指定股票的趋势风口事件 */
+  /** 查询指定股票的异动事件 */
   getEventsByStock: (stockCode, { cycle = 'all', limit = 20 } = {}) => {
-    return api.get(`/api/cn/trend-hotspots/events/${encodeURIComponent(stockCode)}?cycle=${cycle}&limit=${limit}`, { timeout: 8000 });
+    return api.get(`/api/cn/stock-monitors/events/${encodeURIComponent(stockCode)}?cycle=${cycle}&limit=${limit}`, { timeout: 8000 });
   },
 
-  /** 获取趋势风口统计概览 */
+  /** 获取自选股情报统计概览 */
   getStats: () => {
-    return api.get('/api/cn/trend-hotspots/stats', { timeout: 8000 });
+    return api.get('/api/cn/stock-monitors/stats', { timeout: 8000 });
   },
 
   /** 查询用户自选股资讯（需登录） */
@@ -868,6 +912,14 @@ export const trendApi = {
     timeout: 600000,
     'axios-retry': { retries: 0 },
   }),
+};
+
+// Agent 持久化报告 API（公开只读接口，无需内部鉴权）
+export const agentReportApi = {
+  getReport: (intent, date) => api.get(
+    `/api/agent/report/${encodeURIComponent(intent)}/${encodeURIComponent(date)}`,
+    { timeout: 15000 },
+  ),
 };
 
 // 风口龙头 API

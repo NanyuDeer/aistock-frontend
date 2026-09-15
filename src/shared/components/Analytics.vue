@@ -5,6 +5,8 @@
 </template>
 
 <script setup>
+defineOptions({ name: 'AppAnalytics' })
+
 import { onMounted } from 'vue'
 
 onMounted(() => {

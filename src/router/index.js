@@ -11,9 +11,11 @@ const UpdateLogsView = () => import('@/modules/analytics/views/UpdateLogsView.vu
 const PerformanceForecastView = () => import('@/modules/analytics/views/PerformanceForecastView.vue')
 const TenxScoreView = () => import('@/modules/market/views/TenxScoreView.vue')
 const TrendScoreView = () => import('@/modules/market/views/TrendScoreView.vue')
+const TrendScoreReportView = () => import('@/modules/market/views/TrendScoreReportView.vue')
 const HotBurstView = () => import('@/modules/news/views/HotBurstView.vue')
-const StockMonitorView = () => import('@/modules/market/views/StockMonitorView.vue')
+const StockIntelView = () => import('@/modules/market/views/StockIntelView.vue')
 const PotentialStockPushHistoryView = () => import('@/modules/analytics/views/PotentialStockPushHistoryView.vue')
+const DownloadView = () => import('@/modules/user/views/DownloadView.vue')
 
 // ==================== 事件传导模块 ====================
 const EventListView = () => import('@/modules/event/views/EventListView.vue')
@@ -97,6 +99,14 @@ const routes = [
     }
   },
   {
+    path: '/trend/report',
+    name: 'trendScoreReport',
+    component: TrendScoreReportView,
+    meta: {
+      title: '股票资讯AI智能分析 - 趋势股评分报告'
+    }
+  },
+  {
     path: '/monitor',
     redirect: '/hot-burst'
   },
@@ -109,11 +119,11 @@ const routes = [
     }
   },
   {
-    path: '/stock-monitor',
-    name: 'stockMonitor',
-    component: StockMonitorView,
+    path: '/stock-intel',
+    name: 'stockIntel',
+    component: StockIntelView,
     meta: {
-      title: '股票资讯AI智能分析 - 个股异动'
+      title: '股票资讯AI智能分析 - 自选股情报'
     }
   },
   {
@@ -139,6 +149,14 @@ const routes = [
     component: UpdateLogsView,
     meta: {
       title: '股票资讯AI智能分析 - 更新日志'
+    }
+  },
+  {
+    path: '/download',
+    name: 'download',
+    component: DownloadView,
+    meta: {
+      title: '股票资讯AI智能分析 - 下载 App'
     }
   },
   // ==================== 事件传导模块 ====================

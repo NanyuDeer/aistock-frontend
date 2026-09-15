@@ -923,6 +923,33 @@ export default createStore({
       }
     },
 
+    async fetchStockFinancialSnapshot(_, stockCode) {
+      if (!stockCode) return { fundamentals: null, semiAnnual: null };
+      const [fundamentalsResult, semiAnnualResult] = await Promise.allSettled([
+        stockApi.getStockFundamentals(stockCode),
+        stockApi.getSemiAnnualReport(stockCode)
+      ]);
+
+      let fundamentals = null;
+      if (fundamentalsResult.status === 'fulfilled') {
+        const response = fundamentalsResult.value;
+        const quotes = response?.data?.['行情'] || response?.data?.quotes || response?.data?.items || [];
+        fundamentals = Array.isArray(quotes) ? (quotes[0] || null) : null;
+      } else {
+        console.error('获取股票基础财务行情失败:', fundamentalsResult.reason);
+      }
+
+      let semiAnnual = null;
+      if (semiAnnualResult.status === 'fulfilled') {
+        const response = semiAnnualResult.value;
+        semiAnnual = response?.code === 200 ? (response.data || null) : null;
+      } else {
+        console.error('获取股票半年报数据失败:', semiAnnualResult.reason);
+      }
+
+      return { fundamentals, semiAnnual };
+    },
+
     async fetchStockEvaluation(_, payload = {}) {
       const stockCode = typeof payload === 'string' ? payload : payload?.stockCode;
       const refresh = typeof payload === 'object' ? !!payload.refresh : false;
@@ -1128,7 +1155,7 @@ export default createStore({
         throw error;
       }
     },
-    async fetchUpdateTypes(_) {
+    async fetchUpdateTypes() {
       try {
         console.log('[DEBUG] 发起获取更新类型请求');
         const response = await stockApi.getUpdateTypes();

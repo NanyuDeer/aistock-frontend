@@ -38,7 +38,7 @@
 </template>
 
 <script>
-import { ref, onMounted, watch, onBeforeUnmount, computed } from 'vue';
+import { ref, onMounted, watch, onBeforeUnmount, computed, nextTick } from 'vue';
 import { useStore } from 'vuex';
 import { stockApi } from '@/shared/api/api';
 import * as echarts from 'echarts/core';
@@ -127,6 +127,7 @@ export default {
     const latestPredictionRequestId = ref(0);
 
     let resizeTimer = null;
+    let resizeObserver = null;
     let predictionPollTimer = null;
 
     const toNumber = (value) => {
@@ -312,6 +313,7 @@ export default {
 
     const renderEmpty = (message) => {
       if (!chartInstance.value) return;
+      syncChartSize();
       chartInstance.value.setOption(
         {
           animation: false,
@@ -331,6 +333,28 @@ export default {
         },
         true
       );
+    };
+
+    const syncChartSize = () => {
+      const chart = chartInstance.value;
+      const el = chartContainer.value;
+      if (!chart || !el) return;
+
+      const width = el.clientWidth || 0;
+      const height = el.clientHeight || 0;
+      if (width <= 0 || height <= 0) return;
+
+      if (Math.abs(chart.getWidth() - width) > 2 || Math.abs(chart.getHeight() - height) > 2) {
+        chart.resize();
+      }
+    };
+
+    const scheduleChartResize = () => {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        syncChartSize();
+        renderChart();
+      }, 80);
     };
 
     const getVisibleItems = () => {
@@ -731,6 +755,7 @@ export default {
 
     const renderChart = () => {
       if (!chartInstance.value) return;
+      syncChartSize();
       if (!klineItems.value.length) {
         renderEmpty('暂无K线数据');
         return;
@@ -1188,12 +1213,7 @@ export default {
     };
 
     const handleResize = () => {
-      if (resizeTimer) clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => {
-        if (chartInstance.value) {
-          chartInstance.value.resize();
-        }
-      }, 120);
+      scheduleChartResize();
     };
 
     const handlePeriodChange = (klt) => {
@@ -1222,8 +1242,15 @@ export default {
       }
     });
 
-    onMounted(() => {
+    onMounted(async () => {
+      await nextTick();
       initChart();
+      if (window.ResizeObserver && chartContainer.value) {
+        resizeObserver = new ResizeObserver(() => {
+          scheduleChartResize();
+        });
+        resizeObserver.observe(chartContainer.value);
+      }
       fetchKlineData();
       fetchPricePrediction();
       window.addEventListener('resize', handleResize);
@@ -1232,6 +1259,10 @@ export default {
     onBeforeUnmount(() => {
       window.removeEventListener('resize', handleResize);
       if (resizeTimer) clearTimeout(resizeTimer);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+        resizeObserver = null;
+      }
       clearPredictionPollTimer();
       if (chartInstance.value) {
         chartInstance.value.dispose();

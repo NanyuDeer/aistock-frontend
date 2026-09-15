@@ -1,0 +1,4 @@
+# APK 安装包为构建产物，不进 git（体积大且每次发版替换）
+# 发布新版本时：将 HBuilderX 云打包产物命名为 aistock-<versionName>.apk 放到本目录，
+# 并同步更新 version.json 中的 versionCode / versionName / downloadUrl / description
+*.apk

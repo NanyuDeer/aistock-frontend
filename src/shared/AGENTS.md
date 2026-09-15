@@ -19,7 +19,7 @@ shared/
 │   ├── LoginQrCode.vue     # 微信扫码登录二维码
 │   ├── StockCardList.vue   # 股票卡片列表
 │   ├── CycleSelect.vue     # 周期选择器
-│   ├── StockMonitorList.vue # 个股异动列表
+│   ├── StockIntelList.vue # 自选股情报（原个股情报）列表
 │   ├── StockChart.vue      # K线图表
 │   └── StockDetailTable.vue # 股票详情表格
 ├── utils/
@@ -27,7 +27,7 @@ shared/
 │   ├── configManager.js    # 配置管理器
 │   ├── scrollUtils.js      # 滚动工具
 │   ├── stockCycle.js       # 股票周期 Hook
-│   └── trendHotspotConstants.js # 风口爆发常量
+│   └── stockIntelConstants.js # 自选股情报（原个股情报）常量
 ├── mock/
 │   └── curatedStocks.js    # 精选股票 Mock 数据
 └── AGENTS.md
@@ -39,8 +39,9 @@ shared/
 - `stockApi` — 股票核心 API（行情、K线、新闻、预测等）
 - `ttsApi` — 语音合成
 - `configApi` — 配置
-- `trendHotspotApi` — 风口爆发
+- `stockIntelApi` — 自选股情报（原个股情报）监控
 - `tenxApi` — 十倍股评分
+- `agentReportApi` — Agent 已持久化报告读取
 - `windLeaderApi` — 风口龙头
 - `aiGraphApi` — AI产业链图谱
 - `industryKGApi` — 行业知识图谱

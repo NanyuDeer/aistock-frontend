@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>洞见 · App 下载</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+      min-height: 100vh;
+      background: #f5f7fb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      color: #1f2430;
+    }
+    .card {
+      width: 100%;
+      max-width: 380px;
+      background: #fff;
+      border-radius: 16px;
+      padding: 32px 24px;
+      text-align: center;
+      box-shadow: 0 6px 24px rgba(31, 36, 48, 0.08);
+    }
+    .logo {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 16px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #6aa7ff, #4f8dff);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 28px;
+      font-weight: 700;
+    }
+    .app-name { font-size: 20px; font-weight: 600; }
+    .version { color: #8a93a6; font-size: 13px; margin: 6px 0 18px; }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 13px 0;
+      border: none;
+      border-radius: 10px;
+      background: #4f8dff;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .btn:hover { background: #3f7bf0; }
+    .desc { font-size: 13px; color: #5a6274; margin-top: 18px; line-height: 1.6; text-align: left; }
+    .desc li { margin-left: 1.2em; }
+    .meta { font-size: 12px; color: #a0a8ba; margin-top: 14px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">洞</div>
+    <div class="app-name" id="appName">洞见</div>
+    <div class="version" id="version">正在为你准备下载…</div>
+    <a class="btn" id="downloadBtn" href="#">下载未自动开始？点此下载</a>
+    <div class="desc">
+      <p id="description"></p>
+      <ul id="features"></ul>
+    </div>
+    <div class="meta" id="meta"></div>
+  </div>
+  <script>
+    (async function () {
+      try {
+        var res = await fetch('./version.json', { cache: 'no-store' })
+        var info = await res.json()
+        var base = './'
+        document.getElementById('appName').textContent = info.appName || '洞见'
+        document.getElementById('version').textContent =
+          'v' + (info.versionName || '') + (info.releaseDate ? ' · ' + info.releaseDate : '')
+        var btn = document.getElementById('downloadBtn')
+        var url = base + (info.downloadUrl || 'aistock-0.1.1.apk')
+        btn.href = url
+        btn.addEventListener('click', startDownload)
+        // 扫码直达：页面加载后自动触发下载，无需再点击
+        setTimeout(startDownload, 500)
+        function startDownload() {
+          document.getElementById('version').textContent = '正在下载，请稍候…'
+          var a = document.createElement('a')
+          a.href = url
+          a.download = ''
+          document.body.appendChild(a)
+          a.click()
+          a.remove()
+        }
+        document.getElementById('description').textContent = info.description || ''
+        var f = document.getElementById('features')
+        ;(info.features || []).forEach(function (t) { var li = document.createElement('li'); li.textContent = t; f.appendChild(li) })
+        var meta = document.getElementById('meta')
+        meta.textContent = [info.minSystem, info.fileSize].filter(Boolean).join(' · ')
+      } catch (e) {
+        document.getElementById('version').textContent = '信息读取失败，请直接下载安装包'
+        document.getElementById('downloadBtn').href = './aistock-0.1.1.apk'
+      }
+    })()
+  </script>
+</body>
+</html>

@@ -7,17 +7,6 @@
           <p class="subtitle">来自 aistock-api-cf 的 GitHub 提交记录</p>
         </div>
 
-        <div class="toolbar">
-          <a
-            class="repo-link"
-            href="https://github.com/fengwm64/aistock-api-cf"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            查看后端仓库
-          </a>
-        </div>
-
         <div v-if="loading" class="loading-container">
           <el-skeleton :rows="5" animated />
         </div>
@@ -141,7 +130,7 @@ export default {
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // 粗体
         .replace(/\*(.*?)\*/g, '<em>$1</em>') // 斜体
         .replace(/\r?\n/g, '<br>') // 换行
-        .replace(/   \* /g, '&nbsp;&nbsp;&nbsp;• ') // 列表项
+        .replace(/ {3}\* /g, '&nbsp;&nbsp;&nbsp;• ') // 列表项
         .replace(/\* /g, '• '); // 简单列表项
     };
 
@@ -208,23 +197,6 @@ export default {
       color: var(--text-tertiary);
       font-size: 14px;
       margin: 0;
-    }
-  }
-
-  .toolbar {
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    margin-bottom: 24px;
-  }
-
-  .repo-link {
-    color: var(--primary-color);
-    text-decoration: none;
-    font-size: 14px;
-
-    &:hover {
-      text-decoration: underline;
     }
   }
 

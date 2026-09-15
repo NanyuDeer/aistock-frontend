@@ -21,6 +21,7 @@
         <router-link to="/event" class="menu-item" @click="closeMobileMenu">事件传导</router-link>
         <router-link v-if="isLoggedIn" to="/potential-push-history" class="menu-item" @click="closeMobileMenu">推送历史</router-link>
         <router-link v-if="isLoggedIn" to="/favorites" class="menu-item" @click="closeMobileMenu">我的自选股</router-link>
+        <router-link to="/download" class="menu-item" @click="closeMobileMenu">下载 App</router-link>
         <template v-if="isLoggedIn">
           <router-link to="/profile" class="menu-item" @click="closeMobileMenu">个人信息</router-link>
           <div class="menu-item" @click="handleLogout">退出登录</div>
@@ -40,6 +41,7 @@
         <router-link v-if="isLoggedIn" to="/favorites" class="nav-item" @click="closeMobileMenu">我的自选股</router-link>
       </div>
       <div class="user-area">
+        <router-link to="/download" class="download-app-btn" @click="closeMobileMenu">下载 App</router-link>
         <template v-if="isLoggedIn">
           <el-dropdown trigger="click">
             <div class="user-avatar">
@@ -279,6 +281,23 @@ export default {
     display: flex;
     align-items: center;
     gap: 12px;
+
+    .download-app-btn {
+      text-decoration: none;
+      font-size: 0.92rem;
+      font-weight: 500;
+      color: var(--primary-color);
+      border: 1px solid var(--primary-color);
+      border-radius: 20px;
+      padding: 5px 18px;
+      white-space: nowrap;
+      transition: background 0.2s, color 0.2s;
+
+      &:hover {
+        background-color: var(--primary-color);
+        color: #fff;
+      }
+    }
     
     .user-avatar {
       display: flex;

@@ -109,9 +109,9 @@
             </div>
           </div>
           <div class="header-actions">
-            <button class="ghost-btn" @click="showToast('报告导出功能开发中')">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-              导出报告
+            <button class="ghost-btn" @click="openTrendReport">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="16" y2="17"></line></svg>
+              查看 AI 分析报告
             </button>
             <button class="ghost-btn" @click="showToast('加入监控功能开发中')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
@@ -501,7 +501,9 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 分钟缓存
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import { trendApi } from '@/shared/api/api';
+import { shanghaiDateString } from '../utils/trendReport.mjs';
 import * as echarts from 'echarts/core';
 import { CandlestickChart, LineChart, BarChart } from 'echarts/charts';
 import { GridComponent, TooltipComponent, DataZoomComponent, AxisPointerComponent } from 'echarts/components';
@@ -512,6 +514,8 @@ echarts.use([
   GridComponent, TooltipComponent, DataZoomComponent, AxisPointerComponent,
   CanvasRenderer,
 ]);
+
+const router = useRouter();
 
 // 维度展示配置（与模板 updateDimCards 一致）
 const DIM_CONFIG = [
@@ -770,6 +774,10 @@ function showToast(text) {
   toastVisible.value = true;
   if (toastTimer) clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { toastVisible.value = false; }, 2200);
+}
+
+function openTrendReport() {
+  router.push({ name: 'trendScoreReport', query: { date: shanghaiDateString() } });
 }
 
 // ============ 政策/新闻详情弹窗 ============

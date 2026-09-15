@@ -125,7 +125,7 @@ module.exports = {
         changeOrigin: true,
         secure: true,
         pathRewrite: { '^/prediction-api': '' },
-        onProxyReq(proxyReq, req, res) {
+        onProxyReq(proxyReq, req) {
           console.log('预测API代理请求:', req.method, req.url);
         }
       }

@@ -126,7 +126,6 @@
 
 <script>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { ElMessage } from 'element-plus'
 import { RouterLink } from 'vue-router'
 import { stockApi } from '@/shared/api/api'
 
