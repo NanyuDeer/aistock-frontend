@@ -59,6 +59,8 @@ export async function getEventList(params = {}) {
     params: {
       page: params.page || 1,
       pageSize: params.pageSize || 10,
+      // 事件类型由服务端筛选 + 分页；"全部"不传 eventType（对齐 APP getEventList）
+      ...(params.eventType ? { eventType: params.eventType } : {}),
     },
   })
 

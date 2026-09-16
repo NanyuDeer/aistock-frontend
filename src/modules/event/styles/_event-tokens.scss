@@ -1,0 +1,108 @@
+/**
+ * 事件传导模块 - Design Token（Web 端）
+ *
+ * 语义对齐 APP 端 `variables.scss`（蓝白金融系统）。
+ * 浏览器 CSS 自定义属性，供事件模块组件以 var(--ev-*) 使用，统一色板/圆角/阴影/间距。
+ *
+ * 注意：本文件的 :root 必须在全局（非 scoped）样式中引入（见 src/shared/styles/global.scss）。
+ * 若写在组件 <style scoped> 内 @import，会被 Vue 编译为 `[data-v-xxx]:root`（<html> 无该属性）而永不命中。
+ *
+ * A股 红涨绿跌规约（与 APP 组件内交叉引用一致）：
+ *   --ev-up / --ev-negative = 红（涨、利好、偏积极）
+ *   --ev-down / --ev-positive = 绿（跌、利空、偏谨慎）
+ */
+
+:root {
+  /* ===== Brand - Primary Blue ===== */
+  --ev-primary: #0b5fff;
+  --ev-primary-deep: #0a2e6f;
+  --ev-primary-50: #eaf2ff;
+  --ev-primary-100: #d6e6ff;
+  --ev-accent: #0b5fff;
+  --ev-accent-soft: rgba(11, 95, 255, 0.12);
+  --ev-accent-bg: rgba(11, 95, 255, 0.06);
+
+  /* ===== Background ===== */
+  --ev-bg-page: #eef3fb;
+  --ev-bg-card: #ffffff;
+  --ev-bg-card-muted: #f5f8fd;
+  --ev-bg-soft: #f5f8fd;
+  --ev-bg-deep: #e6eef9;
+  --ev-bg-elevated: #ffffff;
+
+  /* ===== Text ===== */
+  --ev-text-primary: #0a1733;
+  --ev-text-secondary: #4b5a7a;
+  --ev-text-muted: #8a96b0;
+  --ev-text-tertiary: #4b5a7a;
+  --ev-text-placeholder: #b8c3d6;
+
+  /* ===== Lines ===== */
+  --ev-line: #e1e9f5;
+  --ev-line-soft: #eef3fb;
+  --ev-line-strong: #c5d3e8;
+  --ev-border: #e1e9f5;
+  --ev-border-light: #eef3fb;
+
+  /* ===== Semantic - Stock (A股 红涨绿跌) ===== */
+  --ev-up: #e54d5e;   /* 涨=红 */
+  --ev-down: #18a058; /* 跌=绿 */
+  --ev-flat: #909399;
+  /* 交叉引用：negative=红(涨/利好)，positive=绿(跌/利空) —— 对齐 APP --ev-negative/--ev-positive */
+  --ev-negative: #e54d5e;
+  --ev-negative-bg: rgba(229, 77, 94, 0.06);
+  --ev-negative-soft: rgba(229, 77, 94, 0.1);
+  --ev-positive: #18a058;
+  --ev-positive-bg: rgba(24, 160, 88, 0.06);
+  --ev-positive-soft: rgba(24, 160, 88, 0.1);
+  --ev-flat-bg: rgba(144, 147, 153, 0.08);
+
+  /* ===== Gold ===== */
+  --ev-gold: #d4a843;
+
+  /* ===== Radius (px，对齐 APP $r-xs/$r-sm/$r-md/$r-lg = 8/12/16/20rpx) ===== */
+  --ev-r-xs: 4px;
+  --ev-r-sm: 6px;
+  --ev-r-md: 8px;
+  --ev-r-lg: 10px;
+  --ev-r-full: 9999px;
+
+  /* ===== Shadow (对齐 APP $shadow-xs/$shadow-sm/$shadow-card) ===== */
+  --ev-shadow-xs: 0 1px 2px rgba(11, 95, 255, 0.04);
+  --ev-shadow-sm: 0 2px 6px -2px rgba(11, 95, 255, 0.06);
+  --ev-shadow-card: 0 4px 20px -8px rgba(11, 95, 255, 0.12), 0 2px 6px -2px rgba(11, 95, 255, 0.06);
+
+  /* ===== Reading Column（阅读栏 / 卡片流栏）=====
+   * 事件模块分两类页面，各自控宽，避免宽屏铺满导致正文行过长、卡片内部空洞：
+   * - --ev-content-w     阅读栏：详情页正文主栏，单列
+   * - --ev-content-w-lg  卡片流栏：列表页，≥1024px 时卡片区转两列
+   * 栏宽（border-box）= 内容宽 + 2 × --ev-content-pad。 */
+  --ev-content-w: 880px;
+  --ev-content-w-lg: 1200px;
+  --ev-content-pad: 24px;
+
+  /* ===== 详情页左侧步骤轨（主栏 + 粘性竖向步骤导航）=====
+   * 详情页 ≥1200px 时左侧挂一条粘性竖向步骤轨，滚动到哪一段就点亮哪一步（scroll-spy），
+   * 把宽屏横向空间变成可用导航；窄屏步骤轨回到内容顶部（横向胶囊步骤条）。
+   * 注意：断点 1200px 需与 EventDetailView.vue / AiEventReport.vue 的 media query 保持一致。 */
+  --ev-rail-w: 200px;
+  --ev-rail-gap: 24px;
+  /* 详情页整页栏宽：窄屏 = 阅读栏；≥1200px = 阅读栏 + 间距 + 步骤轨 */
+  --ev-page-w: var(--ev-content-w);
+  --ev-page-w-wide: calc(var(--ev-content-w) + var(--ev-rail-gap) + var(--ev-rail-w));
+
+  /* ===== Spacing (px) ===== */
+  --ev-s-1: 4px;
+  --ev-s-2: 8px;
+  --ev-s-3: 12px;
+  --ev-s-4: 16px;
+
+  /* ===== Font (对齐 APP $font-size-*，APP 的 rpx 值 ÷2 即为 px) =====
+   * xs 22rpx→11 / sm 24rpx→12 / base 26rpx→13 / md 28rpx→14 / lg 32rpx→16
+   * 注意：md(28rpx) 大于 base(26rpx)，曾误写为 md=13 / base=14（两者颠倒）。 */
+  --ev-font-xs: 11px;
+  --ev-font-sm: 12px;
+  --ev-font-md: 14px;
+  --ev-font-base: 13px;
+  --ev-font-lg: 16px;
+}

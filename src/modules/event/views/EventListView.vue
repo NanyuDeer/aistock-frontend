@@ -1,23 +1,18 @@
 <template>
   <div class="event-list-page">
-    <!-- 页面标题 -->
-    <div class="page-header">
-      <h1 class="page-title">事件传导</h1>
-      <p class="page-subtitle">AI解析事件影响链，追踪产业链机会</p>
-    </div>
-
     <div class="page-content">
       <!-- AI关注焦点区域 -->
       <div class="ai-focus-section">
-        <h2 class="section-title">焦点事件</h2>
+        <h2 class="section-title">重大事件</h2>
         <div class="headline-cards">
           <EventHeadlineCard
             v-if="headlineEvents.positive"
             type="positive"
             :title="headlineEvents.positive.title"
             :importance="headlineEvents.positive.importance"
-            :industries="headlineEvents.positive.industries"
+            :industries="headlineEvents.positive.affectedIndustries ?? []"
             :event-id="headlineEvents.positive.eventId"
+            :source-url="headlineEvents.positive.sourceInfo?.url"
             @click="handleHeadlineClick"
           />
           <EventHeadlineCard
@@ -25,8 +20,9 @@
             type="negative"
             :title="headlineEvents.negative.title"
             :importance="headlineEvents.negative.importance"
-            :industries="headlineEvents.negative.industries"
+            :industries="headlineEvents.negative.affectedIndustries ?? []"
             :event-id="headlineEvents.negative.eventId"
+            :source-url="headlineEvents.negative.sourceInfo?.url"
             @click="handleHeadlineClick"
           />
         </div>
@@ -36,10 +32,7 @@
       <div class="filter-section">
         <el-radio-group v-model="activeType" @change="handleFilterChange" size="small">
           <el-radio-button label="">全部</el-radio-button>
-          <el-radio-button label="产业政策">产业政策</el-radio-button>
-          <el-radio-button label="地缘政治">地缘政治</el-radio-button>
-          <el-radio-button label="技术突破">技术突破</el-radio-button>
-          <el-radio-button label="市场动态">市场动态</el-radio-button>
+          <el-radio-button v-for="type in EVENT_TYPES" :key="type" :label="type">{{ type }}</el-radio-button>
         </el-radio-group>
       </div>
 
@@ -115,6 +108,8 @@ import { ElMessage } from 'element-plus'
 import EventItemCard from '../components/EventItemCard.vue'
 import EventHeadlineCard from '../components/EventHeadlineCard.vue'
 import { getEventList, followEvent, unfollowEvent } from '@/modules/event/api/eventApi'
+import { getFocusEvents } from '@/modules/event/api/eventService'
+import { EVENT_TYPES } from '@/modules/event/constants'
 
 export default {
   name: 'EventListView',
@@ -126,23 +121,22 @@ export default {
   setup() {
     const router = useRouter()
 
-    // ========== AI 今日精选 Mock 数据 ==========
+    // ========== 焦点事件（真实 Global Importance 双榜单） ==========
     const headlineEvents = reactive({
-      positive: {
-        eventId: 'event-ai-computing-power',
-        newsId: 'news-ai-computing-power',
-        title: 'AI服务器需求持续增长，算力基础设施扩容确定性强',
-        importance: 'major',
-        industries: ['算力', '芯片', '软件']
-      },
-      negative: {
-        eventId: 'event-real-estate',
-        newsId: 'news-real-estate',
-        title: '地产调控政策持续收紧，销售数据环比下滑',
-        importance: 'major',
-        industries: ['房地产', '建材', '家居']
-      }
+      positive: null,
+      negative: null,
     })
+
+    async function loadFocus() {
+      try {
+        const focus = await getFocusEvents()
+        // 左卡=利好（positive），右卡=利空（negative）；忽略 mixed
+        headlineEvents.positive = focus.find((e) => e.direction === 'positive') || null
+        headlineEvents.negative = focus.find((e) => e.direction === 'negative') || null
+      } catch (err) {
+        console.error('[EventListView] 加载焦点事件失败:', err)
+      }
+    }
 
     // ========== 列表数据 ==========
     const events = ref([])
@@ -225,8 +219,12 @@ export default {
 
     // 跳转新闻原文
     function goToNews(event) {
-      // TODO: 跳转新闻详情页
-      ElMessage.info(`新闻功能暂未实现: ${event.title}`)
+      const url = event.sourceInfo?.url
+      if (!url) {
+        ElMessage.warning('暂无原文链接')
+        return
+      }
+      window.open(url, '_blank', 'noopener,noreferrer')
     }
 
     // 关注/取消关注
@@ -243,6 +241,7 @@ export default {
     // ========== 生命周期 ==========
     onMounted(() => {
       refresh()
+      loadFocus()
     })
 
     return {
@@ -256,6 +255,7 @@ export default {
       hasMore,
       isEmpty,
       activeType,
+      EVENT_TYPES,
       refresh,
       loadMore,
       handlePageChange,
@@ -272,31 +272,18 @@ export default {
 <style scoped>
 .event-list-page {
   min-height: 100vh;
-  background: #f5f7fa;
+  /* 让位全站固定导航栏（TheNavbar: fixed / 60px），否则页头被其遮挡 */
+  padding-top: 60px;
+  background: #eef3fb; /* 对齐 APP $bg-page，蓝色金融系统页底 */
 }
 
-.page-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 32px 24px;
-  color: #fff;
-}
-
-.page-title {
-  font-size: 24px;
-  font-weight: 700;
-  margin: 0 0 8px;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  opacity: 0.9;
-  margin: 0;
-}
-
+/* 卡片流栏：单列居中限宽（栏宽 = 内容宽 + 左右呼吸位）。
+ * 列表页比详情页宽：≥1024px 时卡片区转两列，把横向空间用起来。 */
 .page-content {
-  padding: 24px;
-  max-width: 1200px;
+  width: 100%;
+  max-width: calc(var(--ev-content-w-lg) + var(--ev-content-pad) * 2);
   margin: 0 auto;
+  padding: 24px var(--ev-content-pad);
 }
 
 /* AI 关注焦点区域 */
@@ -311,23 +298,95 @@ export default {
   margin-bottom: 12px;
 }
 
+/* 焦点卡区：窄屏单列（与下方事件列表同为单列）；
+ * 宽屏转双列，列宽/间距与 .event-list 完全一致——只有 1 张卡时只占左列，与事件列表左列对齐 */
 .headline-cards {
-  display: flex;
-  flex-direction: row;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   align-items: stretch;
 }
 
-/* 筛选区域 */
+@media (min-width: 1024px) {
+  .headline-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* 筛选区域：对齐 APP Segmented——浅蓝轨道 + 选中项白色胶囊。
+ * 选中态不使用品牌蓝：沿用 APP 事件页对 .as-segmented__item.is-active 的覆盖（灰字 + 白色胶囊 + 加粗） */
 .filter-section {
   margin-bottom: 20px;
 }
 
-/* 事件列表 */
+.filter-section :deep(.el-radio-group) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  width: fit-content; /* 窄屏轨道贴合胶囊，不留大片空白轨道 */
+  max-width: 100%;
+  padding: 3px;
+  background: var(--ev-bg-deep); /* 对齐 APP .tab-scroll #e6eef9 */
+  border-radius: var(--ev-r-md);
+}
+
+.filter-section :deep(.el-radio-button + .el-radio-button) {
+  margin-left: 0;
+}
+
+.filter-section :deep(.el-radio-button__inner) {
+  border: none;
+  border-radius: var(--ev-r-sm);
+  background: transparent;
+  color: var(--ev-text-secondary); /* 对齐 APP $ink-soft #4b5a7a */
+  padding: 5px 14px;
+  box-shadow: none;
+}
+
+.filter-section :deep(.el-radio-button__inner:hover) {
+  color: var(--ev-text-primary);
+}
+
+.filter-section :deep(.el-radio-button.is-active .el-radio-button__inner) {
+  background: var(--ev-bg-card);
+  color: var(--ev-text-secondary);
+  font-weight: 600;
+  box-shadow: var(--ev-shadow-xs);
+}
+
+/* 宽屏下胶囊横向铺满整行：原先 7 个胶囊自然宽约 550px，只占内容区（1200px）的一半，
+ * 右侧留白明显。这里让每个胶囊等分剩余空间（flex-grow 摊平），轨道撑满整行。 */
+@media (min-width: 1024px) {
+  .filter-section :deep(.el-radio-group) {
+    width: 100%;
+  }
+
+  .filter-section :deep(.el-radio-button) {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .filter-section :deep(.el-radio-button__inner) {
+    display: block;
+    width: 100%;
+  }
+}
+
+/* 事件列表（窄屏单列） */
 .event-list {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+/* 宽屏转两列卡片流：卡片标题/行业/AI 摘要均为定行截断，等高排列不会参差 */
+@media (min-width: 1024px) {
+  .event-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 16px;
+  }
 }
 
 /* 状态容器 */
@@ -362,14 +421,11 @@ export default {
   padding: 24px;
 }
 
-/* 响应式 */
+/* 响应式：小屏收窄呼吸位（栏宽已随视口自适应） */
 @media (max-width: 768px) {
-  .headline-cards {
-    flex-direction: column;
-  }
-
   .page-content {
-    padding: 16px;
+    padding-left: 16px;
+    padding-right: 16px;
   }
 }
 </style>
