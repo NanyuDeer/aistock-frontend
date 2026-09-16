@@ -4,30 +4,25 @@
  * 已接入真实后端 Agent 接口。
  * 通过 eventAdapter 处理数据映射和降级逻辑。
  *
- * 注意：从 TypeScript 迁移，使用 axios 替代 luch-request
+ * 复用 shared/api 实例：生产环境 baseURL 为 https://gupiao-api.yaozhineng.com，
+ * 开发环境为空（经 dev server proxy 转发），并统一提供重试与响应拦截器。
  */
 
-import axios from 'axios'
+import api from '@/shared/api/api'
 import { adaptEventList, adaptEventDetail } from './eventAdapter'
 
-// API 基础路径（包含 /api 前缀，与 webpack 代理匹配）
-// 当 baseURL 为空时，需要包含完整路径 /api/agent
+// API 基础路径：shared/api 的 baseURL 为纯域名（生产）或空（开发），故此处需带 /api/agent 前缀
 const API_BASE = '/api/agent'
 
-// 自建 axios 实例，不依赖 shared/api/api.js
-// 请求通过 webpack dev server proxy 转发到生产 API
-const eventApi = axios.create({
-  baseURL: '',
-  timeout: 15000,
-  withCredentials: true,
-  headers: { 'Content-Type': 'application/json' },
-})
-
-// 提取 response.data，与 shared/api 行为一致
-eventApi.interceptors.response.use(
-  response => response.data,
-  error => Promise.reject(error)
-)
+// 事件读接口失败收敛配置：
+// shared/api 全局默认 timeout=15000 + retries=4（axios-retry，延迟 n×1000ms）。
+// 冷连接偶发丢包（~20%）时，重试次数直接决定失败率：4 次→0.03%、1 次→4%。
+// 这里「缩短超时到 10s（快速识别丢包、不长时间转圈）+ 保留 3 次重试（把失败率压到 ~0.16%）」，
+// 在「不转圈」与「不加载失败」之间取平衡。
+const READ_CONFIG = {
+  timeout: 10000,
+  'axios-retry': { retries: 3 },
+}
 
 /**
  * 提取后端响应中的 data 字段
@@ -41,7 +36,19 @@ eventApi.interceptors.response.use(
  */
 function extractData(response) {
   if (response && typeof response === 'object' && 'code' in response && 'data' in response) {
+    // 失败信封：后端约定 code === 0 为成功。
+    // shared/api 对「请求被取消」会 resolve 成 { code: -1, data: null, message: 'Request canceled' }
+    // （见 shared/api/api.js 响应拦截器），此处必须抛错，交由调用方 catch 呈现「加载失败」错误态；
+    // 否则会把 null 传给 adaptEventList 触发 TypeError 这类技术性报错。
+    if (response.code !== 0) {
+      throw new Error(response.message || '请求失败')
+    }
     return response.data
+  }
+  // 非预期响应（空响应体、上游异常等导致 api.get() 解析为 undefined 等）：
+  // 同样抛友好错误，避免把非对象传给 adaptEventList 再次抛 TypeError 技术性报错
+  if (!response || typeof response !== 'object') {
+    throw new Error('加载失败，请重试')
   }
   return response
 }
@@ -55,7 +62,8 @@ function extractData(response) {
  * @returns {Promise<Object>} 事件列表响应
  */
 export async function getEventList(params = {}) {
-  const response = await eventApi.get(`${API_BASE}/event/list`, {
+  const response = await api.get(`${API_BASE}/event/list`, {
+    ...READ_CONFIG,
     params: {
       page: params.page || 1,
       pageSize: params.pageSize || 10,
@@ -75,7 +83,7 @@ export async function getEventList(params = {}) {
  * @returns {Promise<Object>} 事件详情响应
  */
 export async function getEventDetail(eventId) {
-  const response = await eventApi.get(`${API_BASE}/event/${eventId}`)
+  const response = await api.get(`${API_BASE}/event/${eventId}`, READ_CONFIG)
   return adaptEventDetail(extractData(response))
 }
 
@@ -89,7 +97,7 @@ export async function getEventDetail(eventId) {
  * @returns {Promise<Object>} 图谱数据
  */
 export async function getEventGraph(eventId) {
-  const response = await eventApi.get(`${API_BASE}/event/${eventId}`)
+  const response = await api.get(`${API_BASE}/event/${eventId}`, READ_CONFIG)
   const adapted = adaptEventDetail(extractData(response))
   return adapted.graph
 }
