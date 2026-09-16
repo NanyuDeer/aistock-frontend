@@ -36,8 +36,8 @@
         </el-radio-group>
       </div>
 
-      <!-- 加载中 -->
-      <div v-if="loading && events.length === 0" class="state-container">
+      <!-- 首屏加载（无任何内容时）：整页加载态 -->
+      <div v-if="initialLoading" class="state-container">
         <el-icon class="is-loading" :size="32"><Loading /></el-icon>
         <span class="state-text">加载中...</span>
       </div>
@@ -56,7 +56,12 @@
 
       <!-- 事件列表 -->
       <template v-else>
-        <div class="event-list">
+        <!-- Tab 切换轻量反馈：保留原内容结构，仅顶部提示 + 列表淡化，避免空白 -->
+        <div v-if="switchingLoading" class="switching-tip">
+          <el-icon class="is-loading" :size="14"><Loading /></el-icon>
+          <span>加载中...</span>
+        </div>
+        <div class="event-list" :class="{ 'list-dimmed': switchingLoading }">
           <EventItemCard
             v-for="event in events"
             :key="event.eventId"
@@ -148,13 +153,62 @@ export default {
     const hasMore = ref(false)
     const activeType = ref('')
 
+    // P0-1 Tab 数据缓存：key = `${eventType}::${page}`（含分页维度，避免不同 Tab/页互相串数据）
+    // 命中则直接渲染、不发请求；刷新/重试通过 force 绕过并覆盖缓存
+    const listCache = new Map()
+
+    // P0-3 加载反馈拆分：
+    // - initialLoading：无任何内容时的整页加载态
+    // - switchingLoading：已有内容时的切换态（保留 Content + 轻量提示/淡化，不空白）
+    // - loading：保留原语义，供「加载更多」按钮使用
+    const initialLoading = ref(false)
+    const switchingLoading = ref(false)
+
+    // P0-2 请求竞态保护：单调递增序号，仅当前序号对应的响应可写入状态
+    let requestSeq = 0
+
     // 是否为空
     const isEmpty = computed(() => !loading.value && events.value.length === 0 && !error.value)
 
+    /** 关闭全部加载态（仅当前请求可关闭，避免过期响应误关） */
+    function stopLoading() {
+      loading.value = false
+      initialLoading.value = false
+      switchingLoading.value = false
+    }
+
+    /** 将结果写入视图状态 */
+    function applyResult(result, page) {
+      events.value = result.events
+      total.value = result.total
+      hasMore.value = result.hasMore
+      currentPage.value = page
+    }
+
     // ========== 数据加载 ==========
-    async function fetchEvents(page = 1) {
-      loading.value = true
+    async function fetchEvents(page = 1, force = false) {
+      const reqId = ++requestSeq
+      const cacheKey = `${activeType.value}::${page}`
+
+      // 缓存命中：直接渲染，不发请求（force=true 时跳过缓存，用于刷新/重试）
+      if (!force) {
+        const cached = listCache.get(cacheKey)
+        if (cached) {
+          error.value = ''
+          applyResult(cached, page)
+          // 命中缓存无需等待：立即收敛加载态。
+          // 同时兜底关闭"被本次递增作废的上一在途请求"遗留的 loading
+          // （那个请求的 finally 守卫 reqId !== requestSeq 已失效，不会再关）
+          stopLoading()
+          return
+        }
+      }
+
       error.value = ''
+      const hasContent = events.value.length > 0
+      loading.value = true
+      if (hasContent) switchingLoading.value = true
+      else initialLoading.value = true
 
       try {
         const params = {
@@ -166,21 +220,38 @@ export default {
         }
 
         const response = await getEventList(params)
-        events.value = response.events || []
-        total.value = response.total || 0
-        hasMore.value = response.hasMore || false
-        currentPage.value = page
+
+        // 竞态保护：过期响应直接丢弃（不写数据、不改加载态）
+        if (reqId !== requestSeq) return
+
+        const result = {
+          events: response.events || [],
+          total: response.total || 0,
+          hasMore: response.hasMore || false,
+        }
+        listCache.set(cacheKey, result)
+        applyResult(result, page)
       } catch (err) {
+        if (reqId !== requestSeq) return
         console.error('[EventListView] 加载失败:', err)
-        error.value = err.message || '加载失败，请重试'
+        const msg = err?.message || '加载失败，请重试'
+        if (events.value.length > 0) {
+          // 切换/翻页场景：已有内容，保留旧数据，仅轻提示失败，不进入整页错误态
+          // （避免「Tab 高亮已切换但页面被全屏错误覆盖」，也避免反复转圈后仍整页报错）
+          error.value = ''
+          ElMessage.warning(msg)
+        } else {
+          // 首屏场景：无任何内容，进入可重试的错误态
+          error.value = msg
+        }
       } finally {
-        loading.value = false
+        if (reqId === requestSeq) stopLoading()
       }
     }
 
-    // 刷新
+    // 刷新（强制绕过缓存，重新拉取并覆盖缓存）
     function refresh() {
-      fetchEvents(1)
+      fetchEvents(1, true)
     }
 
     // 加载更多
@@ -194,7 +265,7 @@ export default {
       fetchEvents(page)
     }
 
-    // 筛选切换
+    // 筛选切换（命中缓存时瞬时渲染）
     function handleFilterChange(value) {
       activeType.value = value
       fetchEvents(1)
@@ -248,6 +319,8 @@ export default {
       headlineEvents,
       events,
       loading,
+      initialLoading,
+      switchingLoading,
       error,
       total,
       currentPage,
@@ -377,6 +450,21 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+/* Tab 切换轻量反馈：顶部提示条 + 列表淡化（保留内容结构，不空白） */
+.switching-tip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #8a96b0;
+  margin-bottom: 10px;
+}
+
+.list-dimmed {
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
 }
 
 /* 宽屏转两列卡片流：卡片标题/行业/AI 摘要均为定行截断，等高排列不会参差 */
