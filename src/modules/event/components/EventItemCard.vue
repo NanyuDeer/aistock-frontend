@@ -8,12 +8,21 @@
           {{ event.sourceInfo?.name || event.source || '来源暂不可验证' }}
         </span>
         <span class="card-time">{{ formatTime(event.publishTime) }}</span>
+        <!-- 原文入口：链接图标（对齐 APP links-line），点击打开原文；无原文/不可达域名不显示（点击冒泡到整卡详情） -->
+        <span
+          v-if="event.sourceInfo?.url"
+          class="card-link"
+          title="查看原文"
+          @click.stop="handleLinkClick"
+        >
+          <el-icon :size="12"><IconLink /></el-icon>
+        </span>
       </div>
       <ImportanceStars v-if="event.importance" :level="event.importance" :size="12" />
     </div>
 
-    <!-- 事件标题（最多2行，点击跳转新闻） -->
-    <h3 class="card-title" @click.stop="$emit('view-news', event)">{{ event.title }}</h3>
+    <!-- 事件标题（最多2行，点击冒泡到整卡进入事件机会洞见，不再单独跳原文） -->
+    <h3 class="card-title">{{ event.title }}</h3>
 
     <!-- Top5 影响行业（排序后取前5，不换行） -->
     <div class="card-top5" v-if="top5Industries.length">
@@ -65,13 +74,15 @@
  * - view-news — 查看新闻原文
  */
 import { computed } from 'vue'
+import { Link } from '@element-plus/icons-vue'
 import ImportanceStars from './ImportanceStars.vue'
-import wordmarkPng from '@/assets/insight-wordmark.png'
 
 export default {
   name: 'EventItemCard',
   components: {
     ImportanceStars,
+    // Link 是 HTML 保留字，改名注册避免 vue/no-reserved-component-names
+    IconLink: Link,
   },
   props: {
     /** 事件数据（与 eventAdapter.adaptEventItem 输出结构一致） */
@@ -104,10 +115,16 @@ export default {
       emit('view-detail', props.event)
     }
 
+    /** 链接图标点击 → 打开原文（阻止冒泡，避免触发整卡详情跳转） */
+    function handleLinkClick() {
+      emit('view-news', props.event)
+    }
+
     return {
       top5Industries,
       formatTime,
       handleCardClick,
+      handleLinkClick,
     }
   },
 }
@@ -188,13 +205,22 @@ export default {
   -webkit-box-orient: vertical;
   overflow: hidden;
   margin-bottom: 8px;
+}
+
+/* 原文入口链接图标：与时间同行、同色对齐（对齐 APP links-line 22rpx / $ink-mute），点击打开原文 */
+.card-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--ev-text-muted); /* 对齐 APP $ink-mute #8a96b0 */
   cursor: pointer;
+  line-height: 1;
   transition: color 0.15s ease;
 }
 
-.card-title:hover,
-.card-title:active {
-  color: #0b5fff; /* 对齐 APP $primary：点标题→跳原文变蓝 */
+.card-link:hover {
+  color: var(--ev-text-primary);
 }
 
 /* ========== Top5 影响行业 ========== */

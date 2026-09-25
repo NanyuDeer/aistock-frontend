@@ -110,10 +110,31 @@ const MEDIA_NAME_BY_DOMAIN = {
 }
 
 /**
+ * 国内网络无法直接访问的海外域名。
+ * 这类链接点击必然打不开（如 YouTube 视频），前端不应渲染链接入口造成死链；
+ * 来源名照常展示（2026-09-24，与 APP 端同步）。
+ */
+const UNREACHABLE_DOMAINS = new Set(['youtube.com', 'youtu.be'])
+
+/** 解析 URL 的 hostname（小写、去 www. 前缀）；非 http(s) URL 返回 undefined */
+function domainOfUrl(source) {
+  const match = String(source).match(/^https?:\/\/([^/?#]+)/i)
+  if (!match) return undefined
+  return match[1].toLowerCase().replace(/^www\./, '')
+}
+
+/** URL 是否指向国内不可访问的海外域名（命中则不应暴露链接入口） */
+function isUnreachableUrl(source) {
+  const domain = domainOfUrl(source)
+  return domain !== undefined && UNREACHABLE_DOMAINS.has(domain)
+}
+
+/**
  * 从后端 source 字段构建 sourceInfo（来源展示信息）
  *
  * source 为 URL 时解析 hostname，按域名后缀命中中文媒体名（覆盖 m. / finance. 等子域），
  * 未命中才回退规范化域名；非 URL 直接作为 name。
+ * 命中 UNREACHABLE_DOMAINS（如 YouTube）：仅返回来源名，不暴露打不开的链接。
  *
  * @param {string} source - 后端返回的来源字段
  * @returns {Object|undefined} 来源信息对象
@@ -121,9 +142,10 @@ const MEDIA_NAME_BY_DOMAIN = {
 function buildSourceInfo(source) {
   if (!source) return undefined
   if (!/^https?:\/\//i.test(source)) return { name: source }
+  const domain = domainOfUrl(source)
+  if (domain === undefined) return { name: source }
+  if (UNREACHABLE_DOMAINS.has(domain)) return { name: domain }
   try {
-    const url = new URL(source)
-    const domain = url.hostname.toLowerCase().replace(/^www\./, '')
     return { name: resolveMediaName(domain), url: source }
   } catch {
     return { name: source }
@@ -153,7 +175,8 @@ function buildSourceInfoWithName(sourceName, source) {
   const name = String(sourceName ?? '').trim()
   if (name && name !== '未知来源') {
     const info = { name }
-    if (/^https?:\/\//i.test(source || '')) info.url = source
+    // 命中不可达域名（如 YouTube）不暴露链接入口，避免死链（2026-09-24）
+    if (/^https?:\/\//i.test(source || '') && !isUnreachableUrl(source)) info.url = source
     return info
   }
   return buildSourceInfo(source)
