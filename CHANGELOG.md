@@ -2,6 +2,19 @@
 
 > 所有修改记录按时间倒序排列。每条记录标注分支、时间区间、开发者。
 
+## [xusiyun] 2026-09-25 — 事件卡原文入口与不可达域名过滤（同步 APP 端）
+
+**开发者**: xusiyun
+
+### 修复
+- `src/modules/event/api/eventService.js`：GI 焦点事件 importance 恒 `major`（与 APP 端同步；此前依赖 importance_level，notable 焦点事件卡片丢「重大」前缀）
+- `src/modules/event/components/EventItemCard.vue`：新增原文链接图标（对齐 APP links-line）；标题点击由「跳原文」改为「冒泡到整卡进入详情」
+
+### 改进
+- `src/modules/event/api/eventAdapter.js`：新增 `UNREACHABLE_DOMAINS`（youtube.com/youtu.be）过滤——不可达域名只显示来源名，不暴露链接入口
+
+---
+
 ## [main] 2026-09-09 — 隐藏更新日志页后端仓库链接与首页页脚「更新日志」入口
 
 **开发者**: Aria
