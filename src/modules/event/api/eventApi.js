@@ -103,6 +103,35 @@ export async function getEventGraph(eventId) {
 }
 
 /**
+ * 获取重大事件时间线（GET /api/agent/event/timeline）
+ *
+ * 公开接口，无需 token。
+ * 后端 data 层直接返回 { items, total, page, pageSize, hasMore }，无需 adapter。
+ * 只透传有值的参数，防御性归一写在 api 层（对齐 APP eventApi.ts getEventTimeline）。
+ *
+ * @param {Object} params - 查询参数（全部可选）：dateFrom/dateTo/status/order/page/pageSize
+ * @returns {Promise<Object>} 时间线响应
+ */
+export async function getEventTimeline(params = {}) {
+  const response = await api.get(`${API_BASE}/event/timeline`, {
+    ...READ_CONFIG,
+    params: {
+      ...(params.dateFrom ? { dateFrom: params.dateFrom } : {}),
+      ...(params.dateTo ? { dateTo: params.dateTo } : {}),
+      ...(params.status ? { status: params.status } : {}),
+      ...(params.order ? { order: params.order } : {}),
+      page: params.page || 1,
+      pageSize: Math.min(params.pageSize || 20, 100),
+    },
+  })
+
+  const data = extractData(response)
+  // 防御性归一：后端可能返回 null/undefined items
+  if (!Array.isArray(data?.items)) return { ...data, items: [] }
+  return data
+}
+
+/**
  * 关注事件
  *
  * 注意：功能暂未实现，后端需要新增接口。

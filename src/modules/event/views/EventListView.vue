@@ -3,7 +3,19 @@
     <div class="page-content">
       <!-- AI关注焦点区域 -->
       <div class="ai-focus-section">
-        <h2 class="section-title">重大事件</h2>
+        <div class="section-head">
+          <h2 class="section-title">重大事件</h2>
+          <!-- 时间轴入口：文字 + 日历图标（与 APP list.vue timeline-entry 一致：calendar-line 图标 + ink-soft 灰 #4b5a7a） -->
+          <router-link class="timeline-entry" :to="{ name: 'eventTimeline' }">
+            <svg class="timeline-entry__icon" width="13" height="13" viewBox="0 0 1024 1024" fill="none" aria-hidden="true">
+              <path
+                d="M725.333333 128h170.666667a42.666667 42.666667 0 0 1 42.666667 42.666667v682.666666a42.666667 42.666667 0 0 1-42.666667 42.666667H128a42.666667 42.666667 0 0 1-42.666667-42.666667V170.666667a42.666667 42.666667 0 0 1 42.666667-42.666667h170.666667V42.666667h85.333333v85.333333h256V42.666667h85.333333v85.333333z m-85.333333 85.333333H384v85.333334H298.666667V213.333333H170.666667v170.666667h682.666666V213.333333h-128v85.333334h-85.333333V213.333333z m213.333333 256H170.666667v341.333334h682.666666v-341.333334z"
+                fill="currentColor"
+              />
+            </svg>
+            重大事件时间线
+          </router-link>
+        </div>
         <div class="headline-cards">
           <EventHeadlineCard
             v-if="headlineEvents.positive"
@@ -368,7 +380,27 @@ export default {
   font-size: 18px;
   font-weight: 700;
   color: #1a1a1a;
+}
+
+/* 区域标题行：标题 + 右侧「重大事件时间线」入口链接 */
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 12px;
+}
+
+/* 时间轴入口：文字 + 日历图标（对齐 APP list.vue .timeline-entry：ink-soft 灰 #4b5a7a，gap 6rpx≈3px） */
+.timeline-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 13px;
+  color: var(--ev-text-secondary);
+}
+
+.timeline-entry__icon {
+  flex-shrink: 0;
 }
 
 /* 焦点卡区：窄屏单列（与下方事件列表同为单列）；
