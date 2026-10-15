@@ -372,6 +372,11 @@ export const stockApi = {
     }
   },
 
+  // 获取自选股行业别名（后端按申万一级展开同族细分行业，供事件传导关联自选股使用）
+  getFavoriteIndustryAliases: () => api.get('/api/cn/favorites/industry-aliases', {
+    timeout: 8000
+  }),
+
   // 自选股图片 OCR（VLM 批量识别）
   ocrStocksFromImages: ({
     images = [],

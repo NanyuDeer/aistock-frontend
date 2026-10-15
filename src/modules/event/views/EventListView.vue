@@ -1,6 +1,9 @@
 <template>
   <div class="event-list-page">
     <div class="page-content">
+      <!-- 自选股相关事件（可收折；空态不渲染） -->
+      <FavoriteRelatedCard :rows="favoriteRelatedRows" />
+
       <!-- AI关注焦点区域 -->
       <div class="ai-focus-section">
         <div class="section-head">
@@ -124,6 +127,8 @@ import { Loading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import EventItemCard from '../components/EventItemCard.vue'
 import EventHeadlineCard from '../components/EventHeadlineCard.vue'
+import FavoriteRelatedCard from '../components/FavoriteRelatedCard.vue'
+import { loadFavoriteRelatedEvents } from '../favoriteRelated'
 import { getEventList, followEvent, unfollowEvent } from '@/modules/event/api/eventApi'
 import { getFocusEvents } from '@/modules/event/api/eventService'
 import { EVENT_TYPES } from '@/modules/event/constants'
@@ -133,6 +138,7 @@ export default {
   components: {
     EventItemCard,
     EventHeadlineCard,
+    FavoriteRelatedCard,
     Loading,
   },
   setup() {
@@ -152,6 +158,17 @@ export default {
         headlineEvents.negative = focus.find((e) => e.direction === 'negative') || null
       } catch (err) {
         console.error('[EventListView] 加载焦点事件失败:', err)
+      }
+    }
+
+    // ========== 自选股相关事件（顶部收折卡片，独立拉取，不干扰主列表分页） ==========
+    const favoriteRelatedRows = ref([])
+
+    async function loadFavoriteRelated() {
+      try {
+        favoriteRelatedRows.value = await loadFavoriteRelatedEvents()
+      } catch (err) {
+        console.error('[EventListView] 加载自选股相关事件失败:', err)
       }
     }
 
@@ -325,10 +342,12 @@ export default {
     onMounted(() => {
       refresh()
       loadFocus()
+      loadFavoriteRelated()
     })
 
     return {
       headlineEvents,
+      favoriteRelatedRows,
       events,
       loading,
       initialLoading,

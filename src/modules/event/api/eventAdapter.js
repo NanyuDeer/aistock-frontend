@@ -218,6 +218,8 @@ function adaptEventItem(backendEvent) {
     globalImportanceRank: backendEvent.globalImportanceRank,
     globalImportanceDirection: backendEvent.globalImportanceDirection,
     globalImportanceLevel: backendEvent.globalImportanceLevel,
+    // 事件影响存活度（annotation-only 标注；无数据 null → 前端不渲染）
+    impactVitality: backendEvent.impactVitality ?? null,
     isFollowed: false,
   }
 }
@@ -263,6 +265,8 @@ export function adaptEventDetail(backend) {
         ?? computeImportanceFromStrengths((analysis.event_transmission?.chain ?? []).map((n) => n.impactStrength)),
       affectedIndustries,
       aiSummary: analysis.event_understanding?.summary || '',
+      // 事件影响存活度（annotation-only 标注；无数据 null → 前端不渲染）
+      impactVitality: backend.impactVitality ?? null,
       isFollowed: false,
     },
 

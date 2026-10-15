@@ -33,7 +33,7 @@ AiStock PC Web 前端，基于 Vue 2（Composition API 兼容模式）+ JavaScri
 | 资讯 | `modules/news` | 微信推送详情、机构调研热门股 | `/wechat/:msgid`, `/hot-burst` | [news/AGENTS.md](./src/modules/news/AGENTS.md) |
 | 用户 | `modules/user` | 登录、个人信息、搜索 | `/login`, `/profile`, `/search` | [user/AGENTS.md](./src/modules/user/AGENTS.md) |
 | 分析 | `modules/analytics` | 业绩预测、龙头历史、更新日志 | `/forecast`, `/potential-push-history`, `/update-logs` | [analytics/AGENTS.md](./src/modules/analytics/AGENTS.md) |
-| 事件 | `modules/event` | 事件传导列表/详情、重大事件时间线（对齐 APP 时间轴：历史段=事件传导源、未来段=实体源） | `/event`, `/event/:id`, `/event/timeline` | - |
+| 事件 | `modules/event` | 事件传导列表/详情、重大事件时间线（对齐 APP 时间轴：历史段=事件传导源、未来段=实体源）、列表页顶部「自选股相关事件」收折卡片（行业别名求交，空态不渲染）、列表卡片/详情 hero 标题下「事件影响存活度」小标（`VitalityBadge`，消费后端 `impactVitality` 标注，alive/fading/expired 三档，no_observation/无数据不渲染） | `/event`, `/event/:id`, `/event/timeline` | - |
 
 > 共享层文档见 [shared/AGENTS.md](./src/shared/AGENTS.md)。
 > 新增模块时，必须创建对应的 `src/modules/<模块名>/AGENTS.md`。
