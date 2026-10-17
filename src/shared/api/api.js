@@ -697,6 +697,25 @@ export const stockApi = {
     });
   },
 
+  // 获取个股中/长线 AI 洞见（只读缓存，不触发生成）
+  // timeframe: 'mid' | 'long'；无记录时后端返回 404
+  getMidLongAnalysis: (symbol, timeframe) => {
+    const tf = timeframe === 'long' ? 'long' : 'mid';
+    return api.get(`/api/cn/stocks/${encodeURIComponent(symbol)}/mid-long/${tf}`, {
+      timeout: AI_ANALYSIS_TIMEOUT,
+      'axios-retry': { retries: 0 }
+    });
+  },
+
+  // 触发一次新的中/长线 AI 洞见生成（后端 LLM，需登录）
+  createMidLongAnalysis: (symbol, timeframe) => {
+    const tf = timeframe === 'long' ? 'long' : 'mid';
+    return api.post(`/api/cn/stocks/${encodeURIComponent(symbol)}/mid-long/${tf}`, null, {
+      timeout: 120000,
+      'axios-retry': { retries: 0 }
+    });
+  },
+
   // 获取市场概览数据
   getMarketOverview: () => api.get('/api/market/overview'),
 

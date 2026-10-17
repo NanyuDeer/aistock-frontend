@@ -156,6 +156,7 @@ src/
 | 前端 API 模块 | 后端路径 | 后端仓库 |
 |--------------|---------|---------|
 | stockApi | `/api/cn/stock-quote/*` | aistock-api / aistock-app-api |
+| stockApi（中长线 AI 洞见） | `/api/cn/stocks/:symbol/mid-long/:timeframe` | aistock-app-api |
 | windLeaderApi | `/api/cn/wind-leaders` | aistock-app-api |
 | stockIntelApi | `/api/cn/stock-monitors/*` | aistock-app-api |
 | tenxApi | `/api/cn/stocks/tenx-score/*` | aistock-app-api |

@@ -23,6 +23,7 @@ favorites/
 - `stockIntelApi.getFavoritesNews()` — 自选股异动资讯
 - `stockApi.getStockKline()` — K线数据
 - `stockApi.getStockAnalysis()` / `createStockAnalysisStream()` — AI评估
+- `stockApi.getMidLongAnalysis()` / `createMidLongAnalysis()` — 中/长线 AI 洞见（读后端缓存 / 触发后端生成；无记录时本地兜底）
 - `ttsApi.synthesize()` — 语音播报
 - `tenxApi.getScore()` / `refreshScore()` — 十倍股评分
 - `stockApi.getCapitalFlow()` — 资金流向

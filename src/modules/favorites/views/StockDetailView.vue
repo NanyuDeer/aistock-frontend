@@ -448,6 +448,10 @@
         <div class="card ai-analysis-card">
           <div class="card-header">
             <h3>中线AI洞见</h3>
+            <div class="card-actions">
+              <span v-if="midAnalysisDate" class="analysis-date">{{ midAnalysisDate }}</span>
+              <el-button v-if="isLoggedIn" size="small" text :loading="midAnalysisLoading" @click="refreshMidAnalysis">刷新</el-button>
+            </div>
           </div>
           <div class="card-body">
             <div class="ai-conclusion">
@@ -592,6 +596,10 @@
         <div class="card ai-analysis-card">
           <div class="card-header">
             <h3>长线AI洞见</h3>
+            <div class="card-actions">
+              <span v-if="longAnalysisDate" class="analysis-date">{{ longAnalysisDate }}</span>
+              <el-button v-if="isLoggedIn" size="small" text :loading="longAnalysisLoading" @click="refreshLongAnalysis">刷新</el-button>
+            </div>
           </div>
           <div class="card-body">
             <div class="ai-conclusion">
@@ -1528,7 +1536,27 @@ export default {
       };
     });
 
-    const midAiAnalysis = computed(() => {
+    // 后端中/长线洞见映射（后端字段为中文键：结论/核心逻辑/风险提示/投资建议）
+    const convertMidLongApiToAiAnalysis = (data) => {
+      if (!data || typeof data !== 'object') return null;
+      const conclusion = String(data['结论'] || '').trim();
+      if (!conclusion) return null;
+      const coreLogic = String(data['核心逻辑'] || '');
+      const riskWarning = String(data['风险提示'] || '');
+      const adviceText = String(data['投资建议'] || '');
+      return {
+        conclusion,
+        badgeClass: /持有可顺势|弹性|积极|看多|买入|增持|继续|跟踪/.test(conclusion) ? 'is-bull' : 'is-hold',
+        logic: coreLogic.replace(/[^:\n]+::/g, '').replace(/\n{2,}/g, '\n').trim(),
+        basis: extractTagsFromText(coreLogic),
+        advice: extractTagsFromText(adviceText),
+        riskTips: extractTagsFromText(riskWarning)
+      };
+    };
+    const midAnalysisDate = computed(() => (midAnalysisData.value && midAnalysisData.value['分析时间']) || '');
+    const longAnalysisDate = computed(() => (longAnalysisData.value && longAnalysisData.value['分析时间']) || '');
+
+    const buildMidAiAnalysisLocal = () => {
       // 画像已弃用，focus/risks 用通用兜底（后续可接入券商研报）
       const focus = ['趋势结构保持健康', '行业景气度仍在修复', '业绩拐点需要继续验证'];
       const risks = ['业绩兑现节奏低于预期', '板块交易拥挤导致波动加大'];
@@ -1572,7 +1600,30 @@ export default {
           { tag: '趋势破位风险', detail: `若主力资金连续转净流出且成交放大，持有者需要防范趋势破位后的回撤。` }
         ]
       };
-    });
+    };
+
+    const midAiAnalysis = computed(() => convertMidLongApiToAiAnalysis(midAnalysisData.value) || buildMidAiAnalysisLocal());
+
+    // 长线行业政策：优先取后端趋势评分维度里的结构化政策项 policyItems，空则回退本地文案
+    const buildPoliciesFromTrend = () => {
+      const dims = tenxModel.value?.dimensions || [];
+      const items = [];
+      dims.forEach(dim => {
+        const policyItems = dim?.detail?.policyItems;
+        if (Array.isArray(policyItems)) {
+          policyItems.forEach(p => {
+            if (p && (p.name || p.desc)) {
+              items.push({
+                tag: p.color === 'gold' ? '中性' : '利好',
+                type: p.color === 'gold' ? 'is-neutral' : 'is-good',
+                text: `${p.name || ''}${p.desc ? '：' + p.desc : ''}`
+              });
+            }
+          });
+        }
+      });
+      return items;
+    };
 
     const longMockData = computed(() => {
       // 画像已弃用，focus 用通用兜底
@@ -1605,8 +1656,9 @@ export default {
         ];
       }
 
+      const trendPolicies = buildPoliciesFromTrend();
       return {
-        policies: [
+        policies: trendPolicies.length > 0 ? trendPolicies : [
           { tag: '利好', type: 'is-good', text: `${planStatement}长期需求预期因此更容易获得政策资源、产业资本和应用场景共振。` },
           { tag: '利好', type: 'is-good', text: `${focus[0]}，公司若能维持份额或切入核心客户，估值体系有望继续抬升。` },
           { tag: '中性', type: 'is-neutral', text: `需要关注产业节奏和订单兑现的时间差，长线逻辑不等于短期单边上涨。` }
@@ -1616,7 +1668,7 @@ export default {
       };
     });
 
-    const longAiAnalysis = computed(() => {
+    const buildLongAiAnalysisLocal = () => {
       // 画像已弃用，focus/risks 用通用兜底（后续可接入券商研报）
       const focus = ['产业空间', '核心壁垒', '成长弹性'];
       const risks = ['产业兑现节奏低于预期'];
@@ -1671,7 +1723,9 @@ export default {
           { tag: '估值透支消化风险', detail: `若估值提前大幅透支，后续即使行业方向正确，也可能出现较长时间的震荡消化。` }
         ]
       };
-    });
+    };
+
+    const longAiAnalysis = computed(() => convertMidLongApiToAiAnalysis(longAnalysisData.value) || buildLongAiAnalysisLocal());
 
     // 趋势股四维定义（技术面/行业赛道景气/消息面催化/基本面）
     const TREND_DIMS = [
@@ -1787,6 +1841,12 @@ export default {
     const industryHealthData = ref(null);
     const researchReportData = ref(null);
 
+    // 中/长线 AI 洞见（后端 stock_mid_long_analysis，读取缓存无需登录）
+    const midAnalysisData = ref(null);
+    const longAnalysisData = ref(null);
+    const midAnalysisLoading = ref(false);
+    const longAnalysisLoading = ref(false);
+
     async function loadAnnualFinancial(symbol) {
       if (!symbol) return;
       try {
@@ -1820,6 +1880,58 @@ export default {
         }
       } catch (e) {
         console.error('加载券商研报数据失败:', e);
+      }
+    }
+
+    // 加载中/长线 AI 洞见（后端缓存；无记录时后端返回 404，保留本地兜底）
+    async function loadMidLongAnalysis(symbol) {
+      const code = symbol || stockInfo.value.code;
+      if (!code) return;
+      midAnalysisLoading.value = true;
+      longAnalysisLoading.value = true;
+      try {
+        const [midRes, longRes] = await Promise.all([
+          stockApi.getMidLongAnalysis(code, 'mid').catch(() => null),
+          stockApi.getMidLongAnalysis(code, 'long').catch(() => null)
+        ]);
+        midAnalysisData.value = (midRes && midRes.code === 200) ? midRes.data : null;
+        longAnalysisData.value = (longRes && longRes.code === 200) ? longRes.data : null;
+      } catch (e) {
+        console.error('加载中长线AI洞见失败:', e);
+      } finally {
+        midAnalysisLoading.value = false;
+        longAnalysisLoading.value = false;
+      }
+    }
+
+    // 触发生成新的中/长线 AI 洞见（后端 LLM，需登录）
+    async function refreshMidAnalysis() {
+      const code = stockInfo.value.code;
+      if (!code) return;
+      midAnalysisLoading.value = true;
+      try {
+        const res = await stockApi.createMidLongAnalysis(code, 'mid');
+        if (res && res.code === 200 && res.data) midAnalysisData.value = res.data;
+      } catch (e) {
+        console.error('刷新中线AI洞见失败:', e);
+        ElMessage.error('刷新中线洞见失败，请稍后重试');
+      } finally {
+        midAnalysisLoading.value = false;
+      }
+    }
+
+    async function refreshLongAnalysis() {
+      const code = stockInfo.value.code;
+      if (!code) return;
+      longAnalysisLoading.value = true;
+      try {
+        const res = await stockApi.createMidLongAnalysis(code, 'long');
+        if (res && res.code === 200 && res.data) longAnalysisData.value = res.data;
+      } catch (e) {
+        console.error('刷新长线AI洞见失败:', e);
+        ElMessage.error('刷新长线洞见失败，请稍后重试');
+      } finally {
+        longAnalysisLoading.value = false;
       }
     }
 
@@ -2667,6 +2779,8 @@ export default {
         annualFinancialData.value = null;
         industryHealthData.value = null;
         researchReportData.value = null;
+        midAnalysisData.value = null;
+        longAnalysisData.value = null;
         financialSnapshot.value = { fundamentals: null, semiAnnual: null };
         stockInfo.value.code = nc; stockNews.value = []; totalNews.value = 0; newsCursor.value = 0;
         forecastData.value = {}; forecastSummary.value = '';
@@ -2683,6 +2797,7 @@ export default {
         loadCapitalFlow();
         loadAnnualFinancial(nc);
         loadResearchReports(nc);
+        loadMidLongAnalysis(nc);
         setupAutoRefresh(); window.scrollTo(0, 0);
         if (activeView.value === 'short') {
           setTimeout(() => { renderCapitalFlowChart(); renderCapitalSplitChart(); }, 160);
@@ -2750,6 +2865,7 @@ export default {
       loadCapitalFlow();
       loadAnnualFinancial(currentCode);
       loadResearchReports(currentCode);
+      loadMidLongAnalysis(currentCode);
       setupAutoRefresh(); window.addEventListener('resize', handleWindowResize); window.scrollTo(0, 0);
       setTimeout(() => { if (activeView.value === 'short') { renderCapitalFlowChart(); renderCapitalSplitChart(); } }, 200);
       setTimeout(() => { if (activeView.value === 'mid') renderIndustryHealthChart(); }, 200);
@@ -2965,6 +3081,7 @@ export default {
       forecastChartRef, forecastData, forecastSummary, loadingForecast, refreshForecast,
       hasForecastChartData, capitalFlowChartRef, capitalSplitChartRef, industryHealthChartRef,
       midMockData, midAiAnalysis, midActionItems, longMockData, longAiAnalysis, longActionItems, shouldShowTenxModel, tenxModel, capitalFlowInfo,
+      midAnalysisDate, longAnalysisDate, midAnalysisLoading, longAnalysisLoading, refreshMidAnalysis, refreshLongAnalysis,
       profileTheme,
       shortLogicTags, shortRiskTags, midBasisTags, midAdviceTags, midRiskTags, longBasisTags, longAdviceTags, longRiskTags,
       tenxVetoed, tenxVetoReasons,
