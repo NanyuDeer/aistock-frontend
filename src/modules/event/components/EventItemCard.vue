@@ -24,6 +24,9 @@
     <!-- 事件标题（最多2行，点击冒泡到整卡进入事件机会洞见，不再单独跳原文） -->
     <h3 class="card-title">{{ event.title }}</h3>
 
+    <!-- 事件影响存活度小标（标题下方单独一行；no_observation / 无数据不渲染） -->
+    <VitalityBadge :vitality="event.impactVitality" class="card-vitality" />
+
     <!-- Top5 影响行业（排序后取前5，不换行） -->
     <div class="card-top5" v-if="top5Industries.length">
       <span
@@ -76,11 +79,13 @@
 import { computed } from 'vue'
 import { Link } from '@element-plus/icons-vue'
 import ImportanceStars from './ImportanceStars.vue'
+import VitalityBadge from './VitalityBadge.vue'
 
 export default {
   name: 'EventItemCard',
   components: {
     ImportanceStars,
+    VitalityBadge,
     // Link 是 HTML 保留字，改名注册避免 vue/no-reserved-component-names
     IconLink: Link,
   },
@@ -204,6 +209,11 @@ export default {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  margin-bottom: 8px;
+}
+
+/* 事件影响存活度小标：标题下方单独一行（紧接标题，与 Top5 行业保持 8px 间距） */
+.card-vitality {
   margin-bottom: 8px;
 }
 

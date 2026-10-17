@@ -96,3 +96,186 @@ export async function getFocusEvents() {
     return []
   }
 }
+
+// ==================== 时间线（历史段：事件传导源；未来段：实体源） ====================
+// 对齐 APP eventService.ts 时间线历史段/实体段实现（buildTimelineHistoryRows/getTimelineHistoryRows/getEntityRows）。
+
+/** 纯行情"现象/表象"词（与 APP constants.ts / 后端 is_driving_event 口径一致） */
+const MARKET_PHENOMENON_PATTERN = /收评|收盘|午评|早评|复盘|盘点|盘面|涨停分析|异动|拉升|走高|走强|走弱|震荡|反弹|回调|冲高|涨停|跌停|连板|隔夜收|隔夜涨|隔夜跌|三大指数|双创指数|创业板指|沪指|深证成指|两市|成交额|净流入|净申购|飘绿|涨超|跌超|大涨|大跌|涨近|活跃/
+
+/** 事件"驱动原因"词（命中其一即判定已讲清原因，放行不剔除） */
+const DRIVING_CAUSE_PATTERN = /政策|监管|部委|公告|披露|预案|中标|订单|签约|招标|获批|并购|重组|收购|增持|回购|立案|调查|涨价|提价|降价|减产|扩产|投产|量产|关税|补贴|试点|技术突破|首发|合作|战略|投资|纳入|上调|下修|签署|成立|落地|规划|目标/
+
+/**
+ * 是否纯行情事件：仅看 title。
+ * 命中现象词 且 不命中任何原因词 → true（历史段剔除）。
+ * 空 title 不判为纯行情（不误杀缺失数据）。
+ */
+function isPureMarketEvent(title) {
+  const t = String(title ?? '').trim()
+  if (!t) return false
+  if (!MARKET_PHENOMENON_PATTERN.test(t)) return false
+  if (DRIVING_CAUSE_PATTERN.test(t)) return false
+  return true
+}
+
+/** 本地 Date → YYYY-MM-DD（历史段上界"今天"用，历史段是过去事件，时区偏差可接受） */
+function localTodayStr() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/**
+ * publishTime → 日期分组键 YYYY-MM-DD。
+ * 后端可能给 ISO 带时区（"2026-09-29T15:06:07.939323+08:00"）或纯日期（"2026-09-29"），
+ * 统一取字符串前 10 位即可健壮兼容两种格式；异常短串原样返回。
+ */
+function publishDateOf(publishTime) {
+  const s = String(publishTime ?? '').trim()
+  return s.length >= 10 ? s.slice(0, 10) : s
+}
+
+/** 取最核心行业（chain_summary[0].industry + direction 归一）；缺失 → null（页面不渲染胶囊） */
+function sectorOf(item) {
+  const first = item.chain_summary?.[0]
+  if (!first || !first.industry?.trim()) return null
+  const direction = first.direction === 'bullish' || first.direction === 'bearish' ? first.direction : 'neutral'
+  return { name: first.industry, direction }
+}
+
+/**
+ * 从事件传导列表项构建历史段时间线行（纯函数）。
+ *
+ * 准入：**同时满足** ① importance ≥ 4（星级 1~5，由 chain 最大 impactStrength 映射，adapter 已算好），
+ *              ② 非纯行情（现象词命中且无原因词则剔除），
+ *              ③ date ≤ today。
+ *
+ * 字段口径：
+ * - date = publishTime 前 10 位（后端为带 +08:00 的上海时间字符串，前端禁止自行时区换算）
+ * - eventStartTime = publishTime（页面按它做同日组内排序）
+ * - summary 恒空串（历史行不渲染摘要行）
+ * - sectorName/sectorDirection = chain_summary[0]（#1 核心行业）
+ * - isGi = globalImportanceRank 有值
+ * - isFuture = false
+ *
+ * @param {Array} items - 事件传导列表项（已按 eventId 去重）
+ * @param {string} today - 历史段右边界 YYYY-MM-DD（date ≤ today 才收录）
+ * @returns {Array} TimelineRow 数组
+ */
+function buildTimelineHistoryRows(items, today) {
+  const rows = []
+  for (const item of items) {
+    if (!item || !item.eventId) continue
+
+    // ① 重要性 ≥4（undefined / <4 剔除）
+    const importance = item.importance
+    if (typeof importance !== 'number' || importance < 4) continue
+
+    // ② 非纯行情（现象词命中且无原因词 → 剔除；讲清原因必须放行）
+    if (isPureMarketEvent(item.title)) continue
+
+    const date = publishDateOf(item.publishTime)
+    // publishTime 缺失/异常（长度 <10）→ 跳过，避免形成空日期分组
+    if (date.length < 10) continue
+    // 历史段上界：date ≤ 今天
+    if (date > today) continue
+
+    const sector = sectorOf(item)
+    rows.push({
+      eventId: item.eventId,
+      date,
+      eventStartTime: item.publishTime,
+      title: item.title,
+      // 历史行恒无摘要（用户明确不要"XX行业受益"这类 conclusion）
+      summary: '',
+      sectorName: sector?.name ?? null,
+      sectorDirection: sector?.direction ?? null,
+      // 进了当日 GI 双榜单（rank 非空）→ 历史行标题加粗
+      isGi: item.globalImportanceRank != null,
+      // 星级保留（1~5）：importance===5（最高星）→ 时间线「重大」徽标
+      importance: typeof item.importance === 'number' ? item.importance : null,
+      isFuture: false,
+    })
+  }
+  return rows
+}
+
+/**
+ * 翻页拉取事件传导历史源行：星级 ≥4 且非纯行情，date ∈ [earliestDate, 今天]。
+ *
+ * 后端 /api/agent/event/list 实为 `ORDER BY created_at DESC`，与 publishTime 只是近似，
+ * 故只能用「本页最新日仍早于下界 → 整页已出窗」判停；绝不能用最旧（错序会提前 break、静默漏行）。
+ *
+ * 停止条件（任一满足即停止）：本页最新日 < earliestDate / hasMore===false / 达到 maxPages。
+ * 异常处理：getEventList 抛错 → 返回 []（历史段失败不能让整个时间轴白屏）。
+ *
+ * @param {Object} opts - { earliestDate, maxPages=5, pageSize=100, today }
+ * @returns {Promise<Array>} TimelineRow 数组
+ */
+export async function getTimelineHistoryRows(opts = {}) {
+  const earliestDate = opts.earliestDate
+  const maxPages = opts.maxPages ?? 5
+  const pageSize = opts.pageSize ?? 100
+  const todayStr = opts.today ?? localTodayStr()
+
+  // 先按 eventId 去重收集原始事件（列表源可能跨页重复）
+  const seen = new Set()
+  const deduped = []
+
+  try {
+    for (let page = 1; page <= maxPages; page++) {
+      const res = await getEventList({ page, pageSize })
+      const events = res.events ?? []
+
+      // 本页最新日期（判停）
+      let pageNewest = null
+      for (const ev of events) {
+        const d = publishDateOf(ev.publishTime)
+        if (pageNewest === null || d > pageNewest) pageNewest = d
+        // 只收集窗口内项（星级/纯行情等准入由下方纯函数再过滤）
+        if (d < earliestDate) continue
+        if (d > todayStr) continue
+        if (!seen.has(ev.eventId)) {
+          seen.add(ev.eventId)
+          deduped.push(ev)
+        }
+      }
+
+      // 停判：整页已出窗（本页最新日仍早于下界）或显式 hasMore=false
+      if (pageNewest === null || pageNewest < earliestDate) break
+      if (res.hasMore === false) break
+    }
+  } catch (err) {
+    console.warn('[eventService] 时间线历史段拉取失败，返回空', err)
+    return []
+  }
+
+  return buildTimelineHistoryRows(deduped, todayStr)
+}
+
+/**
+ * 实体源行（未来段）：GET /timeline 项 → TimelineRow（isFuture=true）。
+ * 实体源无 GI 排名与行业方向信息，故 isGi=false、sectorDirection=null
+ * （sectorName 仍取 impactSectors[0]）；摘要保留（未来行展示摘要）。
+ *
+ * @param {Array} items - GET /timeline 返回的 items
+ * @returns {Array} TimelineRow 数组
+ */
+function getEntityRows(items) {
+  return (items || []).map((it) => ({
+    eventId: it.eventId,
+    date: it.date,
+    eventStartTime: it.eventStartTime,
+    title: it.title,
+    summary: it.summary || '',
+    // 实体源只给板块名（KG 预计算 impact_sectors 名字列），无方向 → 恒 null（页面回退中性灰）
+    sectorName: it.impactSectors?.[0] ?? null,
+    sectorDirection: null,
+    isGi: false,
+    // 未来行无传导报告 → 无星级（恒 null，不触发「重大」徽标）
+    importance: null,
+    isFuture: true,
+  }))
+}
+
+export { buildTimelineHistoryRows, getEntityRows }

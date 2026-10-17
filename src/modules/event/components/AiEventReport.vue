@@ -33,6 +33,8 @@
         <div class="hero-card" id="step-insight">
           <div class="hero-bar"></div>
           <div class="hero-title">{{ detail.event.title }}</div>
+          <!-- 事件影响存活度小标（标题下方单独一行；no_observation / 无数据不渲染） -->
+          <VitalityBadge :vitality="detail.event.impactVitality" class="hero-vitality" />
           <div class="hero-meta">
             <span class="meta-label">来源：</span>
             <a
@@ -168,6 +170,7 @@ import InvestmentLogicHeader from './InvestmentLogicHeader.vue'
 import AiEventUnderstanding from './AiEventUnderstanding.vue'
 import AiTransmissionAnalysis from './transmission/AiTransmissionAnalysis.vue'
 import HistoryTimeline from './HistoryTimeline.vue'
+import VitalityBadge from './VitalityBadge.vue'
 import { Loading } from '@element-plus/icons-vue'
 import { computed, ref, reactive, nextTick, onMounted, onBeforeUnmount } from 'vue'
 
@@ -180,6 +183,7 @@ export default {
     AiEventUnderstanding,
     AiTransmissionAnalysis,
     HistoryTimeline,
+    VitalityBadge,
     Loading,
   },
   props: {
@@ -602,6 +606,11 @@ export default {
   color: var(--ev-text-primary);
   line-height: 1.4;
   margin-bottom: 6px; /* APP 12rpx */
+}
+
+/* 事件影响存活度小标：标题下方单独一行，与来源元信息保持 6px 间距（对齐 APP 12rpx） */
+.hero-vitality {
+  margin-bottom: 6px;
 }
 
 .hero-meta {

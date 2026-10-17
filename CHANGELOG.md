@@ -2,6 +2,30 @@
 
 > 所有修改记录按时间倒序排列。每条记录标注分支、时间区间、开发者。
 
+## [xusiyun] 2026-10-15 — 事件影响存活度小标 + 自选股相关事件卡片（对齐 APP）
+
+**开发者**: xusiyun
+
+### 新增
+
+- 新增 `src/modules/event/components/VitalityBadge.vue`：事件影响存活度小标（标题下方单独一行；alive=影响持续中 / fading=影响减弱 / expired=影响消退，no_observation 或无数据不渲染），语义色避开红涨绿跌。
+- 新增 `src/modules/event/components/FavoriteRelatedCard.vue` + `src/modules/event/favoriteRelated.js`：列表页顶部「自选股相关事件」收折卡片（默认收起 3 条 / 展开上限 20，空态不渲染；别名缓存 `fav_industry_aliases` TTL 24h）。
+- 新增 `stockApi.getFavoriteIndustryAliases`（`src/shared/api/api.js`，加性）。
+
+### 改进
+
+- `src/modules/event/constants.js`：新增 `VITALITY_LABELS` 与 `isVitalityVisible`（对齐 APP 口径）。
+- `src/modules/event/api/eventAdapter.js`：透传后端 `impactVitality` 标注。
+- `src/modules/event/components/EventItemCard.vue`（列表卡片）与 `AiEventReport.vue`（详情 Hero）接入存活度小标。
+- `src/modules/event/views/EventListView.vue`：接入自选股相关事件卡片，独立拉取不干扰主列表分页。
+- `src/modules/event/styles/_event-tokens.scss`：新增 `--ev-warning` / `--ev-warning-soft`（对齐 APP `$warning`，供 fading 档使用）。
+
+### 验证
+
+- `vue-cli-service lint` 对本次改动文件零错误。
+
+---
+
 ## [xusiyun] 2026-09-25 — 事件卡原文入口与不可达域名过滤（同步 APP 端）
 
 **开发者**: xusiyun

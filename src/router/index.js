@@ -20,6 +20,7 @@ const DownloadView = () => import('@/modules/user/views/DownloadView.vue')
 // ==================== 事件传导模块 ====================
 const EventListView = () => import('@/modules/event/views/EventListView.vue')
 const EventDetailView = () => import('@/modules/event/views/EventDetailView.vue')
+const TimelineView = () => import('@/modules/event/views/TimelineView.vue')
 
 const routes = [
   // ==================== 正式路由 ====================
@@ -166,6 +167,14 @@ const routes = [
     component: EventListView,
     meta: {
       title: '股票资讯AI智能分析 - 事件传导'
+    }
+  },
+  {
+    path: '/event/timeline',
+    name: 'eventTimeline',
+    component: TimelineView,
+    meta: {
+      title: '股票资讯AI智能分析 - 重大事件时间线'
     }
   },
   {
