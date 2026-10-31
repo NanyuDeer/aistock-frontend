@@ -1,3 +1,13 @@
+## 2026-10-31 删除体积过大的 favicon.svg 并清理引用
+
+背景：`public/favicon.svg` 为 1.66 MB（内部以 base64 内嵌 PNG，含亮/暗两套），是浏览器标签页图标；业务代码零引用，`site.webmanifest` 只用 PNG 图标（192/512）。
+
+改动：
+- 删除 `public/favicon.svg`。
+- `index.html`：移除第 13 行 `<link rel="icon" type="image/svg+xml" href="/favicon.svg" />`，避免请求 404；标签页图标保留 `favicon.ico` 与 16×16 / 32×32 PNG 三项兜底。
+
+影响面：仅浏览器标签页图标与静态资源体积（-1.66 MB 部署产物），路由与业务逻辑零改动。
+
 ## 2026-10-14 Web 个股详情页接入后端（对齐 App）
 
 需求：Web 个股详情页很多区块数据由前端本地拼装，需像 App 一样接入后端。
